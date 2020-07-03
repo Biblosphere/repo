@@ -1,0 +1,296 @@
+swagger: '2.0'
+info:
+  title: Biblosphere API
+  description: API for bookshelf recognition
+  version: 1.0.0
+host: biblosphere-api-ihj6i2l2aq-uc.a.run.app
+schemes:
+  - https
+produces:
+  - application/json
+security:
+  - firebase: []
+  - google_id_token: []
+paths:
+  /get:
+    get:
+      summary: Get book from catalogue by ISBN
+      consumes:
+        - application/json
+      parameters:
+        - in: query
+          name: isbn
+          type: string
+          description: ISBN of the book.
+      operationId: get_book
+      x-google-backend:
+        address: https://us-central1-biblosphere-210106.cloudfunctions.net/get_book
+        protocol: h2
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            $ref: '#/definitions/BookList'
+  /add:
+    post:
+      summary: Add books to the Bibloshere catalogue
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: params
+          description: Parameters to add books.
+          schema:
+            type: object
+            properties:
+              books:
+                description: List of the books.
+                $ref: '#/definitions/BookList'
+      operationId: add
+      x-google-backend:
+        address: https://us-central1-biblosphere-210106.cloudfunctions.net/add_books
+        protocol: h2
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            type: string
+  /search:
+    get:
+      summary: Search book in Biblosphere catalogue by the title/author
+      consumes:
+        - application/json
+      parameters:
+        - in: query
+          name: q
+          type: string
+          description: The line with author/title/isbn
+      operationId: search
+      x-google-backend:
+        address: https://us-central1-biblosphere-210106.cloudfunctions.net/search_book
+        protocol: h2
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            $ref: '#/definitions/BookList'
+  /add_user_books:
+    post:
+      summary: Add books to the Bibloshere catalogue
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: params
+          description: Parameters to add books.
+          schema:
+            type: object
+            properties:
+              uid:
+                type: string
+                description: Biblospher user Id (Firebase uid).
+              books:
+                description: List of the books.
+                $ref: '#/definitions/BookList'
+              location:
+                description: Location of the books.
+                $ref: '#/definitions/Location'
+            required:
+              - uid
+              - books
+      operationId: add_user_books
+      x-google-backend:
+        address: https://us-central1-biblosphere-210106.cloudfunctions.net/add_user_books
+        protocol: h2
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            type: string
+  /add_user_books_from_image:
+    post:
+      summary: Recognize image with books and return list of books
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: params
+          description: Parameters to add books.
+          schema:
+            type: object
+            properties:
+              uid:
+                type: string
+                description: Biblospher user Id (Firebase uid).
+              image:
+                type: string
+                description: The GCS path to the image
+              location:
+                description: Location of the books.
+                $ref: '#/definitions/Location'
+            required:
+              - uid
+              - image
+      operationId: add_user_books_from_image
+      x-google-backend:
+        address: https://us-central1-biblosphere-210106.cloudfunctions.net/add_user_books_from_image
+        protocol: h2
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            type: string
+  /add_cover:
+    post:
+      summary: Add missing book cover
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: params
+          description: Parameters to recognize book cover
+          schema:
+            type: object
+            properties:
+              uid:
+                type: string
+                description: Biblospher user Id (Firebase uid).
+              isbn:
+                type: string
+                description: Book ISBN.
+              uri:
+                type: string
+                description: The GCS path to the image
+              ocr:
+                type: boolean
+                description: Process image with OCR to extract text
+            required:
+              - uid
+              - isbn
+              - image
+      operationId: add_cover
+      x-google-backend:
+        address: https://us-central1-biblosphere-210106.cloudfunctions.net/add_cover
+        protocol: h2
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            $ref: '#/definitions/BookList'
+  /add_back:
+    post:
+      summary: Add book back (for description)
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: params
+          description: Parameters to recognize book cover
+          schema:
+            type: object
+            properties:
+              uid:
+                type: string
+                description: Biblospher user Id (Firebase uid).
+              isbn:
+                type: string
+                description: Book ISBN.
+              uri:
+                type: string
+                description: The GCS path to the image
+              ocr:
+                type: boolean
+                description: Process image with OCR to extract text
+            required:
+              - uid
+              - isbn
+              - image
+      operationId: add_back
+      x-google-backend:
+        address: https://us-central1-biblosphere-210106.cloudfunctions.net/add_back
+        protocol: h2
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            $ref: '#/definitions/BookList'
+  /get_tags:
+    get:
+      summary: Get list of tags starting with query
+      consumes:
+        - application/json
+      parameters:
+        - in: query
+          name: query
+          type: string
+          description: Starting symbols of the tags.
+      operationId: get_tags
+      x-google-backend:
+        address: https://us-central1-biblosphere-210106.cloudfunctions.net/get_tags
+        protocol: h2
+      responses:
+        '200':
+          description: A successful response
+          schema:
+            type: array
+            items:
+              type: string
+definitions:
+  BookList:
+    type: array
+    items:
+      type: object
+      required:
+        - isbn
+      properties:
+        isbn:
+          type: string
+        title:
+          type: string
+        authors:
+          type: string
+        image:
+          type: string
+        language:
+          type: string
+        categories:
+          type: string
+        cover_text:
+          type: string
+  Location:
+    description: 'Latitude, Longitude related to the given point'
+    type: object
+    properties:
+      lat:
+        format: float
+        maximum: 85
+        minimum: -85
+        type: number
+      lon:
+        format: float
+        maximum: 180
+        minimum: -180
+        type: number
+    required:
+      - lat
+      - lon
+securityDefinitions:
+  api_key:
+    type: 'apiKey'
+    name: key
+    in: query
+  firebase:
+    authorizationUrl: ""
+    flow: implicit
+    type: oauth2
+    x-google-issuer: "https://securetoken.google.com/biblosphere-210106"
+    x-google-jwks_uri: "https://www.googleapis.com/service_accounts/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+    x-google-audiences: "biblosphere-210106"
+  google_id_token:
+    authorizationUrl: ""
+    flow: implicit
+    type: oauth2
+    x-google-issuer: "https://accounts.google.com"
+    x-google-jwks_uri: "https://www.googleapis.com/oauth2/v3/certs"
+    # Optional. Replace YOUR-CLIENT-ID with your client ID
+    x-google-audiences: "32555940559.apps.googleusercontent.com"

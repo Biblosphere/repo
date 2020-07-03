@@ -1,0 +1,1379 @@
+{
+  "@@last_modified": "2019-01-29T21:04:04.079240",
+  "title": "BIBLOSPHERE",
+  "@title": {
+    "description": "The application title",
+    "type": "text",
+    "placeholders": {}
+  },
+  "introShootHint": "Add your books by scanning ISBN to share with neighbours and tourists. Your books attract like minded people.",
+  "@introShootHint": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "introShoot": "Add books",
+  "@introShoot": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "introSurfHint": "App shows bookcases in 200 km around you sorted by distance. Get an access to a wide variety of books.",
+  "@introSurfHint": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "introSurf": "Surf",
+  "@introSurf": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "introMeetHint": "Contact the owner of the books you like and arrange an appointment to get some new books to read.",
+  "@introMeetHint": {
+    "type": "text",
+    "placeholders": {}
+  },
+    "introDone": "DONE",
+    "@introDone": {
+      "type": "text",
+      "placeholders": {}
+    },
+    "introSkip": "SKIP",
+    "@introSkip": {
+      "type": "text",
+      "placeholders": {}
+    },
+  "introMeet": "Meet",
+  "@introMeet": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "loginAgree1": "By clicking sign in button below, you agree \n to our ",
+  "@loginAgree1": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "loginAgree2": "end user license agreement",
+  "@loginAgree2": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "loginAgree3": "\nand that you read our ",
+  "@loginAgree3": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "loginAgree4": "privacy policy",
+  "@loginAgree4": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "blockUser": "Block abusive user",
+  "@blockUser": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "logout": "Logout",
+  "@logout": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "loading": "Loading...",
+  "@loading": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "km": " km",
+  "@km": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "nothingToSend": "Nothing to send",
+  "@nothingToSend": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "typeMsg": "Type your message...",
+  "@typeMsg": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "blockedChat": "User blocked",
+  "@blockedChat": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "Yes": "Yes",
+  "@Yes": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "no": "No",
+  "@no": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "confirmBlockUser": "Do you want to block this user?",
+  "@confirmBlockUser": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "welcome": "WELCOME",
+  "@welcome": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "addToWishlist": "Add to Wishlist",
+  "@addToWishlist": {
+    "type": "text",
+    "placeholders": {}
+  },
+     "scanISBN": "Scan ISBN",
+     "@scanISBN": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "enterTitle": "Enter title/author",
+     "@enterTitle": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "add": "Add",
+     "@add": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "ok": "Ok",
+     "@ok": {
+       "type": "text",
+       "placeholders": {}
+     },
+  "cart": "Books you are going to take",
+  "@cart": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "wishAdded": "Book has been added to your wishlist",
+  "@wishAdded": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "bookDeleted": "Book has been deleted from your library",
+  "@bookDeleted": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "bookAdded": "Book has been added to your library",
+  "@bookAdded": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "isbnNotFound": "Book is not found by ISBN",
+  "@isbnNotFound": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "transitInitiated": "Handover process initiated for the book",
+  "@transitInitiated": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "userBalance": "Balance: {balance}",
+  "@userBalance": {
+    "type": "text",
+    "placeholders": {
+      "balance": {}
+    }
+  },
+  "bookLanguage": "Language: {lang}",
+  "@bookLanguage": {
+    "type": "text",
+    "placeholders": {
+      "lang": {}
+    }
+  },
+  "financeTitle": "MY BALANCE: {balance}",
+  "@financeTitle": {
+    "type": "text",
+    "placeholders": {
+      "balance": {}
+    }
+  },
+  "addbookTitle": "ADD BOOK",
+  "@addbookTitle": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "addBook": "Add book",
+  "@addBook": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "findbookTitle": "FIND BOOK",
+  "@findbookTitle": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "findBook": "Find Book",
+  "@findBook": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "mybooksTitle": "MY BOOKS",
+  "@mybooksTitle": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "myBooks": "My books",
+  "@myBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "referralLink": "Your referral link:",
+  "@referralLink": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "linkCopied": "Link copied to clipboard",
+  "@linkCopied": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "menuMessages": "Messages",
+  "@menuMessages": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "titleMessages": "MESSAGES",
+  "@titleMessages": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "menuSettings": "Settings",
+  "@menuSettings": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "titleSettings": "SETTINGS",
+  "@titleSettings": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "menuBalance": "Balance",
+  "@menuBalance": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "menuReferral": "Referral program",
+  "@menuReferral": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "referralTitle": "MY REFERRALS",
+  "@referralTitle": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "menuSupport": "Support",
+  "@menuSupport": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportTitle": "SUPPORT",
+  "@supportTitle": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "hintAuthorTitle": "Author or title",
+  "@hintAuthorTitle": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipMyBooks": "My books",
+  "@chipMyBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipLent": "Lent",
+  "@chipLent": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipBorrowed": "Borrowed",
+  "@chipBorrowed": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipWish": "Wishes",
+  "@chipWish": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipTransit": "Transit",
+  "@chipTransit": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "youHaveThisBook": "You keep this book",
+  "@youHaveThisBook": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "youWishThisBook": "This book in your wishlist",
+  "@youWishThisBook": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "youLentThisBook": "Book with {user}",
+  "@youLentThisBook": {
+    "type": "text",
+      "placeholders": {
+        "user": {}
+      }
+  },
+  "youBorrowThisBook": "You borrowed this book",
+  "@youBorrowThisBook": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "youTransitThisBook": "This book is in transit",
+  "@youTransitThisBook": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipPayin": "Pay In",
+  "@chipPayin": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipPayout": "Pay Out",
+  "@chipPayout": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipLeasing": "Spent",
+  "@chipLeasing": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipReward": "Rewards",
+  "@chipReward": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipReferrals": "Referrals",
+  "@chipReferrals": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "noOperations": "No operations",
+  "@noOperations": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "opLeasing": "Spent/Deposit for book",
+  "@opLeasing": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "opReward": "Reward for book",
+  "@opReward": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "opInAppPurchase": "Pay In (In-App)",
+  "@opInAppPurchase": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "opInStellar": "Pay In (Stellar)",
+  "@opInStellar": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "opOutStellar": "Pay Out (Stellar)",
+  "@opOutStellar": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "opReferral": "Referrals pay",
+  "@opReferral": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "noReferrals": "No referrals",
+  "@noReferrals": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "sharedFeeLine": "Total shared: +{amount}",
+  "@sharedFeeLine": {
+    "type": "text",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "inputStellarAcount": "Stellar account for Pay In:",
+  "@inputStellarAcount": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "accountCopied": "Account copied to clipboard",
+  "@accountCopied": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "outputStellarAccount": "Stellar account for Pay Out:",
+  "@outputStellarAccount": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "wrongAccount": "Wrong account",
+  "@wrongAccount": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "hintOutptAcount": "Enter your Stellar account for pay out",
+  "@hintOutptAcount": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "stellarOutput": "Pay out to Stellar account:",
+  "@stellarOutput": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "hintNotMore": "Enter amount not more than {amount}",
+  "@hintNotMore": {
+    "type": "text",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "emptyAmount": "Empty amount not accepted",
+  "@emptyAmount": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "negativeAmount": "Amount should be positive",
+  "@negativeAmount": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "exceedAmount": "Amount exceed available balance",
+  "@exceedAmount": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "successfulPayment": "Successful payment",
+  "@successfulPayment": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "paymentError": "Something went wrong, contact administrator",
+  "@paymentError": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "buttonTransfer": "Transfer",
+  "@buttonTransfer": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "titleGetBook": "GET BOOK",
+  "@titleGetBook": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "inMyWishes": "This book in your wishlist",
+  "@inMyWishes": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "inMyBooks": "You have this book",
+  "@inMyBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "requestBook": "Can you give me \"{book}\"?",
+  "@requestBook": {
+    "type": "text",
+    "placeholders": {
+      "book": {}
+    }
+  },
+  "bookAround": "Get book",
+  "@bookAround": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "userHave": "from {user}",
+  "@userHave": {
+    "type": "text",
+    "placeholders": {
+      "user": {}
+    }
+  },
+  "distanceLine": "Distance: {distance} km",
+  "@distanceLine": {
+    "type": "text",
+    "placeholders": {
+      "distance": {}
+    }
+  },
+  "requestPost": "Can you send me \"{book}\"?",
+  "@requestPost": {
+    "type": "text",
+    "placeholders": {
+      "book": {}
+    }
+  },
+  "bookByPost": "Receive by post",
+  "@bookByPost": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "bookInLibrary": "Find in library via",
+  "@bookInLibrary": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "buyBook": "Buy on",
+  "@buyBook": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "ifNotFound": "Add book to wishlist if not found",
+  "@ifNotFound": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "noMessages": "No messages",
+  "@noMessages": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "titleReceiveBooks": "RECEIVING BOOKS",
+  "@titleReceiveBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "receiveBooks": "Receiving books ({num})",
+  "@receiveBooks": {
+    "type": "text",
+    "placeholders": {
+      "num": {}
+    }
+  },
+  "titleSendBooks": "HANDOVER BOOKS",
+  "@titleSendBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "sendBooks": "Handover books ({num})",
+  "@sendBooks": {
+    "type": "text",
+    "placeholders": {
+      "num": {}
+    }
+  },
+  "leaseAgreement": "Deposit for books: {total}, monthly payment {month}",
+  "@leaseAgreement": {
+    "type": "text",
+    "placeholders": {
+      "total": {},
+      "month": {}
+    }
+  },
+  "notSufficientForAgreement": "Missing {missing}. Deposit for books: {total}, monthly payment {month}",
+  "@notSufficientForAgreement": {
+    "type": "text",
+    "placeholders": {
+      "missing": {},
+      "total": {},
+      "month": {}
+    }
+  },
+  "buttonPayin": "Get balance",
+  "@buttonPayin": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "buttonConfirmBooks": "Confirm once received",
+  "@buttonConfirmBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "buttonGivenBooks": "Books handed over ✓",
+  "@buttonGivenBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "displayCurrency": "Display currency:",
+  "@displayCurrency": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "selectDisplayCurrency": "Choose display currency:",
+  "@selectDisplayCurrency": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "bookImageLabel": "Link to book cover image:",
+  "@bookImageLabel": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "wrongImageUrl": "Wrong link",
+  "@wrongImageUrl": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "imageLinkHint": "Copy link to bookcover image",
+  "@imageLinkHint": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "bookPriceLabel": "Book price",
+  "@bookPriceLabel": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "bookPriceHint": "Enter book price",
+  "@bookPriceHint": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "titleBookSettings": "ABOUT BOOK",
+  "@titleBookSettings": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "titleUserBooks": "BOOK EXCHENGE",
+  "@titleUserBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "requestReturn": "I'd like to return \"{book}\"?",
+  "@requestReturn": {
+    "type": "text",
+    "placeholders": {
+      "book": {}
+    }
+  },
+  "requestReturnByOwner": "Please, return me \"{book}\"?",
+  "@requestReturnByOwner": {
+    "type": "text",
+    "placeholders": {
+      "book": {}
+    }
+  },
+  "chatStatusInitialFrom": "Return book",
+  "@chatStatusInitialFrom": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chatStatusHandoverFrom": "Complete book(s) handover",
+  "@chatStatusHandoverFrom": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chatStatusCompleteFrom": "Book(s) handed over",
+  "@chatStatusCompleteFrom": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chatStatusInitialTo": "Get book(s)",
+  "@chatStatusInitialTo": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chatStatusHandoverTo": "Confirm book(s) handover",
+  "@chatStatusHandoverTo": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chatStatusCompleteTo": "Book(s) accepted",
+  "@chatStatusCompleteTo": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipMyBooksWithHim": "My books with him(her)",
+  "@chipMyBooksWithHim": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipHisBooks": "His(her) books",
+  "@chipHisBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chipHisBooksWithMe": "His(her) books with me",
+  "@chipHisBooksWithMe": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "bookPrice": "Price: {total}",
+  "@bookPrice": {
+    "type": "text",
+    "placeholders": {
+      "total": {}
+    }
+  },
+  "bookRent": "Price: {month} per month",
+  "@bookRent": {
+    "type": "text",
+    "placeholders": {
+      "month": {}
+    }
+  },
+  "bookOwner": "Owner: {user}",
+  "@bookOwner": {
+    "type": "text",
+    "placeholders": {
+      "user": {}
+    }
+  },
+  "bookWith": "Book with {user}",
+  "@bookWith": {
+    "type": "text",
+    "placeholders": {
+      "user": {}
+    }
+  },
+  "wishAlreadyThere": "This book is already in your wishlist",
+  "@wishAlreadyThere": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "bookAlreadyThere": "This book is already in your library",
+  "@bookAlreadyThere": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "hintChatOpen": "Start conversation",
+  "@hintChatOpen": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "hintRequestReturn": "Ask for return",
+  "@hintRequestReturn": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "hintReturn": "Return book",
+  "@hintReturn": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "hintDeleteBook": "Delete book",
+  "@hintDeleteBook": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "hintBookDetails": "Change book info",
+  "@hintBookDetails": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "hintShareBook": "Share link",
+  "@hintShareBook": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "snackBookNotConfirmed": "Confirm other books before asking new ones",
+  "@snackBookNotConfirmed": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "snackBookPending": "Previous book handover not confirmed. Please ask your peer to confirm.",
+  "@snackBookPending": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "snackBookAddedToCart": "Book was added to the cart",
+  "@snackBookAddedToCart": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "sharingMotto": "Take books from people instead of buying",
+  "@sharingMotto": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "inputStellarMemo": "Memo for top-up via Stellar:",
+  "@inputStellarMemo": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "memoCopied": "Memo copied to a clipboard",
+  "@memoCopied": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "outputStellarMemo": "Memo for payout via Stellar:",
+  "@outputStellarMemo": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "bookNotFound": "This book is not found in Biblosphere. Add it to your wishlist and we'll inform you once it's available.",
+  "@bookNotFound": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "chatbotWelcome": "Hello! I'm chat-bot of Biblosphere. Please ask me any questions about this app.",
+  "@chatbotWelcome": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "snackBookNotFound": "Book not found. Try to change search query.",
+  "@snackBookNotFound": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "snackBookAlreadyInTransit": "Book is booked by another user. Choose another one.",
+  "@snackBookAlreadyInTransit": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "snackBookImageChanged": "New cover image is set",
+  "@snackBookImageChanged": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "snackBookPriceChanged": "Price is saved",
+  "@snackBookPriceChanged": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportChat": "Support chat",
+  "@supportChat": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "titleSupport": "SUPPORT",
+  "@titleSupport": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "showDeposit": "Deposit: {amount}",
+  "@showDeposit": {
+    "type": "text",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "showRent": "Monthly pay: {amount}",
+  "@showRent": {
+    "type": "text",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "cartAddBooks": "Add books",
+  "@cartAddBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "cartTopup": "Top-up balance {amount}",
+  "@cartTopup": {
+    "type": "text",
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "cartMakeApointment": "Make an apointment",
+  "@cartMakeApointment": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "cartRequesterHasToTopup": "Your peer has to top-up his balance",
+  "@cartRequesterHasToTopup": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "cartConfirmHandover": "Confirm that book(s) given",
+  "@cartConfirmHandover": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "cartConfirmReceived": "Confirm that books received",
+  "@cartConfirmReceived": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "cartRequesterHasToConfirm": "Your peer has to accept books",
+  "@cartRequesterHasToConfirm": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "cartBooksAccepted": "Books accepted",
+  "@cartBooksAccepted": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "cartBooksGiven": "Books handed over",
+  "@cartBooksGiven": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "myBooksWithUser": "My books at this user ({count})",
+  "@myBooksWithUser": {
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "booksOfUserWithMe": "His books with me ({count})",
+  "@booksOfUserWithMe": {
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "profileUserBooks": "All his books ({count})",
+  "@profileUserBooks": {
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "supportTitleGetBooks": "How to get books",
+  "@supportTitleGetBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportGetBooks": "Find books whch you like. Message owner of the book to make an apointment. To get book(s) you have to pay a deposit. It will be released once book(s) returned. You can top-up your balance by card via In-App Purchase or by Stellar cryptocurrency. To earn balance share your books and participate in partner program by initing other people in Biblosphere.",
+  "@supportGetBooks": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportTitleGetBalance": "Top-up balance",
+  "@supportTitleGetBalance": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportGetBalance": "There are two ways to top-up your balance. First with In-App purchase by card registered in Google Play or App Store. Second by transfering Stellar (XLM) to account given in your Setting screen. Don't forget to give memo while transferring.",
+  "@supportGetBalance": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportTitleReferrals": "Referral program",
+  "@supportTitleReferrals": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportReferrals": "Facilitate book exchange via Biblosphere in your community or office and receive rewards from every transaction they made. To participate share your partner link to friends and colleagues.",
+  "@supportReferrals": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportTitlePayout": "Payouts",
+  "@supportTitlePayout": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportPayout": "Once you've earned significant balance in Biblosphere you can withdraw it. Payouts are working via Stellar (XLM) cryptocurrency. You can transfer to your Stellar wallet or use cryptocurrency exchanges to withdraw to your card or online-wallet.",
+  "@supportPayout": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportTitleChatbot": "Support Chatbot",
+  "@supportTitleChatbot": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportChatbot": "There are chat with support chatbot in the message screen. (S)he can answer any questions about Biblosphere application. Or contact me directly in Telegram ",
+  "@supportChatbot": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportSignature": "Denis Stark",
+  "@supportSignature": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "bookIncome": "Income: {month} per month",
+  "@bookIncome": {
+    "type": "text",
+    "placeholders": {
+      "month": {}
+    }
+  },
+  "distanceUnknown": "Distance: unknown",
+  "@distanceUnknown": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "snackAllowLocation": "Please allow access to location for searching and adding books",
+  "@snackAllowLocation": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "hintOutputMemo": "Memo for payout transaction",
+  "@hintOutputMemo": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "settingsTitleOutStellar": "Payout via Stallar",
+  "@settingsTitleOutStellar": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "settingsTitleInStellar": "Get balance via Stallar",
+  "@settingsTitleInStellar": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "settingsTitleIn": "Get balance",
+  "@settingsTitleIn": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "settingsTitleGeneral": "General settings",
+  "@settingsTitleGeneral": {
+    "type": "text",
+    "placeholders": {}
+  },
+     "recognizeFromGallery": "Recognize books from gallery photo",
+     "@recognizeFromGallery": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "recognizeFromCamera": "Take a photo to recognize books",
+     "@recognizeFromCamera": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "chooseHoldedBookForChat": "CHOOSE BOOK",
+     "@chooseHoldedBookForChat": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "choosePartnerBookForChat": "CHOOSE BOOK",
+     "@choosePartnerBookForChat": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "offerBook": "You can take my book \"{book}\"",
+     "@offerBook": {
+       "type": "text",
+       "placeholders": {
+         "book": {}
+       }
+     },
+     "chipBooksToRequest": "Take",
+     "@chipBooksToRequest": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "chipBooksToOffer": "Offer",
+     "@chipBooksToOffer": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "chipBooksToReturn": "Return",
+     "@chipBooksToReturn": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "chipBooksToAskForReturn": "Remind",
+     "@chipBooksToAskForReturn": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "buttonSearchThirdParty": "Search in Stores & Libraries",
+     "@buttonSearchThirdParty": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "hintAddToWishlist": "Add to wishlist",
+     "@hintAddToWishlist": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "hintHolderChatOpen": "Open chat with person who hold the book",
+     "@hintHolderChatOpen": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "hintConfirmHandover": "Confirm that you've received this book",
+     "@hintConfirmHandover": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "hintManageBook": "Open this book in MY BOOKS screen",
+     "@hintManageBook": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "buttonManageBook": "Open in MY BOOKS",
+     "@buttonManageBook": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "settingsPlan": "Plan: {name}",
+     "@settingsPlan": {
+       "type": "text",
+       "placeholders": {
+         "name": {}
+       }
+     },
+     "planTrial": "Trial",
+     "@planTrial": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "buttonUpgrade": "UPGRADE",
+     "@buttonUpgrade": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "buttonSkip": "SKIP",
+     "@buttonSkip": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "snackRecgnitionStarted": "It takes 2 minutes. You can add next bookshelf meanwhile.",
+     "@snackRecgnitionStarted": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "snackRecognitionDone": "{count} books have been recognized and added to your catalog.",
+     "@snackRecognitionDone": {
+       "type": "text",
+       "placeholders": {
+         "count": {}
+       }
+     },
+     "snackWishDeleted": "Book deleted from your wishlist",
+     "@snackWishDeleted": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "snackPaidPlanActivated": "Your paid plan is activated",
+     "@snackPaidPlanActivated": {
+       "type": "text",
+       "placeholders": {}
+     },
+     "dialogWishLimit": "Trial plan only allows 10 books in the wish list. Upgrade for {price} per month to have more.",
+     "@dialogWishLimit": {
+       "type": "text",
+       "placeholders": {
+         "price": {}
+       }
+     },
+     "dialogBookLimit": "Trial plan allows to keep only up to 2 books at a time. Upgrade for {price} per month to have more.",
+     "@dialogBookLimit": {
+       "type": "text",
+       "placeholders": {
+         "price": {}
+       }
+     },
+  "wishLimitTrial": "Limit on wish list: {count}",
+  "@wishLimitTrial": {
+    "type": "text",
+    "placeholders": {
+      "count": {},
+      "upgrade": {}
+    }
+  },
+  "wishLimitPaid": "Limit on wish list: {count}",
+  "@wishLimitPaid": {
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "wishLimitTrialDesc": "You can keep up to {count} books in your wish list. Upgrade to paid plan to increase to {upgrade}.",
+  "@wishLimitTrialDesc": {
+    "type": "text",
+    "placeholders": {
+      "count": {},
+      "upgrade": {}
+    }
+  },
+  "wishLimitPaidDesc": "You can keep up to {count} books in your wish list.",
+  "@wishLimitPaidDesc": {
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "bookLimitTrial": "Limit on taken books: {count}",
+  "@bookLimitTrial": {
+    "type": "text",
+    "placeholders": {
+      "count": {},
+      "upgrade": {}
+    }
+  },
+  "bookLimitPaid": "Limit on taken books: {count}",
+  "@bookLimitPaid": {
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "bookLimitTrialDesc": "You can take up to {count} books at a time plus number of books you've given to other people. To keep up to {upgrade} books upgrade to paid plan.",
+  "@bookLimitTrialDesc": {
+    "type": "text",
+    "placeholders": {
+      "count": {},
+      "upgrade": {}
+    }
+  },
+  "bookLimitPaidDesc": "You can take up to {count} books at a time plus number of books you've given to other people. To take more books return books previously taken.",
+  "@bookLimitPaidDesc": {
+    "type": "text",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "planPaid": "Member",
+  "@planPaid": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "perMonth": "per month",
+  "@perMonth": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "perYear": "per year",
+  "@perYear": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "monthlyDescription": "Keep more books and enjoy extended wish list with Monthly paid plan",
+  "@monthlyDescription": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "annualDescription": "Enjoy book sharing with your friends and neighbours for a whole year",
+  "@annualDescription": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "patronDescription": "Your generous contribution makes this app better and helps to promote book sharing",
+  "@patronDescription": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "subscriptionDisclaimer": "Subscription will be charged to your {platform} account on confirmation. Subscriptions will automatically renew unless canceled within 24-hours before the end of the current period. You can cancel anytime with your {platform} account settings. Any unused portion of a free trial will be forfeited if you purchase a subscription.",
+  "@subscriptionDisclaimer": {
+    "type": "text",
+    "placeholders": {
+      "platform": {}
+    }
+  },
+  "privacyPolicy": "Privacy Policy",
+  "@privacyPolicy": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "termsOfService": "Terms of Service",
+  "@termsOfService": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "supportText": "## **Introduction**\n\nThis app intended for people who love books and reading. App helps you to take books from your friends and neigbours instead of buying in the stores. It also helps you to find like minded people with similar reading taste around you.\n\n## **How to add your books**\n\nYou can add you books in three ways:\n- By making photo of your bookshelf (App will recognize books from the image by the bookspines)\n- By scaning ISBN on a book\n- By searching book with author/title\n\n## **How to get books**\n\nApp helps you to find your wished books around you. It's simple three step flow: \n- Search book by author/title. \n- Chat with owner of the book and meet for the handover.\n- Return the book\n\nCould not find the book in a proximate distance? Just add it to your wishlist and App will inform you as soon as book is available.\n\n## **Messaging**\n\nApp has integrated messaging to support book sharing among users. Please note that it's not intended for general chatting (please use other messangers instead).\nChats are not encrypted. Application bot is monitoring and participating in the chat by sending notifications (marked with #bot_message hashtag).\n\nYou can attach book to the message. Click on the message with book cover to navigate there. \n\n## **Paid subscription**\n\nThe App available free of charge. However there are following expences:\n- cost of development\n- cost of hosting and APIs\n- design and marketing cost\n\nWe will be happy if you join other paying users to support this project and spread book sharing.  \n\n## **Be our partner**\n\nWe are looking for people and organizations to partner with. Our mission to spread book sharing and makes books available for reading. Please contact me on Telegram - [Denis Stark](https://t.me/DenisStark77)\n\n",
+  "@supportText": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressTitle": "Recognition progress",
+  "@recognitionProgressTitle": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressNone": "Some problem with recofnition. Try again.",
+  "@recognitionProgressNone": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressUpload": "Uploading image to cloud storage",
+  "@recognitionProgressUpload": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressScan": "Computer vision scans the image",
+  "@recognitionProgressScan": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressOutline": "Recognising books outlines",
+  "@recognitionProgressOutline": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressCatalogsLookup": "Searching books in catalogues",
+  "@recognitionProgressCatalogsLookup": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressRescan": "Rescaning fragments of the image",
+  "@recognitionProgressRescan": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressCompleted": "Successfuly completed",
+  "@recognitionProgressCompleted": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressFailed": "We encountered some difficulties with image recognition. Please try later.",
+  "@recognitionProgressFailed": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressStore": "Storing book records.",
+  "@recognitionProgressStore": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "recognitionProgressBooks": "{recognized} books out of {total} were recognized",
+  "@recognitionProgressBooks": {
+    "type": "text",
+    "placeholders": {
+      "total": {},
+      "recognized": {}
+    }
+  },
+  "autoTranslated": "* auto translated",
+  "@autoTranslated": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "autoGenerated": "* auto generated",
+  "@autoGenerated": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "booksAvailableForSearch": "{count} books available {scope}",
+  "@booksAvailableForSearch": {
+    "type": "text",
+    "placeholders": {
+      "count": {},
+      "scope": {}
+    }
+  },
+  "inNeighborhod": "in your neigbourhod",
+  "@inNeighborhod": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "inCity": "in your city",
+  "@inCity": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "inCountry": "in your country",
+  "@inCountry": {
+    "type": "text",
+    "placeholders": {}
+  },
+  "onContinent": "on your continent",
+  "@onContinent": {
+    "type": "text",
+    "placeholders": {}
+  }
+}
