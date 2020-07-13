@@ -4,24 +4,18 @@ from tools import lexems
 
 
 class Book:
-    def __init__(self, isbn, title, authors, image='', language=None, cover_text=None, \
-                 back_text=None, tags=None, genre=None, description=None):
+    def __init__(self, isbn, title, authors, image='', language='', cover_text='',
+                 back_text='', tags='', genre='', description=''):
         self.isbn = isbn
         self.title = title
         self.authors = authors
         self.image = image
-        if language is not None:
-            self.language = language
-        if cover_text is not None:
-            self.cover_text = cover_text
-        if back_text is not None:
-            self.back_text = back_text
-        if tags is not None:
-            self.tags = tags
-        if genre is not None:
-            self.genre = genre
-        if description is not None:
-            self.description = description
+        self.language = language
+        self.cover_text = cover_text
+        self.back_text = back_text
+        self.tags = tags
+        self.genre = genre
+        self.description = description
         self.keys = lexems(title + ' ' + authors, full=True)
 
     @classmethod

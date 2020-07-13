@@ -93,7 +93,7 @@ def distance_between(p1, p2):
 
 # Function to match book with wish and send personal message
 # Deploy with:
-# gcloud functions deploy ask_book --runtime python37 --memory=256MB --timeout=300s --trigger-event providers/cloud.firestore/eventTypes/document.create --trigger-resource 'projects/biblosphere-210106/databases/(default)/documents/bookrecords/{bookId}'
+# gcloud functions deploy ask_book --runtime python37 --memory=512MB --timeout=300s --trigger-event providers/cloud.firestore/eventTypes/document.create --trigger-resource 'projects/biblosphere-210106/databases/(default)/documents/bookrecords/{bookId}'
 # gcloud functions logs read ask_book
 def ask_book(data1, context):
     try:
@@ -222,7 +222,6 @@ def connect_mysql(f):
             cnx.autocommit = True
             cursor = cnx.cursor(prepared=True)
         except Exception as e: # MySQL error
-            print("MySQL connection failed")
             json_abort(401, message="MySQL connection failed")
 
         result = f(request, cursor)
@@ -260,38 +259,44 @@ def connect_mysql_pubsub(f):
 
 
 # HTTP API function to add books
-# gcloud functions deploy add_books --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
+# gcloud functions deploy add_books --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=300s
 # gcloud functions logs read add_books
 @connect_mysql
 def add_books(request, cursor):
-    body = request.get_json(silent=True)
+    try:
+        body = request.get_json(silent=True)
 
-    if body['books'] is None:
-        json_abort(400, message="Missing list of books")
+        if body['books'] is None:
+            json_abort(400, message="Missing list of books")
 
-    print('Request body:', body)
-    print('Request books:', body['books'])
+        print('Request body:', body)
+        print('Request books:', body['books'])
 
-    for b in body['books']:
-        if 'isbn' not in b:
-            print('Isbn missing for', b)
-            continue
+        for b in body['books']:
+            if 'isbn' not in b:
+                print('Isbn missing for', b)
+                continue
 
-        book = Book(b['isbn'], b['title'], b['authors'], b['image'])
-        print('Path', book.isbn, book.title, book.authors, book.image)
+            book = Book(b['isbn'], b['title'], b['authors'], b['image'])
+            print('Path', book.isbn, book.title, book.authors, book.image)
 
-        add_book_sql(cursor, book)
-        print('Book added to MySQL', book.isbn, book.title, book.authors)
+            add_book_sql(cursor, book)
+            print('Book added to MySQL', book.isbn, book.title, book.authors)
 
-    return 'Success'
+        return 'Success'
+
+    except Exception as e:
+        print('Exception for add_books', e)
+        traceback.print_exc()
+        json_abort(400, message="%s" % e)
 
 
 # HTTP API function to get book by ISBN
-# gcloud functions deploy get_tags --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=10s
+# gcloud functions deploy get_tags --runtime python37 --trigger-http --allow-unauthenticated --memory=1024MB --timeout=30s
 # gcloud functions logs read get_tags
 @connect_mysql
 def get_tags(request, cursor):
-    query = None
+    query = ''
     try:
         req_json = request.get_json(silent=True)
         req_args = request.args
@@ -319,38 +324,35 @@ def get_tags(request, cursor):
 
 
 # HTTP API function to get book by ISBN
-# gcloud functions deploy get_book --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=30s
+# gcloud functions deploy get_book --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=30s
 # gcloud functions logs read get_book
 @connect_mysql
 def get_book(request, cursor):
     try:
-        req_json = request.get_json(silent=True)
         req_args = request.args
 
         if req_args is not None and 'isbn' in req_args:
             isbn = req_args['isbn']
-        elif req_json is not None and 'isbn' in req_json:
-            isbn = req_json['isbn']
         else:
             json_abort(400, message="Missing [isbn] parameter")
 
         print('ISBN', isbn)
 
         # Search book in Biblosphere
-        book = get_book_sql(cursor, isbn, trace=False)
+        book = get_book_sql(cursor, isbn, trace=True)
 
         # If not found in Biblosphere search in Google Books
         if book is None:
-            book = search_google_by_isbn(isbn, cursor, trace=False)
+            book = search_google_by_isbn(isbn, cursor, trace=True)
 
         # If not found in Biblosphere and Google search in RSL and Abebook
         if book is None and isbn.startswith('9785'):
             # If russian ISBN search in RSL
-            book = search_rsl_by_isbn(isbn, cursor, trace=False)
+            book = search_rsl_by_isbn(isbn, cursor, trace=True)
 
         if book is None:
             # If RSL fails or not cyrillic -> search in Abebooks
-            book, match = lookup_abebooks('', cursor, isbn=isbn, trace=False)
+            book, match = lookup_abebooks('', cursor, isbn=isbn, trace=True)
 
         books = []
         if book is not None:
@@ -359,60 +361,66 @@ def get_book(request, cursor):
         return json.dumps(books, cls=JsonEncoder)
 
     except Exception as e:
-        print('Exception for book [%s]' % book['id'], e)
+        print('Exception for get_book', e)
         traceback.print_exc()
-        return json_abort(400, message="%s" % e)
+        json_abort(400, message="%s" % e)
 
 
 
 # HTTP API function to search book
-# gcloud functions deploy search_book --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
+# gcloud functions deploy search_book --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=300s
 # gcloud auth print-identity-token
 # gcloud functions logs read search_book
 @connect_mysql
 def search_book(request, cursor):
-    req_json = request.get_json(silent=True)
-    req_args = request.args
+    try:
+        req_json = request.get_json(silent=True)
+        req_args = request.args
 
-    if req_args is not None and 'q' in req_args:
-        text = req_args['q']
-    elif req_json is not None and 'q' in req_json:
-        text = req_json['q']
-    else:
-        json_abort(400, message="Missing [q] parameter")
+        if req_args is not None and 'q' in req_args:
+            text = req_args['q']
+        elif req_json is not None and 'q' in req_json:
+            text = req_json['q']
+        else:
+            json_abort(400, message="Missing [q] parameter")
 
-    #print('Query', text)
-    keys = lexems(text)
+        #print('Query', text)
+        keys = lexems(text)
 
-    # Search book in Biblosphere
-    _, books = find_book(cursor, keys)
+        # Search book in Biblosphere
+        _, books = find_book(cursor, keys)
 
-    # Filter results if number of key words to search more than 2
-    if len(keys) > 2:
-        books = [b for b in books if is_same_book(b.catalog_title(), text)]
-
-    # If not found in Biblosphere search in APIs and web
-    if len(books) == 0:
-        books = search_google_by_titleauthor(text, cursor, trace=False)
-
-        if (books is None or len(books) == 0) and has_cyrillic(text):
-            # If cyrillic symbols search in RSL
-            books = search_rsl_by_titleauthor(text, cursor, trace=False)
-
-        if (books is None or len(books) == 0):
-            # If not cyrillic search in google books API, Goodreads and Abebooks
-            book, match = lookup_abebooks(text, cursor, trace=False)
-            books = [book]
-
-        # Filter books if more than 3 key words given
-        if len(keys) > 2 and books is not None and len(books) > 0:
+        # Filter results if number of key words to search more than 2
+        if len(keys) > 2:
             books = [b for b in books if is_same_book(b.catalog_title(), text)]
 
-    return json.dumps(books, cls=JsonEncoder)
+        # If not found in Biblosphere search in APIs and web
+        if len(books) == 0:
+            books = search_google_by_titleauthor(text, cursor, trace=False)
+
+            if (books is None or len(books) == 0) and has_cyrillic(text):
+                # If cyrillic symbols search in RSL
+                books = search_rsl_by_titleauthor(text, cursor, trace=False)
+
+            if (books is None or len(books) == 0):
+                # If not cyrillic search in google books API, Goodreads and Abebooks
+                book, match = lookup_abebooks(text, cursor, trace=False)
+                books = [book]
+
+            # Filter books if more than 3 key words given
+            if len(keys) > 2 and books is not None and len(books) > 0:
+                books = [b for b in books if is_same_book(b.catalog_title(), text)]
+
+        return json.dumps(books, cls=JsonEncoder)
+
+    except Exception as e:
+        print('Exception for search_book', e)
+        traceback.print_exc()
+        json_abort(400, message="%s" % e)
 
 
 # HTTP API function to add books to user library from bookshelf image (Asynchronous)
-# gcloud functions deploy add_user_books_from_image --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=30s
+# gcloud functions deploy add_user_books_from_image --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=30s
 # gcloud functions logs read add_user_books_from_image
 def add_user_books_from_image(request):
     params = request.get_json(silent=True)
@@ -430,7 +438,7 @@ def add_user_books_from_image(request):
 
 
 # Function to add books to the user library
-# gcloud functions deploy add_user_books --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=30s
+# gcloud functions deploy add_user_books --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=30s
 # gcloud functions logs read add_user_books
 def add_user_books(request, cursor):
     params = request.get_json(silent=True)
@@ -482,7 +490,7 @@ def read_text(response, trace=False):
 
 
 # HTTP API function to add book cover to GCS. It resize original cover and do OCR if requested.
-# gcloud functions deploy add_cover --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=55s
+# gcloud functions deploy add_cover --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=55s
 # gcloud functions logs read add_cover
 def add_cover(request):
     isbn = ''
@@ -497,8 +505,6 @@ def add_cover(request):
             # TODO: Make proper error handling
             print('ERROR: uri/uid/isbn parameters missing.')
             return 'uri/uid/isbn parameters missing.'
-
-        print('!!!DEBUG input parameters:', params)
 
         filename = params['uri']
         uid = params['uid']
@@ -542,7 +548,7 @@ def add_cover(request):
 
 
 # HTTP API function to add book cover to GCS. It resize original cover and do OCR if requested.
-# gcloud functions deploy add_back --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=55s
+# gcloud functions deploy add_back --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=55s
 # gcloud functions logs read add_back
 def add_back(request):
     isbn = ''
@@ -557,8 +563,6 @@ def add_back(request):
             # TODO: Make proper error handling
             print('ERROR: uri/uid/isbn parameters missing.')
             return 'uri/uid/isbn parameters missing.'
-
-        print('!!!DEBUG input parameters:', params)
 
         filename = params['uri']
         uid = params['uid']
@@ -609,8 +613,6 @@ def add_user_books_from_image_sub(event, context, cursor):
             print('ERROR: uri/uid parameters missing.')
             return
 
-        print('!!!DEBUG input parameters:', params)
-
         filename = params['uri']
         uid = params['uid']
         shelf_id = params['shelf']
@@ -622,8 +624,6 @@ def add_user_books_from_image_sub(event, context, cursor):
         if 'trace' in params:
             trace = params['trace']
 
-        print('!!!DEBUG Notification:', notification)
-        print('Firebase userid:', uid)
         location = None
         if 'location' in params:
             location = {'geohash': params['location']['geohash'], 'geopoint': firestore.GeoPoint(params['location']['lat'], params['location']['lon'])}
@@ -735,7 +735,6 @@ def add_user_books_from_image_sub(event, context, cursor):
                                                             'recognized': len(recognized_blocks)})
 
         # Send a notification to the user about added books (FCM)
-        print('!!!DEBUG: Books added')
         # This registration token comes from the client FCM SDKs.
 
         if notification and len(recognized_blocks) > 0:
@@ -785,7 +784,6 @@ def add_user_books_from_image_sub(event, context, cursor):
 
             # Store JSON to GCS
             result_blob.upload_from_string(json.dumps(data, cls=JsonEncoder).encode('utf8'), 'application/json')
-            print('!!!DEBUG: JSON with recognition results stored')
 
     except Exception as e:
         print(u'Exception happend: %s' % type(e))

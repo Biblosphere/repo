@@ -352,7 +352,7 @@ def parse_google(data, trace=False):
         if trace:
             print('Language:', language)
 
-    return Book(isbn, title, author, image, language);
+    return Book(isbn, title, author, image, language)
 
 
 # Google Book search
@@ -374,7 +374,7 @@ def search_google_by_isbn(isbn, cursor, trace=False):
                 add_book_sql(cursor, book)
                 return book
 
-        return None;
+        return None
     except Exception as e:
         print('Exception occured:', e)
         traceback.print_exc()
@@ -403,7 +403,7 @@ def search_google_by_titleauthor(text, cursor, trace=False):
             for b in books:
                 add_book_sql(cursor, b)
 
-            return books;
+            return books
         else:
             return []
 
@@ -418,7 +418,7 @@ def search_google_by_titleauthor(text, cursor, trace=False):
 #
 ############################################################################################
 def search_rsl_by_isbn(isbn, cursor, trace=False):
-    books = search_rsl('isbn:%s' % isbn, cursor, limit=1, trace=False);
+    books = search_rsl('isbn:%s' % isbn, cursor, limit=1, trace=False)
     if books is not None and len(books) > 0:
         return books[0]
     else:
@@ -427,7 +427,7 @@ def search_rsl_by_isbn(isbn, cursor, trace=False):
 
 # RSL search by title author
 def search_rsl_by_titleauthor(text, cursor, trace=False):
-    books = search_rsl(quote(text), cursor, trace=trace);
+    books = search_rsl(quote(text), cursor, trace=trace)
     if books is not None:
         return books
     else:
@@ -436,13 +436,13 @@ def search_rsl_by_titleauthor(text, cursor, trace=False):
 
 def parse_rsl(soup, trace=False):
     author, title, isbn, image = '', '', '', ''
-    author_el = soup.find('b', class_='js-item-authorinfo');
+    author_el = soup.find('b', class_='js-item-authorinfo')
     if author_el is not None:
         author = author_el.text
         if trace:
             print('Author:', author)
 
-    main_el = soup.find('span', class_='js-item-maininfo');
+    main_el = soup.find('span', class_='js-item-maininfo')
     if main_el is not None:
         if trace:
             print('Main text:', main_el.text)
@@ -458,12 +458,12 @@ def parse_rsl(soup, trace=False):
             if trace:
                 print('ISBN:', isbn)
 
-    img_el = soup.find('img', class_='js-cover-image');
+    img_el = soup.find('img', class_='js-cover-image')
     if img_el is not None:
         image = img_el.get('src')
         image = 'https://search.rsl.ru' + image
 
-    return Book(isbn, title, author, image);
+    return Book(isbn, title, author, image)
 
 
 def search_rsl(text, cursor, limit=None, trace=False):
@@ -478,11 +478,11 @@ def search_rsl(text, cursor, limit=None, trace=False):
         uri = 'https://search.rsl.ru/ru/search'
         res = requests.get(uri, headers=headers)
 
-        cookie = res.headers['set-cookie'];
+        cookie = res.headers['set-cookie']
         # print('Raw cookies:', cookie)
 
         # Clean cookies from additional attributes
-        matched_cookies = re.findall(r'([_a-zA-Z0-9]+)=([^,;]+);\s(expires=[^;]+;)*[^,]+(,|$)', cookie);
+        matched_cookies = re.findall(r'([_a-zA-Z0-9]+)=([^,;]+);\s(expires=[^;]+;)*[^,]+(,|$)', cookie)
 
         # print('Response cookies:', matched_cookies)
 
@@ -491,11 +491,11 @@ def search_rsl(text, cursor, limit=None, trace=False):
 
         body = str(res.content)
 
-        tag = body.find('csrf-token');
+        tag = body.find('csrf-token')
         if tag != -1:
-            start = body.find('"', tag + 11) + 1;
-            end = body.find('"', start);
-            token = body[start:end];
+            start = body.find('"', tag + 11) + 1
+            end = body.find('"', start)
+            token = body[start:end]
             # print('CSRF token found:', token)
 
         uri = 'https://search.rsl.ru/site/ajax-search'
@@ -510,9 +510,9 @@ def search_rsl(text, cursor, limit=None, trace=False):
                 'en-GB,en;q=0.9,ru-RU;q=0.8,ru;q=0.7,ka-GE;q=0.6,ka;q=0.5,en-US;q=0.4',
             'Accept-Encoding': 'gzip, deflate, br',
             'Cookie': ';'.join(clean_cookie) + ';'
-        };
+        }
 
-        body = 'SearchFilterForm[search]=%s&_csrf=%s' % (text, quote(token));
+        body = 'SearchFilterForm[search]=%s&_csrf=%s' % (text, quote(token))
 
         # Use Request to control Content-Type header. Client.post add charset to it
         # which does not work with RSL

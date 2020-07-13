@@ -192,7 +192,7 @@ lang_codes = {
 }
 
 select_query = "SELECT title, authors, image, genre, lang, description FROM prints WHERE isbn=%s"
-insert_query = "INSERT IGNORE INTO prints (isbn, title, authors, image, lexems, genre, lang, description) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+insert_query = "INSERT IGNORE INTO prints (isbn, title, authors, image, lexems, genre, lang, description) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
 update_query = "UPDATE prints SET title=%s, authors=%s, image=%s, lexems=%s, genre=%s, lang=%s, description=%s WHERE isbn=%s"
 select_tags = "SELECT tag FROM tags WHERE isbn=%s"
 insert_tags = 'INSERT IGNORE INTO tags(isbn, tag) VALUES (%s, %s)'
