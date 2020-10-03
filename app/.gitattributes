@@ -1,8 +1,6 @@
 .gitattributes !filter !diff
 *.key filter=git-crypt diff=git-crypt
 *.jks filter=git-crypt diff=git-crypt
-test.enc filter=git-crypt diff=git-crypt
-test.key filter=git-crypt diff=git-crypt
 google-services.json filter=git-crypt diff=git-crypt
 key.jks filter=git-crypt diff=git-crypt
 key.properties filter=git-crypt diff=git-crypt

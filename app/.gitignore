@@ -14,10 +14,6 @@ build/
 
 pubspec.lock
 
-android/app/key.jks
-
-android/app/google-services.json
-
 assets/dialogflow.json
 
 
