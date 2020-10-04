@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 // Pick a country phone code
 import 'package:country_code_picker/country_code_picker.dart';
+// Google map
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 void main() {
   runApp(MyApp());
@@ -54,9 +56,11 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void validateCode() {
-    setState(() {
-      //TODO: Go to main screen
-    });
+    //TODO: Go to main screen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => MainPage()),
+    );
   }
 
   @override
@@ -204,7 +208,7 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Container());
+    return Scaffold(body: MapWidget());
   }
 }
 
@@ -216,11 +220,18 @@ class MapWidget extends StatefulWidget {
 }
 
 class _MapWidgetState extends State<MapWidget> {
-  bool searchPanelOpen = false;
+  static final CameraPosition _mockupPosition = CameraPosition(
+    target: LatLng(37.42796133580664, -122.085749655962),
+    zoom: 14.4746,
+  );
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Container());
+    return GoogleMap(
+      mapType: MapType.normal,
+      initialCameraPosition: _mockupPosition,
+      onMapCreated: (GoogleMapController controller) {},
+    );
   }
 }
 
