@@ -190,28 +190,48 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-class MapPage extends StatefulWidget {
-  MapPage({Key key}) : super(key: key);
+enum MainViewToggle { map, list }
+
+class MainPage extends StatefulWidget {
+  MainPage({Key key}) : super(key: key);
 
   @override
-  _MapPageState createState() => _MapPageState();
+  _MainPageState createState() => _MainPageState();
 }
 
-class _MapPageState extends State<MapPage> {
+class _MainPageState extends State<MainPage> {
+  MainViewToggle view = MainViewToggle.map;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(body: Container());
   }
 }
 
-class ListPage extends StatefulWidget {
-  ListPage({Key key}) : super(key: key);
+class MapWidget extends StatefulWidget {
+  MapWidget({Key key}) : super(key: key);
 
   @override
-  _ListPageState createState() => _ListPageState();
+  _MapWidgetState createState() => _MapWidgetState();
 }
 
-class _ListPageState extends State<ListPage> {
+class _MapWidgetState extends State<MapWidget> {
+  bool searchPanelOpen = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: Container());
+  }
+}
+
+class ListWidget extends StatefulWidget {
+  ListWidget({Key key}) : super(key: key);
+
+  @override
+  _ListWidgetState createState() => _ListWidgetState();
+}
+
+class _ListWidgetState extends State<ListWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(body: Container());
