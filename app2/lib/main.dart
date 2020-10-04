@@ -29,15 +29,13 @@ class MyApp extends StatelessWidget {
         // closer together (more dense) than on mobile platforms.
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: LoginPage(title: 'Flutter Demo Home Page'),
+      home: LoginPage(),
     );
   }
 }
 
 class LoginPage extends StatefulWidget {
-  LoginPage({Key key, this.title}) : super(key: key);
-
-  final String title;
+  LoginPage({Key key}) : super(key: key);
 
   @override
   _LoginPageState createState() => _LoginPageState();
@@ -189,5 +187,65 @@ class _LoginPageState extends State<LoginPage> {
         const Spacer()
       ]),
     ));
+  }
+}
+
+class MapPage extends StatefulWidget {
+  MapPage({Key key}) : super(key: key);
+
+  @override
+  _MapPageState createState() => _MapPageState();
+}
+
+class _MapPageState extends State<MapPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: Container());
+  }
+}
+
+class ListPage extends StatefulWidget {
+  ListPage({Key key}) : super(key: key);
+
+  @override
+  _ListPageState createState() => _ListPageState();
+}
+
+class _ListPageState extends State<ListPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: Container());
+  }
+}
+
+class DetailsPage extends StatefulWidget {
+  DetailsPage({Key key, this.title}) : super(key: key);
+
+  final String title;
+
+  @override
+  _DetailsPageState createState() => _DetailsPageState();
+}
+
+class _DetailsPageState extends State<DetailsPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: Container());
+  }
+}
+
+class CameraPage extends StatefulWidget {
+  CameraPage({Key key, this.title}) : super(key: key);
+
+  final String title;
+
+  @override
+  _CameraPageState createState() => _CameraPageState();
+}
+
+class _CameraPageState extends State<CameraPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: Container());
   }
 }
