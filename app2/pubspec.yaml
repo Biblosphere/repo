@@ -35,6 +35,9 @@ dependencies:
   # Google maps
   google_maps_flutter: ^1.0.2
 
+  # Sliding panel for Search filters and camera 
+  sliding_up_panel: ^1.0.2
+
 
 dev_dependencies:
   flutter_test:

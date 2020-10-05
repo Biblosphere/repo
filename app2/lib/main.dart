@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 // Google map
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+// Sliding panel for search filters and camera
+import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 void main() {
   runApp(MyApp());
@@ -208,7 +210,27 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: MapWidget());
+    return Scaffold(
+        body: SlidingUpPanel(
+      minHeight: 50,
+      maxHeight: 200,
+      // Figma: Closed Search panel
+      collapsed: Container(
+          margin: EdgeInsets.only(right: 10.0, left: 10.0),
+          child: Wrap(
+            spacing: 5.0,
+            children: <Widget>[
+              // TODO: Implement chip filters
+              InputChip(label: Text('RU'), selected: true),
+              InputChip(label: Text('Non-fiction'), selected: true),
+            ],
+          )),
+      // Figma: Open search panel
+      panel: Center(
+        child: Text("Search details"),
+      ),
+      body: MapWidget(),
+    ));
   }
 }
 
@@ -243,6 +265,20 @@ class ListWidget extends StatefulWidget {
 }
 
 class _ListWidgetState extends State<ListWidget> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: Container());
+  }
+}
+
+class FilterWidget extends StatefulWidget {
+  FilterWidget({Key key}) : super(key: key);
+
+  @override
+  _FilterWidgetState createState() => _FilterWidgetState();
+}
+
+class _FilterWidgetState extends State<FilterWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(body: Container());
