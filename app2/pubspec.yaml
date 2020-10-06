@@ -38,6 +38,8 @@ dependencies:
   # Sliding panel for Search filters and camera 
   sliding_up_panel: ^1.0.2
 
+  # Input chips
+  flutter_chips_input: ^1.9.4
 
 dev_dependencies:
   flutter_test:
