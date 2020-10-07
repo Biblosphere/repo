@@ -201,13 +201,20 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 enum MainViewToggle { map, list }
-enum FilterType { author, title, genre, language, location, whish, contacts }
+enum FilterType { author, title, genre, language, place, whish, contacts }
 
 class Filter {
   final FilterType type;
   String value;
   bool state = true;
   Filter({@required this.type, this.value, this.state});
+
+  @override
+  bool operator ==(f) =>
+      f is Filter && f.value == value && f.type == type && f.state == state;
+
+  @override
+  int get hashCode => value.hashCode ^ state.hashCode ^ type.hashCode;
 
   static Widget chipBuilder(
       BuildContext context, ChipsInputState<Filter> state, Filter filter) {
@@ -225,9 +232,60 @@ class Filter {
 class FilterCubit extends Cubit<List<Filter>> {
   FilterCubit() : super([]);
 
-  void add(Filter filter) => emit(state..add(filter));
-  void remove(Filter filter) => emit(state..remove(filter));
-  void set(List<Filter> filters) => emit(filters);
+  void add(Filter filter) {
+    emit([
+      ...{...state, filter}
+    ]);
+  }
+
+  void remove(Filter filter) {
+    List<Filter> list = List.from(state);
+    list.remove(filter);
+    emit(list);
+  }
+
+  void setGenre(List<Filter> filters) {
+    List<Filter> list = state.where((f) => f.type != FilterType.genre).toList();
+    list.addAll(filters);
+
+    // Remove duplicate
+    emit([
+      ...{...list}
+    ]);
+  }
+
+  void setTitle(List<Filter> filters) {
+    List<Filter> list = state
+        .where((f) => f.type != FilterType.title && f.type != FilterType.author)
+        .toList();
+    list.addAll(filters);
+
+    // Remove duplicate
+    emit([
+      ...{...list}
+    ]);
+  }
+
+  void setLanguage(List<Filter> filters) {
+    List<Filter> list =
+        state.where((f) => f.type != FilterType.language).toList();
+    list.addAll(filters);
+
+    // Remove duplicate
+    emit([
+      ...{...list}
+    ]);
+  }
+
+  void setPlace(List<Filter> filters) {
+    List<Filter> list = state.where((f) => f.type != FilterType.place).toList();
+    list.addAll(filters);
+
+    // Remove duplicate
+    emit([
+      ...{...list}
+    ]);
+  }
 }
 
 class TitleChipsWidget extends StatefulWidget {
@@ -296,7 +354,7 @@ class _TitleChipsState extends State<TitleChipsWidget> {
         maxChips: 5,
         findSuggestions: findTitleSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().set(data);
+          context.bloc<FilterCubit>().setTitle(data);
         },
         chipBuilder: Filter.chipBuilder,
         suggestionBuilder: titleSugestionBuilder,
@@ -367,7 +425,7 @@ class _GenreChipsState extends State<GenreChipsWidget> {
         maxChips: 5,
         findSuggestions: findGenreSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().set(data);
+          context.bloc<FilterCubit>().setGenre(data);
         },
         chipBuilder: Filter.chipBuilder,
         suggestionBuilder: genreSugestionBuilder,
@@ -399,7 +457,7 @@ class _PlaceChipsState extends State<PlaceChipsWidget> {
           .where((place) {
             return place.toLowerCase().contains(query.toLowerCase());
           })
-          .map((g) => Filter(type: FilterType.language, value: g))
+          .map((g) => Filter(type: FilterType.place, value: g))
           .toList(growable: false)
             ..sort((a, b) => a.value
                 .toLowerCase()
@@ -430,7 +488,7 @@ class _PlaceChipsState extends State<PlaceChipsWidget> {
     return BlocBuilder<FilterCubit, List<Filter>>(builder: (context, filters) {
       return ChipsInput(
         initialValue: filters
-            .where((element) => element.type == FilterType.location)
+            .where((element) => element.type == FilterType.place)
             .toList(),
         decoration: InputDecoration(
           labelText: "Place / Contact",
@@ -438,7 +496,7 @@ class _PlaceChipsState extends State<PlaceChipsWidget> {
         maxChips: 5,
         findSuggestions: findPlaceSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().set(data);
+          context.bloc<FilterCubit>().setPlace(data);
         },
         chipBuilder: Filter.chipBuilder,
         suggestionBuilder: placeSugestionBuilder,
@@ -503,7 +561,7 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
         maxChips: 5,
         findSuggestions: findLanguageSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().set(data);
+          context.bloc<FilterCubit>().setLanguage(data);
         },
         chipBuilder: Filter.chipBuilder,
         suggestionBuilder: languageSugestionBuilder,
@@ -533,20 +591,20 @@ class _SearchPanelState extends State<SearchPanel> {
     if (collapsed) {
       return BlocBuilder<FilterCubit, List<Filter>>(
           builder: (context, filters) {
-        return ChipsInput(
-          initialValue: filters,
-          decoration: InputDecoration(
-            labelText: "Filters",
-          ),
-          maxChips: 10,
-          enabled: false,
-          findSuggestions: null,
-          onChanged: (data) {
-            context.bloc<FilterCubit>().set(data);
-          },
-          chipBuilder: Filter.chipBuilder,
-          suggestionBuilder: null,
-        );
+        return Container(
+            color: Colors.white,
+            child: Wrap(
+                children: filters
+                    .map((f) => InputChip(
+                          label: Text(f.value),
+                          // TODO: Put book icon here
+                          // avatar: CircleAvatar(),
+                          onDeleted: () =>
+                              context.bloc<FilterCubit>().remove(f),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ))
+                    .toList()));
       });
     } else {
       return Column(children: [
@@ -589,7 +647,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   MainViewToggle view = MainViewToggle.map;
   List<Filter> filters = [];
-  bool collapsed = false;
+//  bool collapsed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -600,10 +658,11 @@ class _MainPageState extends State<MainPage> {
               minHeight: 90,
               maxHeight: 390,
               // Figma: Closed Search panel
-              //collapsed: SearchPanel(filters: filters, collapsed: true),
+              collapsed: SearchPanel(collapsed: true),
               // Figma: Open search panel
-              panel: SearchPanel(collapsed: collapsed),
+              panel: SearchPanel(collapsed: false),
               body: MapWidget(),
+/*
               onPanelOpened: () {
                 print('!!!DEBUG OPEN');
                 setState(() {
@@ -616,6 +675,7 @@ class _MainPageState extends State<MainPage> {
                   collapsed = true;
                 });
               },
+*/
             )));
   }
 }
