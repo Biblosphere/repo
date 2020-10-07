@@ -41,6 +41,9 @@ dependencies:
   # Input chips
   flutter_chips_input: ^1.9.4
 
+  # BLoC patterns
+  flutter_bloc: ^6.0.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

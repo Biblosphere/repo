@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+// BLoC patterns
+import 'package:flutter_bloc/flutter_bloc.dart';
 // Pick a country phone code
 import 'package:country_code_picker/country_code_picker.dart';
 // Google map
@@ -206,15 +208,33 @@ class Filter {
   String value;
   bool state = true;
   Filter({@required this.type, this.value, this.state});
+
+  static Widget chipBuilder(
+      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
+    return InputChip(
+      key: ObjectKey(filter),
+      label: Text(filter.value),
+      // TODO: Put book icon here
+      // avatar: CircleAvatar(),
+      onDeleted: () => state.deleteChip(filter),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+}
+
+class FilterCubit extends Cubit<List<Filter>> {
+  FilterCubit() : super([]);
+
+  void add(Filter filter) => emit(state..add(filter));
+  void remove(Filter filter) => emit(state..remove(filter));
+  void set(List<Filter> filters) => emit(filters);
 }
 
 class TitleChipsWidget extends StatefulWidget {
-  final List<Filter> filters;
-
-  TitleChipsWidget({Key key, this.filters}) : super(key: key);
+  TitleChipsWidget({Key key}) : super(key: key);
 
   @override
-  _TitleChipsState createState() => _TitleChipsState(filters);
+  _TitleChipsState createState() => _TitleChipsState();
 }
 
 class _TitleChipsState extends State<TitleChipsWidget> {
@@ -246,18 +266,6 @@ class _TitleChipsState extends State<TitleChipsWidget> {
     }
   }
 
-  static Widget titleChipBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter title) {
-    return InputChip(
-      key: ObjectKey(title),
-      label: Text(title.value),
-      // TODO: Put book icon here
-      // avatar: CircleAvatar(),
-      onDeleted: () => state.deleteChip(title),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-  }
-
   static Widget titleSugestionBuilder(
       BuildContext context, ChipsInputState<Filter> state, Filter title) {
     return ListTile(
@@ -271,35 +279,37 @@ class _TitleChipsState extends State<TitleChipsWidget> {
   }
 
   // List of genre filters
-  List<Filter> filters;
-
-  _TitleChipsState(this.filters);
+  _TitleChipsState();
 
   @override
   Widget build(BuildContext context) {
-    return ChipsInput(
-      initialValue: filters,
-      decoration: InputDecoration(
-        labelText: "Title / Author",
-      ),
-      maxChips: 5,
-      findSuggestions: findTitleSugestions,
-      onChanged: (data) {
-        print(data);
-      },
-      chipBuilder: titleChipBuilder,
-      suggestionBuilder: titleSugestionBuilder,
-    );
+    return BlocBuilder<FilterCubit, List<Filter>>(builder: (context, filters) {
+      return ChipsInput(
+        initialValue: filters
+            .where((element) =>
+                element.type == FilterType.author ||
+                element.type == FilterType.title)
+            .toList(),
+        decoration: InputDecoration(
+          labelText: "Title / Author",
+        ),
+        maxChips: 5,
+        findSuggestions: findTitleSugestions,
+        onChanged: (data) {
+          context.bloc<FilterCubit>().set(data);
+        },
+        chipBuilder: Filter.chipBuilder,
+        suggestionBuilder: titleSugestionBuilder,
+      );
+    });
   }
 }
 
 class GenreChipsWidget extends StatefulWidget {
-  final List<Filter> filters;
-
-  GenreChipsWidget({Key key, this.filters}) : super(key: key);
+  GenreChipsWidget({Key key}) : super(key: key);
 
   @override
-  _GenreChipsState createState() => _GenreChipsState(filters);
+  _GenreChipsState createState() => _GenreChipsState();
 }
 
 class _GenreChipsState extends State<GenreChipsWidget> {
@@ -329,18 +339,6 @@ class _GenreChipsState extends State<GenreChipsWidget> {
     }
   }
 
-  static Widget genreChipBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter genre) {
-    return InputChip(
-      key: ObjectKey(genre),
-      label: Text(genre.value),
-      // TODO: Put book icon here
-      // avatar: CircleAvatar(),
-      onDeleted: () => state.deleteChip(genre),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-  }
-
   static Widget genreSugestionBuilder(
       BuildContext context, ChipsInputState<Filter> state, Filter genre) {
     return ListTile(
@@ -354,35 +352,35 @@ class _GenreChipsState extends State<GenreChipsWidget> {
   }
 
   // List of genre filters
-  List<Filter> filters;
-
-  _GenreChipsState(this.filters);
+  _GenreChipsState();
 
   @override
   Widget build(BuildContext context) {
-    return ChipsInput(
-      initialValue: filters,
-      decoration: InputDecoration(
-        labelText: "Genre",
-      ),
-      maxChips: 5,
-      findSuggestions: findGenreSugestions,
-      onChanged: (data) {
-        print(data);
-      },
-      chipBuilder: genreChipBuilder,
-      suggestionBuilder: genreSugestionBuilder,
-    );
+    return BlocBuilder<FilterCubit, List<Filter>>(builder: (context, filters) {
+      return ChipsInput(
+        initialValue: filters
+            .where((element) => element.type == FilterType.genre)
+            .toList(),
+        decoration: InputDecoration(
+          labelText: "Genre",
+        ),
+        maxChips: 5,
+        findSuggestions: findGenreSugestions,
+        onChanged: (data) {
+          context.bloc<FilterCubit>().set(data);
+        },
+        chipBuilder: Filter.chipBuilder,
+        suggestionBuilder: genreSugestionBuilder,
+      );
+    });
   }
 }
 
 class PlaceChipsWidget extends StatefulWidget {
-  final List<Filter> filters;
-
-  PlaceChipsWidget({Key key, this.filters}) : super(key: key);
+  PlaceChipsWidget({Key key}) : super(key: key);
 
   @override
-  _PlaceChipsState createState() => _PlaceChipsState(filters);
+  _PlaceChipsState createState() => _PlaceChipsState();
 }
 
 class _PlaceChipsState extends State<PlaceChipsWidget> {
@@ -412,18 +410,6 @@ class _PlaceChipsState extends State<PlaceChipsWidget> {
     }
   }
 
-  static Widget placeChipBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter place) {
-    return InputChip(
-      key: ObjectKey(place),
-      label: Text(place.value),
-      // TODO: Put book icon here
-      // avatar: CircleAvatar(),
-      onDeleted: () => state.deleteChip(place),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-  }
-
   static Widget placeSugestionBuilder(
       BuildContext context, ChipsInputState<Filter> state, Filter place) {
     return ListTile(
@@ -437,35 +423,35 @@ class _PlaceChipsState extends State<PlaceChipsWidget> {
   }
 
   // List of genre filters
-  List<Filter> filters;
-
-  _PlaceChipsState(this.filters);
+  _PlaceChipsState();
 
   @override
   Widget build(BuildContext context) {
-    return ChipsInput(
-      initialValue: filters,
-      decoration: InputDecoration(
-        labelText: "Place / Contact",
-      ),
-      maxChips: 5,
-      findSuggestions: findPlaceSugestions,
-      onChanged: (data) {
-        print(data);
-      },
-      chipBuilder: placeChipBuilder,
-      suggestionBuilder: placeSugestionBuilder,
-    );
+    return BlocBuilder<FilterCubit, List<Filter>>(builder: (context, filters) {
+      return ChipsInput(
+        initialValue: filters
+            .where((element) => element.type == FilterType.location)
+            .toList(),
+        decoration: InputDecoration(
+          labelText: "Place / Contact",
+        ),
+        maxChips: 5,
+        findSuggestions: findPlaceSugestions,
+        onChanged: (data) {
+          context.bloc<FilterCubit>().set(data);
+        },
+        chipBuilder: Filter.chipBuilder,
+        suggestionBuilder: placeSugestionBuilder,
+      );
+    });
   }
 }
 
 class LanguageChipsWidget extends StatefulWidget {
-  final List<Filter> filters;
-
-  LanguageChipsWidget({Key key, this.filters}) : super(key: key);
+  LanguageChipsWidget({Key key}) : super(key: key);
 
   @override
-  _LanguageChipsState createState() => _LanguageChipsState(filters);
+  _LanguageChipsState createState() => _LanguageChipsState();
 }
 
 class _LanguageChipsState extends State<LanguageChipsWidget> {
@@ -490,18 +476,6 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
     }
   }
 
-  static Widget languageChipBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter language) {
-    return InputChip(
-      key: ObjectKey(language),
-      label: Text(language.value),
-      // TODO: Put book icon here
-      // avatar: CircleAvatar(),
-      onDeleted: () => state.deleteChip(language),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-  }
-
   static Widget languageSugestionBuilder(
       BuildContext context, ChipsInputState<Filter> state, Filter language) {
     return ListTile(
@@ -514,57 +488,72 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
     );
   }
 
-  // List of genre filters
-  List<Filter> filters;
-
-  _LanguageChipsState(this.filters);
+  _LanguageChipsState();
 
   @override
   Widget build(BuildContext context) {
-    return ChipsInput(
-      initialValue: filters,
-      decoration: InputDecoration(
-        labelText: "Language",
-      ),
-      maxChips: 5,
-      findSuggestions: findLanguageSugestions,
-      onChanged: (data) {
-        print(data);
-      },
-      chipBuilder: languageChipBuilder,
-      suggestionBuilder: languageSugestionBuilder,
-    );
+    return BlocBuilder<FilterCubit, List<Filter>>(builder: (context, filters) {
+      return ChipsInput(
+        initialValue: filters
+            .where((element) => element.type == FilterType.language)
+            .toList(),
+        decoration: InputDecoration(
+          labelText: "Language",
+        ),
+        maxChips: 5,
+        findSuggestions: findLanguageSugestions,
+        onChanged: (data) {
+          context.bloc<FilterCubit>().set(data);
+        },
+        chipBuilder: Filter.chipBuilder,
+        suggestionBuilder: languageSugestionBuilder,
+      );
+    });
   }
 }
 
 class SearchPanel extends StatefulWidget {
-  SearchPanel({Key key, this.filters, this.collapsed}) : super(key: key);
+  SearchPanel({Key key, this.collapsed}) : super(key: key);
 
-  final List<Filter> filters;
   final bool collapsed;
 
   @override
-  _SearchPanelState createState() => _SearchPanelState(filters, collapsed);
+  _SearchPanelState createState() => _SearchPanelState(collapsed);
 }
 
 class _SearchPanelState extends State<SearchPanel> {
-  final List<Filter> filters;
   bool collapsed;
   bool onlyMine = false;
   bool onlyWishlist = false;
 
-  _SearchPanelState(this.filters, this.collapsed);
+  _SearchPanelState(this.collapsed);
 
   @override
   Widget build(BuildContext context) {
     if (collapsed) {
-      return GenreChipsWidget(filters: filters);
+      return BlocBuilder<FilterCubit, List<Filter>>(
+          builder: (context, filters) {
+        return ChipsInput(
+          initialValue: filters,
+          decoration: InputDecoration(
+            labelText: "Filters",
+          ),
+          maxChips: 10,
+          enabled: false,
+          findSuggestions: null,
+          onChanged: (data) {
+            context.bloc<FilterCubit>().set(data);
+          },
+          chipBuilder: Filter.chipBuilder,
+          suggestionBuilder: null,
+        );
+      });
     } else {
       return Column(children: [
-        TitleChipsWidget(filters: filters),
-        GenreChipsWidget(filters: filters),
-        PlaceChipsWidget(filters: filters),
-        LanguageChipsWidget(filters: filters),
+        TitleChipsWidget(),
+        GenreChipsWidget(),
+        PlaceChipsWidget(),
+        LanguageChipsWidget(),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text('Only my places and contacts'),
           Switch(
@@ -600,19 +589,34 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   MainViewToggle view = MainViewToggle.map;
   List<Filter> filters = [];
+  bool collapsed = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: SlidingUpPanel(
-      minHeight: 90,
-      maxHeight: 390,
-      // Figma: Closed Search panel
-      //collapsed: SearchPanel(filters: filters, collapsed: true),
-      // Figma: Open search panel
-      panel: SearchPanel(filters: filters, collapsed: false),
-      body: MapWidget(),
-    ));
+        body: BlocProvider(
+            create: (BuildContext context) => FilterCubit(),
+            child: SlidingUpPanel(
+              minHeight: 90,
+              maxHeight: 390,
+              // Figma: Closed Search panel
+              //collapsed: SearchPanel(filters: filters, collapsed: true),
+              // Figma: Open search panel
+              panel: SearchPanel(collapsed: collapsed),
+              body: MapWidget(),
+              onPanelOpened: () {
+                print('!!!DEBUG OPEN');
+                setState(() {
+                  collapsed = false;
+                });
+              },
+              onPanelClosed: () {
+                print('!!!DEBUG CLOSED');
+                setState(() {
+                  collapsed = true;
+                });
+              },
+            )));
   }
 }
 
