@@ -201,7 +201,7 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 enum MainViewToggle { map, list }
-enum FilterType { author, title, genre, language, place, whish, contacts }
+enum FilterType { author, title, genre, language, place, wish, contacts }
 
 class Filter {
   final FilterType type;
@@ -570,21 +570,10 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
   }
 }
 
-class SearchPanel extends StatefulWidget {
+class SearchPanel extends StatelessWidget {
   SearchPanel({Key key, this.collapsed}) : super(key: key);
 
   final bool collapsed;
-
-  @override
-  _SearchPanelState createState() => _SearchPanelState(collapsed);
-}
-
-class _SearchPanelState extends State<SearchPanel> {
-  bool collapsed;
-  bool onlyMine = false;
-  bool onlyWishlist = false;
-
-  _SearchPanelState(this.collapsed);
 
   @override
   Widget build(BuildContext context) {
@@ -607,32 +596,45 @@ class _SearchPanelState extends State<SearchPanel> {
                     .toList()));
       });
     } else {
-      return Column(children: [
-        TitleChipsWidget(),
-        GenreChipsWidget(),
-        PlaceChipsWidget(),
-        LanguageChipsWidget(),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('Only my places and contacts'),
-          Switch(
-              value: onlyMine,
-              onChanged: (value) {
-                setState(() {
-                  onlyMine = value;
-                });
-              }),
-        ]),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('Only books from my wishlist'),
-          Switch(
-              value: onlyWishlist,
-              onChanged: (value) {
-                setState(() {
-                  onlyWishlist = value;
-                });
-              }),
-        ])
-      ]);
+      return BlocBuilder<FilterCubit, List<Filter>>(
+          builder: (context, filters) {
+        return Column(children: [
+          TitleChipsWidget(),
+          GenreChipsWidget(),
+          PlaceChipsWidget(),
+          LanguageChipsWidget(),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('Only my places and contacts'),
+            Switch(
+                value:
+                    false /*filters
+                    .firstWhere((f) => f.type == FilterType.contacts,
+                        orElse: () => Filter(type: FilterType.contacts))
+                    .state*/
+                ,
+                onChanged: (value) {
+                  context
+                      .bloc<FilterCubit>()
+                      .add(Filter(type: FilterType.contacts, state: true));
+                }),
+          ]),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('Only books from my wishlist'),
+            Switch(
+                value:
+                    false /*filters
+                    .firstWhere((f) => f.type == FilterType.wish,
+                        orElse: () => Filter(type: FilterType.wish))
+                    .state */
+                ,
+                onChanged: (value) {
+                  context
+                      .bloc<FilterCubit>()
+                      .add(Filter(type: FilterType.wish, state: true));
+                }),
+          ])
+        ]);
+      });
     }
   }
 }
@@ -647,7 +649,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   MainViewToggle view = MainViewToggle.map;
   List<Filter> filters = [];
-//  bool collapsed = false;
+  bool collapsed = true;
 
   @override
   Widget build(BuildContext context) {
@@ -658,11 +660,10 @@ class _MainPageState extends State<MainPage> {
               minHeight: 90,
               maxHeight: 390,
               // Figma: Closed Search panel
-              collapsed: SearchPanel(collapsed: true),
+              // collapsed: SearchPanel(collapsed: true),
               // Figma: Open search panel
-              panel: SearchPanel(collapsed: false),
+              panel: SearchPanel(collapsed: collapsed),
               body: MapWidget(),
-/*
               onPanelOpened: () {
                 print('!!!DEBUG OPEN');
                 setState(() {
@@ -675,7 +676,6 @@ class _MainPageState extends State<MainPage> {
                   collapsed = true;
                 });
               },
-*/
             )));
   }
 }
