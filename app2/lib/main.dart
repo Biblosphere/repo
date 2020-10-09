@@ -206,26 +206,38 @@ enum FilterType { author, title, genre, language, place, wish, contacts }
 class Filter {
   final FilterType type;
   String value;
-  bool state = true;
   bool selected = true;
-  Filter({@required this.type, this.value, this.state, this.selected = true});
+  Filter({@required this.type, this.value = '', this.selected = true});
 
   @override
-  bool operator ==(f) =>
-      f is Filter && f.value == value && f.type == type && f.state == state;
+  bool operator ==(f) => f is Filter && f.value == value && f.type == type;
 
   @override
-  int get hashCode => value.hashCode ^ state.hashCode ^ type.hashCode;
+  int get hashCode => value.hashCode ^ type.hashCode;
 
   static Widget chipBuilder(
       BuildContext context, ChipsInputState<Filter> state, Filter filter) {
+    Widget label;
+    if (filter.type == FilterType.wish)
+      label = Icon(Icons.favorite);
+    else if (filter.type == FilterType.contacts)
+      label = Icon(Icons.contact_phone);
+    else
+      label = Text(filter.value);
+
     return InputChip(
       key: ObjectKey(filter),
+      //avatar: avatar,
       selected: filter.selected,
-      label: Text(filter.value),
+      label: label,
       // TODO: Put book icon here
       // avatar: CircleAvatar(),
-      onDeleted: () => state.deleteChip(filter),
+      onDeleted:
+          filter.type == FilterType.contacts || filter.type == FilterType.wish
+              ? null
+              : () {
+                  state.deleteChip(filter);
+                },
       onPressed: () {
         state.setState(() {
           if (filter.selected) {
@@ -384,7 +396,10 @@ class _TitleChipsState extends State<TitleChipsWidget> {
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters.filters[FilterType.title],
+        initialValue: [
+          filters.wishFilter,
+          ...filters.filters[FilterType.title]
+        ],
         decoration: InputDecoration(labelText: "Title / Author"),
         maxChips: 5,
         findSuggestions: findTitleSugestions,
@@ -520,7 +535,10 @@ class _PlaceChipsState extends State<PlaceChipsWidget> {
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters.filters[FilterType.place],
+        initialValue: [
+          filters.contactFilter,
+          ...filters.filters[FilterType.place]
+        ],
         decoration: InputDecoration(
           labelText: "Place / Contact",
         ),
@@ -614,19 +632,24 @@ class SearchPanel extends StatelessWidget {
             child: Wrap(
                 spacing: 5.0,
                 runSpacing: 5.0,
-                children: filters
-                    .getSelected()
-                    .map((f) => InputChip(
-                          label: Text(f.value),
-                          // TODO: Put book icon here
-                          // avatar: CircleAvatar(),
-                          onDeleted: () => context
-                              .bloc<FilterCubit>()
-                              .unselectFilter(f.type, f.value),
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        ))
-                    .toList()));
+                children: filters.getSelected().map((f) {
+                  Widget label;
+                  if (f.type == FilterType.wish)
+                    label = Icon(Icons.favorite);
+                  else if (f.type == FilterType.contacts)
+                    label = Icon(Icons.contact_phone);
+                  else
+                    label = Text(f.value);
+                  return InputChip(
+                    label: label,
+                    // TODO: Put book icon here
+                    // avatar: CircleAvatar(),
+                    onDeleted: () => context
+                        .bloc<FilterCubit>()
+                        .unselectFilter(f.type, f.value),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  );
+                }).toList()));
       });
     } else {
       return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
