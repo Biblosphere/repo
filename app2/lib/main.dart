@@ -273,9 +273,15 @@ class FilterSet {
 
   List<Filter> getSelected() {
     return [
-      ...filters[FilterType.title].where((f) => f.selected).toList(),
+      ...filters[FilterType.title]
+          .where((f) =>
+              (f.type == FilterType.author || f.type == FilterType.title) &&
+              f.selected)
+          .toList(),
       ...filters[FilterType.genre].where((f) => f.selected).toList(),
-      ...filters[FilterType.place].where((f) => f.selected).toList(),
+      ...filters[FilterType.place]
+          .where((f) => (f.type == FilterType.place) && f.selected)
+          .toList(),
       ...filters[FilterType.language].where((f) => f.selected).toList(),
       if (wishFilter.selected) wishFilter,
       if (contactFilter.selected) contactFilter,
@@ -617,10 +623,27 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
   }
 }
 
-class SearchPanel extends StatelessWidget {
+class SearchPanel extends StatefulWidget {
   SearchPanel({Key key, this.collapsed}) : super(key: key);
 
+  @override
+  _SearchPanelState createState() => _SearchPanelState(collapsed);
+
   final bool collapsed;
+}
+
+class _SearchPanelState extends State<SearchPanel> {
+  bool collapsed;
+
+  _SearchPanelState(this.collapsed);
+
+  @override
+  void didUpdateWidget(covariant SearchPanel oldWidget) {
+    // TODO: implement didUpdateWidget
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.collapsed != widget.collapsed) collapsed = widget.collapsed;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -644,9 +667,12 @@ class SearchPanel extends StatelessWidget {
                     label: label,
                     // TODO: Put book icon here
                     // avatar: CircleAvatar(),
-                    onDeleted: () => context
-                        .bloc<FilterCubit>()
-                        .unselectFilter(f.type, f.value),
+                    onDeleted: () {
+                      context
+                          .bloc<FilterCubit>()
+                          .unselectFilter(f.type, f.value);
+                      setState(() {});
+                    },
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   );
                 }).toList()));
