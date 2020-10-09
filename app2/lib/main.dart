@@ -207,7 +207,8 @@ class Filter {
   final FilterType type;
   String value;
   bool state = true;
-  Filter({@required this.type, this.value, this.state});
+  bool selected = true;
+  Filter({@required this.type, this.value, this.state, this.selected = true});
 
   @override
   bool operator ==(f) =>
@@ -220,71 +221,111 @@ class Filter {
       BuildContext context, ChipsInputState<Filter> state, Filter filter) {
     return InputChip(
       key: ObjectKey(filter),
+      selected: filter.selected,
       label: Text(filter.value),
       // TODO: Put book icon here
       // avatar: CircleAvatar(),
       onDeleted: () => state.deleteChip(filter),
+      onPressed: () {
+        state.setState(() {
+          if (filter.selected) {
+            filter.selected = false;
+            context
+                .bloc<FilterCubit>()
+                .unselectFilter(filter.type, filter.value);
+          } else {
+            filter.selected = true;
+            context.bloc<FilterCubit>().selectFilter(filter.type, filter.value);
+          }
+        });
+      },
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
   }
 }
 
-class FilterCubit extends Cubit<List<Filter>> {
-  FilterCubit() : super([]);
+class FilterSet {
+  Map<FilterType, List<Filter>> filters = {
+    FilterType.title: [],
+    FilterType.genre: [],
+    FilterType.place: [],
+    FilterType.language: [],
+  };
 
-  void add(Filter filter) {
-    emit([
-      ...{...state, filter}
-    ]);
+  Filter wishFilter = Filter(type: FilterType.wish, selected: false);
+  Filter contactFilter = Filter(type: FilterType.contacts, selected: false);
+
+  Filter getFilter(FilterType type, String value) {
+    return filters[type].firstWhere((f) => f.value == value);
   }
 
-  void remove(Filter filter) {
-    List<Filter> list = List.from(state);
-    list.remove(filter);
-    emit(list);
+  List<Filter> getSelected() {
+    return [
+      ...filters[FilterType.title].where((f) => f.selected).toList(),
+      ...filters[FilterType.genre].where((f) => f.selected).toList(),
+      ...filters[FilterType.place].where((f) => f.selected).toList(),
+      ...filters[FilterType.language].where((f) => f.selected).toList(),
+      if (wishFilter.selected) wishFilter,
+      if (contactFilter.selected) contactFilter,
+    ];
   }
 
-  void setGenre(List<Filter> filters) {
-    List<Filter> list = state.where((f) => f.type != FilterType.genre).toList();
-    list.addAll(filters);
+  FilterSet();
+}
 
-    // Remove duplicate
-    emit([
-      ...{...list}
-    ]);
+class FilterCubit extends Cubit<FilterSet> {
+  FilterCubit() : super(FilterSet());
+
+  void addFilter(FilterType type, String value) {
+    state.filters[type].add(Filter(type: type, value: value));
+    state.filters[type] = [
+      ...{...state.filters[type]}
+    ];
+
+    emit(state);
   }
 
-  void setTitle(List<Filter> filters) {
-    List<Filter> list = state
-        .where((f) => f.type != FilterType.title && f.type != FilterType.author)
-        .toList();
-    list.addAll(filters);
+  void selectFilter(FilterType type, String value) {
+    if (type == FilterType.wish)
+      state.wishFilter.selected = true;
+    else if (type == FilterType.contacts)
+      state.contactFilter.selected = true;
+    else
+      state.filters[type].where((f) => f.value == value).forEach((f) {
+        f.selected = true;
+      });
 
-    // Remove duplicate
-    emit([
-      ...{...list}
-    ]);
+    emit(state);
   }
 
-  void setLanguage(List<Filter> filters) {
-    List<Filter> list =
-        state.where((f) => f.type != FilterType.language).toList();
-    list.addAll(filters);
+  void unselectFilter(FilterType type, String value) {
+    if (type == FilterType.wish)
+      state.wishFilter.selected = false;
+    else if (type == FilterType.contacts)
+      state.contactFilter.selected = false;
+    else
+      state.filters[type].where((f) => f.value == value).forEach((f) {
+        f.selected = false;
+      });
 
-    // Remove duplicate
-    emit([
-      ...{...list}
-    ]);
+    emit(state);
   }
 
-  void setPlace(List<Filter> filters) {
-    List<Filter> list = state.where((f) => f.type != FilterType.place).toList();
-    list.addAll(filters);
+  void removeFilter(FilterType type, String value) {
+    if (type == FilterType.wish)
+      state.wishFilter.selected = false;
+    else if (type == FilterType.contacts)
+      state.contactFilter.selected = false;
+    else
+      state.filters[type].removeWhere((f) => f.value == value);
 
-    // Remove duplicate
-    emit([
-      ...{...list}
-    ]);
+    emit(state);
+  }
+
+  void setFilter(FilterType type, List<Filter> filters) {
+    state.filters[type] = filters;
+
+    emit(state);
   }
 }
 
@@ -341,20 +382,14 @@ class _TitleChipsState extends State<TitleChipsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, List<Filter>>(builder: (context, filters) {
+    return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters
-            .where((element) =>
-                element.type == FilterType.author ||
-                element.type == FilterType.title)
-            .toList(),
-        decoration: InputDecoration(
-          labelText: "Title / Author",
-        ),
+        initialValue: filters.filters[FilterType.title],
+        decoration: InputDecoration(labelText: "Title / Author"),
         maxChips: 5,
         findSuggestions: findTitleSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().setTitle(data);
+          context.bloc<FilterCubit>().setFilter(FilterType.title, data);
         },
         chipBuilder: Filter.chipBuilder,
         suggestionBuilder: titleSugestionBuilder,
@@ -414,18 +449,16 @@ class _GenreChipsState extends State<GenreChipsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, List<Filter>>(builder: (context, filters) {
+    return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters
-            .where((element) => element.type == FilterType.genre)
-            .toList(),
+        initialValue: filters.filters[FilterType.genre],
         decoration: InputDecoration(
           labelText: "Genre",
         ),
         maxChips: 5,
         findSuggestions: findGenreSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().setGenre(data);
+          context.bloc<FilterCubit>().setFilter(FilterType.genre, data);
         },
         chipBuilder: Filter.chipBuilder,
         suggestionBuilder: genreSugestionBuilder,
@@ -485,18 +518,16 @@ class _PlaceChipsState extends State<PlaceChipsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, List<Filter>>(builder: (context, filters) {
+    return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters
-            .where((element) => element.type == FilterType.place)
-            .toList(),
+        initialValue: filters.filters[FilterType.place],
         decoration: InputDecoration(
           labelText: "Place / Contact",
         ),
         maxChips: 5,
         findSuggestions: findPlaceSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().setPlace(data);
+          context.bloc<FilterCubit>().setFilter(FilterType.place, data);
         },
         chipBuilder: Filter.chipBuilder,
         suggestionBuilder: placeSugestionBuilder,
@@ -550,18 +581,16 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, List<Filter>>(builder: (context, filters) {
+    return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters
-            .where((element) => element.type == FilterType.language)
-            .toList(),
+        initialValue: filters.filters[FilterType.language],
         decoration: InputDecoration(
           labelText: "Language",
         ),
         maxChips: 5,
         findSuggestions: findLanguageSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().setLanguage(data);
+          context.bloc<FilterCubit>().setFilter(FilterType.language, data);
         },
         chipBuilder: Filter.chipBuilder,
         suggestionBuilder: languageSugestionBuilder,
@@ -578,61 +607,34 @@ class SearchPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (collapsed) {
-      return BlocBuilder<FilterCubit, List<Filter>>(
-          builder: (context, filters) {
+      return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
         return Container(
+            margin: EdgeInsets.all(10.0),
             color: Colors.white,
             child: Wrap(
+                spacing: 5.0,
+                runSpacing: 5.0,
                 children: filters
+                    .getSelected()
                     .map((f) => InputChip(
                           label: Text(f.value),
                           // TODO: Put book icon here
                           // avatar: CircleAvatar(),
-                          onDeleted: () =>
-                              context.bloc<FilterCubit>().remove(f),
+                          onDeleted: () => context
+                              .bloc<FilterCubit>()
+                              .unselectFilter(f.type, f.value),
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
                         ))
                     .toList()));
       });
     } else {
-      return BlocBuilder<FilterCubit, List<Filter>>(
-          builder: (context, filters) {
+      return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
         return Column(children: [
           TitleChipsWidget(),
           GenreChipsWidget(),
           PlaceChipsWidget(),
           LanguageChipsWidget(),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('Only my places and contacts'),
-            Switch(
-                value:
-                    false /*filters
-                    .firstWhere((f) => f.type == FilterType.contacts,
-                        orElse: () => Filter(type: FilterType.contacts))
-                    .state*/
-                ,
-                onChanged: (value) {
-                  context
-                      .bloc<FilterCubit>()
-                      .add(Filter(type: FilterType.contacts, state: true));
-                }),
-          ]),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('Only books from my wishlist'),
-            Switch(
-                value:
-                    false /*filters
-                    .firstWhere((f) => f.type == FilterType.wish,
-                        orElse: () => Filter(type: FilterType.wish))
-                    .state */
-                ,
-                onChanged: (value) {
-                  context
-                      .bloc<FilterCubit>()
-                      .add(Filter(type: FilterType.wish, state: true));
-                }),
-          ])
         ]);
       });
     }
@@ -657,8 +659,9 @@ class _MainPageState extends State<MainPage> {
         body: BlocProvider(
             create: (BuildContext context) => FilterCubit(),
             child: SlidingUpPanel(
+              //renderPanelSheet: false,
               minHeight: 90,
-              maxHeight: 390,
+              maxHeight: 300,
               // Figma: Closed Search panel
               // collapsed: SearchPanel(collapsed: true),
               // Figma: Open search panel
