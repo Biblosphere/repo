@@ -10,6 +10,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 // Input chips
 import 'package:flutter_chips_input/flutter_chips_input.dart';
+// Import slidable actions for book card
+import 'package:flutter_slidable/flutter_slidable.dart';
+// Cached network images
+import 'package:cached_network_image/cached_network_image.dart';
 
 void main() {
   runApp(MyApp());
@@ -198,6 +202,35 @@ class _LoginPageState extends State<LoginPage> {
       ]),
     ));
   }
+}
+
+class Book {
+  String title;
+  List<String> authors;
+  String genre;
+  String language;
+  String description;
+  List<String> tags;
+  String cover;
+  String shelf;
+  // Book outline on the bookshelf image
+  List<Offset> outline;
+  // Book location
+  LatLng location;
+  String place;
+
+  Book(
+      {this.title,
+      this.authors,
+      this.genre,
+      this.language,
+      this.description,
+      this.tags,
+      this.cover,
+      this.shelf,
+      this.outline,
+      this.location,
+      this.place});
 }
 
 enum FilterType { author, title, genre, language, place, wish, contacts }
@@ -789,6 +822,89 @@ class _MapWidgetState extends State<MapWidget> {
   }
 }
 
+// TODO: Replace with actual books from database
+List<Book> books = [
+  Book(
+      title: 'Эволюция человека. Книга 1. Обезьяны, кости и гены',
+      authors: ['Александр В. Марков'],
+      cover: 'https://images.gr-assets.com/books/1528473051m/20419030.jpg',
+      genre: 'Biology',
+      place: 'Denis Stark'),
+  Book(
+      title: 'Great by Choice',
+      authors: ['James C. Collins'],
+      cover: 'https://images.gr-assets.com/books/1344749976m/11919212.jpg',
+      genre: 'Business',
+      place: 'Itaka'),
+  Book(
+      title: 'От Руси до России',
+      authors: ['Lev Nikolaevich Gumilev'],
+      cover: 'https://images.gr-assets.com/books/1328684891m/13457559.jpg',
+      genre: 'History',
+      place: 'Denis Stark'),
+  Book(
+      title: 'How To Make It in the New Music Business',
+      authors: ['Ari Herstand'],
+      cover: 'https://images.gr-assets.com/books/1479535690m/28789700.jpg',
+      genre: 'Music',
+      place: 'Jane Stark'),
+  Book(
+      title: 'Тот самый Мюнхгаузен',
+      authors: ['Григорий Горин'],
+      cover:
+          'http://books.google.com/books/content?id=GhDEL3QeB1sC&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api',
+      genre: 'Children',
+      place: 'Little Free Library'),
+  Book(
+      title: 'Angels & Demons - Movie Tie-In',
+      authors: ['Dan Brown'],
+      cover:
+          'http://books.google.com/books/content?id=GXznEnKwTdAC&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api',
+      genre: 'Novel',
+      place: 'Neli Davitaia'),
+  Book(
+      title: 'Totally Winnie!',
+      authors: ['Laura Owen'],
+      cover:
+          'https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1340734090l/14814826._SX98_.jpg',
+      genre: 'Children',
+      place: 'Karin Conter'),
+  //Book(title: '', authors: [''], cover: '', genre: '', place: ''),
+  //Book(title: '', authors: [''], cover: '', genre: '', place: ''),
+];
+
+class BookCard extends StatelessWidget {
+  final Book book;
+
+  BookCard({Key key, this.book}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+        child: Container(
+            margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
+            child: Row(children: [
+              ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: 100,
+                    minHeight: 100,
+                    maxWidth: 120,
+                    maxHeight: 100,
+                  ),
+//                  child: CachedNetworkImage(imageUrl: book.cover)),
+//                  child: Image(image: CachedNetworkImageProvider(book.cover))),
+                  child: Image.network(book.cover)),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(book.authors.join(', ')),
+                    Text(book.title),
+                  ]))
+            ])));
+  }
+}
+
 class ListWidget extends StatefulWidget {
   ListWidget({Key key}) : super(key: key);
 
@@ -799,7 +915,44 @@ class ListWidget extends StatefulWidget {
 class _ListWidgetState extends State<ListWidget> {
   @override
   Widget build(BuildContext context) {
-    return Container();
+    return ListView(
+        children: books.map((b) {
+      return Slidable(
+        actionPane: SlidableDrawerActionPane(),
+        actionExtentRatio: 0.25,
+        child: BookCard(book: b),
+        actions: <Widget>[
+          IconSlideAction(
+            caption: 'Favorite',
+            color: Colors.red,
+            icon: Icons.favorite,
+            //onTap: () => _showSnackBar('Archive'),
+          ),
+/*
+    IconSlideAction(
+      caption: 'Share',
+      color: Colors.indigo,
+      icon: Icons.share,
+      //onTap: () => _showSnackBar('Share'),
+    ),
+*/
+        ],
+        secondaryActions: <Widget>[
+          IconSlideAction(
+            caption: 'Share',
+            color: Colors.indigo,
+            icon: Icons.share,
+            //onTap: () => _showSnackBar('More'),
+          ),
+          IconSlideAction(
+            caption: 'Contact',
+            color: Colors.blue,
+            icon: Icons.message,
+            //onTap: () => _showSnackBar('Delete'),
+          ),
+        ],
+      );
+    }).toList());
   }
 }
 

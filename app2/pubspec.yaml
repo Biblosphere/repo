@@ -44,6 +44,12 @@ dependencies:
   # BLoC patterns
   flutter_bloc: ^6.0.6
 
+  # Slidable actions for book card
+  flutter_slidable: ^0.5.7
+
+  # Cached network images
+  cached_network_image: ^2.3.2+1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
