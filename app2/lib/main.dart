@@ -717,6 +717,7 @@ class _MainPageState extends State<MainPage> {
               body: Stack(children: [
                 if (isMapView) MapWidget(),
                 if (!isMapView) ListWidget(),
+                // Figma: Toggle buttons map/list view
                 Container(
                     margin: EdgeInsets.only(top: 30.0, right: 5.0),
                     alignment: Alignment.topRight,
@@ -731,16 +732,32 @@ class _MainPageState extends State<MainPage> {
                               isMapView = !isMapView;
                             });
                         },
-                        children: [Icon(Icons.location_pin), Icon(Icons.list)]))
+                        children: [
+                          Icon(Icons.location_pin),
+                          Icon(Icons.list)
+                        ])),
+                // Figma: Camera button on the map
+                Container(
+                    margin: EdgeInsets.only(bottom: 100.0, right: 0.0),
+                    alignment: Alignment.bottomRight,
+                    child: MaterialButton(
+                      onPressed: () {},
+                      color: Colors.blue,
+                      textColor: Colors.white,
+                      child: Icon(
+                        Icons.camera_alt,
+                        size: 24,
+                      ),
+                      padding: EdgeInsets.all(16),
+                      shape: CircleBorder(),
+                    ))
               ]),
               onPanelOpened: () {
-                print('!!!DEBUG OPEN');
                 setState(() {
                   collapsed = false;
                 });
               },
               onPanelClosed: () {
-                print('!!!DEBUG CLOSED');
                 setState(() {
                   collapsed = true;
                 });
@@ -782,21 +799,7 @@ class ListWidget extends StatefulWidget {
 class _ListWidgetState extends State<ListWidget> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Container());
-  }
-}
-
-class FilterWidget extends StatefulWidget {
-  FilterWidget({Key key}) : super(key: key);
-
-  @override
-  _FilterWidgetState createState() => _FilterWidgetState();
-}
-
-class _FilterWidgetState extends State<FilterWidget> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(body: Container());
+    return Container();
   }
 }
 
