@@ -200,7 +200,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-enum MainViewToggle { map, list }
 enum FilterType { author, title, genre, language, place, wish, contacts }
 
 class Filter {
@@ -698,7 +697,7 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  MainViewToggle view = MainViewToggle.map;
+  bool isMapView = true;
   List<Filter> filters = [];
   bool collapsed = true;
 
@@ -715,7 +714,25 @@ class _MainPageState extends State<MainPage> {
               // collapsed: SearchPanel(collapsed: true),
               // Figma: Open search panel
               panel: SearchPanel(collapsed: collapsed),
-              body: MapWidget(),
+              body: Stack(children: [
+                if (isMapView) MapWidget(),
+                if (!isMapView) ListWidget(),
+                Container(
+                    margin: EdgeInsets.only(top: 30.0, right: 5.0),
+                    alignment: Alignment.topRight,
+                    child: ToggleButtons(
+                        color: Colors.grey,
+                        selectedColor: Colors.black,
+                        isSelected: <bool>[isMapView, !isMapView],
+                        onPressed: (index) {
+                          if (isMapView && index == 1 ||
+                              !isMapView && index == 0)
+                            setState(() {
+                              isMapView = !isMapView;
+                            });
+                        },
+                        children: [Icon(Icons.location_pin), Icon(Icons.list)]))
+              ]),
               onPanelOpened: () {
                 print('!!!DEBUG OPEN');
                 setState(() {
