@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 // BLoC patterns
@@ -729,13 +731,16 @@ class MainPage extends StatefulWidget {
   _MainPageState createState() => _MainPageState();
 }
 
+enum ViewType { map, list, camera }
+
 class _MainPageState extends State<MainPage> {
-  bool isMapView = true;
+  ViewType _view = ViewType.map;
   List<Filter> filters = [];
   bool collapsed = true;
 
   @override
   Widget build(BuildContext context) {
+    double r = 25.0;
     return Scaffold(
         body: BlocProvider(
             create: (BuildContext context) => FilterCubit(),
@@ -748,42 +753,84 @@ class _MainPageState extends State<MainPage> {
               // Figma: Open search panel
               panel: SearchPanel(collapsed: collapsed),
               body: Stack(children: [
-                if (isMapView) MapWidget(),
-                if (!isMapView) ListWidget(),
+                if (_view == ViewType.map) MapWidget(),
+                if (_view == ViewType.list) ListWidget(),
                 // Figma: Toggle buttons map/list view
-                Container(
-                    margin: EdgeInsets.only(top: 30.0, right: 5.0),
-                    alignment: Alignment.topRight,
-                    child: ToggleButtons(
-                        color: Colors.grey,
-                        selectedColor: Colors.black,
-                        isSelected: <bool>[isMapView, !isMapView],
-                        onPressed: (index) {
-                          if (isMapView && index == 1 ||
-                              !isMapView && index == 0)
-                            setState(() {
-                              isMapView = !isMapView;
-                            });
-                        },
-                        children: [
-                          Icon(Icons.location_pin),
-                          Icon(Icons.list)
-                        ])),
-                // Figma: Camera button on the map
-                Container(
-                    margin: EdgeInsets.only(bottom: 60.0, right: 0.0),
-                    alignment: Alignment.bottomRight,
-                    child: MaterialButton(
-                      onPressed: () {},
-                      color: Colors.blue,
-                      textColor: Colors.white,
-                      child: Icon(
-                        Icons.camera_alt,
-                        size: 24,
-                      ),
-                      padding: EdgeInsets.all(16),
-                      shape: CircleBorder(),
-                    ))
+                Positioned.fill(
+                    child: Container(
+                        margin: EdgeInsets.only(bottom: 55.0, right: 10.0),
+                        alignment: Alignment.bottomRight,
+                        child: SizedBox(
+                            width: 4.0 * r,
+                            height: 0.933 * 4.0 * r,
+                            child: Container(
+                                child: Stack(children: [
+                              Positioned.fill(
+                                  child: Container(
+//                          alignment: Alignment(-0.5, -0.4641),
+                                      alignment: Alignment(-1.0, -1.0),
+                                      child: SizedBox(
+                                          width: 2.0 * r,
+                                          height: 2.0 * r,
+                                          child: MaterialButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                _view = ViewType.map;
+                                              });
+                                            },
+                                            color: Colors.transparent,
+                                            textColor: Colors.white,
+                                            child: Icon(
+                                              Icons.location_pin,
+                                              size: r,
+                                            ),
+                                            padding: EdgeInsets.all(r / 2.0),
+                                            shape: CircleBorder(),
+                                          )))),
+                              Positioned.fill(
+                                  child: Container(
+//                                      alignment: Alignment(1.0, -0.4641),
+                                      alignment: Alignment(1.0, -1.0),
+                                      child: SizedBox(
+                                          width: 2.0 * r,
+                                          height: 2.0 * r,
+                                          child: MaterialButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                _view = ViewType.list;
+                                              });
+                                            },
+                                            color: Colors.transparent,
+                                            textColor: Colors.white,
+                                            child: Icon(
+                                              Icons.list_alt,
+                                              size: r,
+                                            ),
+                                            padding: EdgeInsets.all(r / 2.0),
+                                            shape: CircleBorder(),
+                                          )))),
+                              Positioned.fill(
+                                  child: Container(
+                                      alignment: Alignment(0.0, 1.0),
+                                      child: SizedBox(
+                                          width: 2.2 * r,
+                                          height: 2.2 * r,
+                                          child: MaterialButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                _view = ViewType.camera;
+                                              });
+                                            },
+                                            color: Colors.blue,
+                                            textColor: Colors.white,
+                                            child: Icon(
+                                              Icons.camera_alt,
+                                              size: r,
+                                            ),
+                                            padding: EdgeInsets.all(r / 2.0),
+                                            shape: CircleBorder(),
+                                          )))),
+                            ])))))
               ]),
               onPanelOpened: () {
                 setState(() {
