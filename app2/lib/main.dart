@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -16,6 +17,8 @@ import 'package:flutter_chips_input/flutter_chips_input.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 // Cached network images
 import 'package:cached_network_image/cached_network_image.dart';
+// Panel widget for filters and camera
+import 'package:snapping_sheet/snapping_sheet.dart';
 
 void main() {
   runApp(MyApp());
@@ -724,6 +727,148 @@ class _SearchPanelState extends State<SearchPanel> {
   }
 }
 
+class TripleButton extends StatefulWidget {
+  final int selected;
+  final List<VoidCallback> onPressed;
+  final List<VoidCallback> onPressedSelected;
+  final List<IconData> icons;
+
+  TripleButton(
+      {this.selected, this.onPressed, this.onPressedSelected, this.icons});
+
+  @override
+  TripleButtonState createState() => TripleButtonState(
+      selected: selected,
+      onPressed: onPressed,
+      onPressedSelected: onPressedSelected,
+      icons: icons);
+}
+
+class TripleButtonState extends State<TripleButton>
+    with SingleTickerProviderStateMixin {
+  final double rMin = 25.0;
+  // Radius of bigger circle
+  final double rMax = 34.0;
+
+  int selected;
+  int oldSelected;
+
+  List<VoidCallback> onPressed;
+  List<VoidCallback> onPressedSelected;
+  List<IconData> icons;
+
+  AnimationController _animationController;
+  Animation _activateColorTween,
+      _deactivateColorTween,
+      _angleTween,
+      _radiusTweenOld,
+      _radiusTweenNew;
+
+  TripleButtonState(
+      {this.selected, this.onPressed, this.onPressedSelected, this.icons}) {
+    oldSelected = selected;
+  }
+
+  @override
+  void initState() {
+    _animationController =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 500));
+
+    _activateColorTween =
+        ColorTween(begin: Colors.transparent, end: Colors.blue)
+            .animate(_animationController);
+    _deactivateColorTween =
+        ColorTween(begin: Colors.blue, end: Colors.transparent)
+            .animate(_animationController);
+    _angleTween = Tween<double>(begin: 0.0, end: pi * 2.0 / 3.0)
+        .animate(_animationController);
+
+    _radiusTweenOld =
+        Tween<double>(begin: rMax, end: rMin).animate(_animationController);
+
+    _radiusTweenNew =
+        Tween<double>(begin: rMin, end: rMax).animate(_animationController);
+
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double r1 = rMin;
+    // Radius of rotation
+    final double rR = rMin / cos(pi / 6.0);
+
+    return AnimatedBuilder(
+        animation: _animationController,
+        builder: (context, child) {
+          double theta = _angleTween.value;
+          List<double> r = [rMin, rMin, rMin];
+          r[oldSelected] = _radiusTweenOld.value;
+          r[selected] = _radiusTweenNew.value;
+
+          // Sort the buttons so that the selected one will be on top
+          List<int> indexes = [0, 1, 2]..sort((a, b) => b == selected ? -1 : 1);
+          return SizedBox(
+              width: 2.0 * (rMax + rR),
+              height: 2.0 * (rMax + rR),
+              child: Container(
+                  alignment: Alignment.bottomRight,
+                  //color: Colors.yellow,
+                  child: Stack(
+                      children: indexes.map((i) {
+                    Color color = Colors.transparent;
+                    if (i == selected)
+                      color = _activateColorTween.value;
+                    else if (i == oldSelected)
+                      color = _deactivateColorTween.value;
+
+                    return Positioned(
+                        left: rR +
+                            rMax -
+                            r[i] -
+                            rR * sin(theta + i * 2.0 / 3.0 * pi),
+                        top: rR +
+                            rMax -
+                            r[i] +
+                            rR * cos(theta + i * 2.0 / 3.0 * pi),
+                        child: SizedBox(
+                            width: 2.0 * r[i],
+                            height: 2.0 * r[i],
+                            child: MaterialButton(
+                              onPressed: () {
+                                if (i == selected)
+                                  onPressedSelected[i]();
+                                else {
+                                  oldSelected = selected;
+                                  selected = i;
+                                  double dir =
+                                      ((oldSelected - selected) % 3 - 1.5) *
+                                          2.0;
+                                  _angleTween = Tween<double>(
+                                          begin:
+                                              (dir - selected) * pi * 2.0 / 3.0,
+                                          end: -selected * pi * 2.0 / 3.0)
+                                      .animate(_animationController);
+                                  _animationController.reset();
+                                  _animationController.forward();
+
+                                  onPressed[i]();
+                                }
+                              },
+                              color: color, //.transparent,
+                              textColor: Colors.white,
+                              child: Icon(
+                                icons[i],
+                                size: rMin,
+                              ),
+                              padding: EdgeInsets.all(rMin / 2.0),
+                              shape: CircleBorder(),
+                            )));
+                  }).toList())));
+        });
+  }
+}
+
 class MainPage extends StatefulWidget {
   MainPage({Key key}) : super(key: key);
 
@@ -737,112 +882,117 @@ class _MainPageState extends State<MainPage> {
   ViewType _view = ViewType.map;
   List<Filter> filters = [];
   bool collapsed = true;
+  var _controller = SnappingSheetController();
+  double _snapPosition = 0.0;
 
   @override
   Widget build(BuildContext context) {
-    double r = 25.0;
-    return Scaffold(
-        body: BlocProvider(
-            create: (BuildContext context) => FilterCubit(),
-            child: SlidingUpPanel(
-              //renderPanelSheet: false,
-              minHeight: 50,
-              maxHeight: 300,
-              // Figma: Closed Search panel
-              // collapsed: SearchPanel(collapsed: true),
-              // Figma: Open search panel
-              panel: SearchPanel(collapsed: collapsed),
-              body: Stack(children: [
-                if (_view == ViewType.map) MapWidget(),
-                if (_view == ViewType.list) ListWidget(),
-                // Figma: Toggle buttons map/list view
-                Positioned.fill(
-                    child: Container(
-                        margin: EdgeInsets.only(bottom: 55.0, right: 10.0),
-                        alignment: Alignment.bottomRight,
-                        child: SizedBox(
-                            width: 4.0 * r,
-                            height: 0.933 * 4.0 * r,
-                            child: Container(
-                                child: Stack(children: [
-                              Positioned.fill(
-                                  child: Container(
-//                          alignment: Alignment(-0.5, -0.4641),
-                                      alignment: Alignment(-1.0, -1.0),
-                                      child: SizedBox(
-                                          width: 2.0 * r,
-                                          height: 2.0 * r,
-                                          child: MaterialButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                _view = ViewType.map;
-                                              });
-                                            },
-                                            color: Colors.transparent,
-                                            textColor: Colors.white,
-                                            child: Icon(
-                                              Icons.location_pin,
-                                              size: r,
-                                            ),
-                                            padding: EdgeInsets.all(r / 2.0),
-                                            shape: CircleBorder(),
-                                          )))),
-                              Positioned.fill(
-                                  child: Container(
-//                                      alignment: Alignment(1.0, -0.4641),
-                                      alignment: Alignment(1.0, -1.0),
-                                      child: SizedBox(
-                                          width: 2.0 * r,
-                                          height: 2.0 * r,
-                                          child: MaterialButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                _view = ViewType.list;
-                                              });
-                                            },
-                                            color: Colors.transparent,
-                                            textColor: Colors.white,
-                                            child: Icon(
-                                              Icons.list_alt,
-                                              size: r,
-                                            ),
-                                            padding: EdgeInsets.all(r / 2.0),
-                                            shape: CircleBorder(),
-                                          )))),
-                              Positioned.fill(
-                                  child: Container(
-                                      alignment: Alignment(0.0, 1.0),
-                                      child: SizedBox(
-                                          width: 2.2 * r,
-                                          height: 2.2 * r,
-                                          child: MaterialButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                _view = ViewType.camera;
-                                              });
-                                            },
-                                            color: Colors.blue,
-                                            textColor: Colors.white,
-                                            child: Icon(
-                                              Icons.camera_alt,
-                                              size: r,
-                                            ),
-                                            padding: EdgeInsets.all(r / 2.0),
-                                            shape: CircleBorder(),
-                                          )))),
-                            ])))))
-              ]),
-              onPanelOpened: () {
-                setState(() {
-                  collapsed = false;
-                });
-              },
-              onPanelClosed: () {
-                setState(() {
-                  collapsed = true;
-                });
-              },
-            )));
+    return BlocProvider(
+        create: (BuildContext context) => FilterCubit(),
+        child: Scaffold(
+            body: Stack(children: [
+          SnappingSheet(
+            sheetAbove: SnappingSheetContent(
+                child: Stack(children: [
+              if (_view == ViewType.list) ListWidget(),
+              // Figma: Toggle buttons map/list view
+              //Positioned(right: 0.0, bottom: 0.0, child: TripleButton())
+            ])),
+            onSnapEnd: () {
+              setState(() {});
+            },
+            onMove: (moveAmount) {
+              setState(() {
+                _snapPosition = moveAmount;
+              });
+            },
+            snappingSheetController: _controller,
+            snapPositions: const [
+              SnapPosition(
+                  positionPixel: 60.0,
+                  snappingCurve: Curves.elasticOut,
+                  snappingDuration: Duration(milliseconds: 750)),
+              SnapPosition(
+                positionPixel: 290.0,
+              ),
+              //SnapPosition(positionFactor: 0.4),
+            ],
+            child: _view == ViewType.map ? MapWidget() : Container(),
+            grabbingHeight: MediaQuery.of(context).padding.bottom + 40,
+            grabbing: GrabSection(), //Container(color: Colors.grey),
+            sheetBelow: SnappingSheetContent(
+                child: Container(
+                    color: Colors.white,
+                    child: SearchPanel(collapsed: _snapPosition < 290.0))),
+          ),
+          Positioned(
+              bottom: _snapPosition - 35.0,
+              right: 5.0,
+              child: TripleButton(
+                selected: 0,
+                onPressed: [
+                  //onPressed for MAP
+                  () {
+                    setState(() {
+                      _view = ViewType.map;
+                    });
+                  },
+                  //onPressed for CAMERA
+                  () {
+                    setState(() {
+                      _view = ViewType.camera;
+                    });
+                  },
+                  //onPressed for LIST
+                  () {
+                    setState(() {
+                      _view = ViewType.list;
+                    });
+                  }
+                ],
+                onPressedSelected: [() {}, () {}, () {}],
+                icons: [Icons.location_pin, Icons.camera_alt, Icons.list_alt],
+              ))
+        ])));
+  }
+}
+
+class GrabSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 20.0,
+            color: Colors.black.withOpacity(0.2),
+          )
+        ],
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(15.0),
+          topRight: Radius.circular(15.0),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+          Container(
+            width: 100.0,
+            height: 10.0,
+            margin: EdgeInsets.only(top: 15.0),
+            decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.all(Radius.circular(5.0))),
+          ),
+          Container(
+            height: 2.0,
+            margin: EdgeInsets.only(left: 20, right: 20),
+            color: Colors.grey[300],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -854,6 +1004,9 @@ class MapWidget extends StatefulWidget {
 }
 
 class _MapWidgetState extends State<MapWidget> {
+  bool mapsIsLoading = true;
+  Completer<GoogleMapController> _controller = Completer();
+
   static final CameraPosition _mockupPosition = CameraPosition(
     target: LatLng(37.42796133580664, -122.085749655962),
     zoom: 14.4746,
@@ -861,14 +1014,25 @@ class _MapWidgetState extends State<MapWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return GoogleMap(
-      myLocationButtonEnabled: false,
-      mapToolbarEnabled: false,
-      zoomControlsEnabled: false,
-      mapType: MapType.normal,
-      initialCameraPosition: _mockupPosition,
-      onMapCreated: (GoogleMapController controller) {},
-    );
+    return Stack(children: [
+      GoogleMap(
+          myLocationButtonEnabled: false,
+          mapToolbarEnabled: false,
+          zoomControlsEnabled: false,
+          mapType: MapType.normal,
+          initialCameraPosition: _mockupPosition,
+          onMapCreated: (GoogleMapController controller) {
+            // TODO: Remove tis workaround as soon as solution is ready
+            // https://github.com/flutter/flutter/issues/39797
+            _controller.complete(controller);
+            Timer(Duration(milliseconds: 500), () {
+              setState(() {
+                mapsIsLoading = false;
+              });
+            });
+          }),
+      if (mapsIsLoading) Container(color: Colors.white)
+    ]);
   }
 }
 
