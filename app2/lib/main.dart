@@ -9,8 +9,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 // Google map
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-// Sliding panel for search filters and camera
-import 'package:sliding_up_panel/sliding_up_panel.dart';
 // Input chips
 import 'package:flutter_chips_input/flutter_chips_input.dart';
 // Import slidable actions for book card
@@ -19,8 +17,14 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 // Panel widget for filters and camera
 import 'package:snapping_sheet/snapping_sheet.dart';
+// Camera plugin
+import 'package:camera/camera.dart';
 
-void main() {
+List<CameraDescription> cameras;
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  cameras = await availableCameras();
   runApp(MyApp());
 }
 
@@ -895,6 +899,7 @@ class _MainPageState extends State<MainPage> {
             sheetAbove: SnappingSheetContent(
                 child: Stack(children: [
               if (_view == ViewType.list) ListWidget(),
+              if (_view == ViewType.camera) CameraWidget(),
               // Figma: Toggle buttons map/list view
               //Positioned(right: 0.0, bottom: 0.0, child: TripleButton())
             ])),
@@ -917,7 +922,7 @@ class _MainPageState extends State<MainPage> {
               ),
               //SnapPosition(positionFactor: 0.4),
             ],
-            child: _view == ViewType.map ? MapWidget() : Container(),
+            child: MapWidget(),
             grabbingHeight: MediaQuery.of(context).padding.bottom + 40,
             grabbing: GrabSection(), //Container(color: Colors.grey),
             sheetBelow: SnappingSheetContent(
@@ -1005,7 +1010,7 @@ class MapWidget extends StatefulWidget {
 
 class _MapWidgetState extends State<MapWidget> {
   bool mapsIsLoading = true;
-  Completer<GoogleMapController> _controller = Completer();
+  //Completer<GoogleMapController> _controller = Completer();
 
   static final CameraPosition _mockupPosition = CameraPosition(
     target: LatLng(37.42796133580664, -122.085749655962),
@@ -1014,25 +1019,13 @@ class _MapWidgetState extends State<MapWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(children: [
-      GoogleMap(
-          myLocationButtonEnabled: false,
-          mapToolbarEnabled: false,
-          zoomControlsEnabled: false,
-          mapType: MapType.normal,
-          initialCameraPosition: _mockupPosition,
-          onMapCreated: (GoogleMapController controller) {
-            // TODO: Remove tis workaround as soon as solution is ready
-            // https://github.com/flutter/flutter/issues/39797
-            _controller.complete(controller);
-            Timer(Duration(milliseconds: 500), () {
-              setState(() {
-                mapsIsLoading = false;
-              });
-            });
-          }),
-      if (mapsIsLoading) Container(color: Colors.white)
-    ]);
+    return GoogleMap(
+        myLocationButtonEnabled: false,
+        mapToolbarEnabled: false,
+        zoomControlsEnabled: false,
+        mapType: MapType.normal,
+        initialCameraPosition: _mockupPosition,
+        onMapCreated: (GoogleMapController controller) {});
   }
 }
 
@@ -1350,18 +1343,48 @@ class _DetailsPageState extends State<DetailsPage> {
   }
 }
 
-class CameraPage extends StatefulWidget {
-  CameraPage({Key key, this.title}) : super(key: key);
-
-  final String title;
+class CameraWidget extends StatefulWidget {
+  CameraWidget({Key key}) : super(key: key);
 
   @override
-  _CameraPageState createState() => _CameraPageState();
+  _CameraWidgetState createState() => _CameraWidgetState();
 }
 
-class _CameraPageState extends State<CameraPage> {
+class _CameraWidgetState extends State<CameraWidget> {
+  CameraController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Always choose a front camera
+    controller = CameraController(
+        cameras
+            .where((c) => c.lensDirection == CameraLensDirection.front)
+            .toList()[0],
+        ResolutionPreset.ultraHigh,
+        enableAudio: false);
+    controller.initialize().then((_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Container());
+    if (!controller.value.isInitialized) {
+      return Container();
+    }
+    return SingleChildScrollView(
+        child: AspectRatio(
+            aspectRatio: controller.value.aspectRatio,
+            child: CameraPreview(controller)));
   }
 }

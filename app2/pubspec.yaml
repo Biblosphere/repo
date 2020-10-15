@@ -35,9 +35,6 @@ dependencies:
   # Google maps
   google_maps_flutter: ^1.0.2
 
-  # Sliding panel for Search filters and camera 
-  sliding_up_panel: ^1.0.2
-
   # Input chips
   flutter_chips_input: ^1.9.4
 
@@ -52,6 +49,9 @@ dependencies:
 
   # Panel widged for search and camera
   snapping_sheet: ^2.0.1
+
+  # Camera plugin
+  camera: ^0.5.8+9
 
 dev_dependencies:
   flutter_test:
