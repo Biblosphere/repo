@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
@@ -19,6 +20,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:snapping_sheet/snapping_sheet.dart';
 // Camera plugin
 import 'package:camera/camera.dart';
+// Files and directories to save images
+import 'package:path_provider/path_provider.dart';
 
 List<CameraDescription> cameras;
 
@@ -731,6 +734,149 @@ class _SearchPanelState extends State<SearchPanel> {
   }
 }
 
+enum Privacy { onlyMe, myContacts, all }
+
+class PlaceInfo {
+  LatLng position;
+  Privacy privacy;
+  // Name of the contact or place
+  String name;
+  // Link to google place for the places
+  Uri uri;
+  // Contact phone for the contacts from address book
+  String phone;
+
+  PlaceInfo({this.position, this.name, this.uri, this.phone, this.privacy});
+
+  copyFrom(PlaceInfo place) {
+    position = place.position;
+    name = place.name;
+    uri = place.uri;
+    phone = place.phone;
+    privacy = place.privacy;
+  }
+}
+
+class CameraCubit extends Cubit<PlaceInfo> {
+  CameraCubit() : super(PlaceInfo());
+
+  void setPlace(PlaceInfo place) {
+    state.copyFrom(place);
+    emit(state);
+  }
+}
+
+class CameraPanel extends StatefulWidget {
+  CameraPanel({Key key, this.collapsed}) : super(key: key);
+
+  @override
+  _CameraPanelState createState() => _CameraPanelState(collapsed);
+
+  final bool collapsed;
+}
+
+class _CameraPanelState extends State<CameraPanel> {
+  bool collapsed;
+  final _controller = TextEditingController();
+
+  _CameraPanelState(this.collapsed);
+
+  @override
+  void initState() {
+    super.initState();
+
+    //TODO: replace with real name of the user
+    _controller.text = 'Denis Stark';
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant CameraPanel oldWidget) {
+    // TODO: implement didUpdateWidget
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.collapsed != widget.collapsed) collapsed = widget.collapsed;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (collapsed) {
+      return Container();
+    } else {
+      return BlocBuilder<CameraCubit, PlaceInfo>(builder: (context, place) {
+        _controller.text = place.name;
+        return Container(
+            margin: EdgeInsets.all(10.0),
+            color: Colors.white,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('Owner of the books:'),
+                TextField(
+                  controller: _controller,
+                  onTap: () async {
+                    // placeholder for our places search later
+                  },
+                  // with some styling
+                  decoration: InputDecoration(
+                    icon: Container(
+                      margin: EdgeInsets.only(left: 20),
+                      width: 10,
+                      height: 10,
+                      child: Icon(
+                        Icons.place,
+                        color: Colors.black,
+                      ),
+                    ),
+                    hintText: "Enter your contact or place around you",
+                    contentPadding: EdgeInsets.only(left: 8.0, top: 16.0),
+                  ),
+                ),
+                Container(
+                    margin: EdgeInsets.only(top: 5.0),
+                    child: ToggleButtons(
+                      children: [
+                        Container(
+                            margin: EdgeInsets.only(right: 3.0, left: 3.0),
+                            child: Row(
+                                children: [Icon(Icons.lock), Text('Only me')])),
+                        Container(
+                            margin: EdgeInsets.only(right: 3.0, left: 3.0),
+                            child: Row(children: [
+                              Icon(Icons.people),
+                              Text('Contacts')
+                            ])),
+                        Container(
+                            margin: EdgeInsets.only(right: 3.0, left: 3.0),
+                            child: Row(
+                                children: [Icon(Icons.language), Text('All')])),
+                      ],
+                      isSelected: [
+                        place.privacy == Privacy.onlyMe,
+                        place.privacy == Privacy.myContacts,
+                        place.privacy == Privacy.all
+                      ],
+                      onPressed: (index) {
+                        setState(() {
+                          place.privacy = Privacy.values[index];
+                          context.bloc<CameraCubit>().setPlace(place);
+                        });
+                      },
+                      selectedColor: Colors.black,
+                      color: Colors.grey,
+                    ))
+              ],
+            ));
+      });
+    }
+  }
+}
+
 class TripleButton extends StatefulWidget {
   final int selected;
   final List<VoidCallback> onPressed;
@@ -798,7 +944,6 @@ class TripleButtonState extends State<TripleButton>
 
   @override
   Widget build(BuildContext context) {
-    double r1 = rMin;
     // Radius of rotation
     final double rR = rMin / cos(pi / 6.0);
 
@@ -807,9 +952,13 @@ class TripleButtonState extends State<TripleButton>
         builder: (context, child) {
           double theta = _angleTween.value;
           List<double> r = [rMin, rMin, rMin];
-          r[oldSelected] = _radiusTweenOld.value;
-          r[selected] = _radiusTweenNew.value;
-
+          if (_animationController.isAnimating) {
+            r[oldSelected] = _radiusTweenOld.value;
+            r[selected] = _radiusTweenNew.value;
+          } else {
+            r[oldSelected] = rMin;
+            r[selected] = rMax;
+          }
           // Sort the buttons so that the selected one will be on top
           List<int> indexes = [0, 1, 2]..sort((a, b) => b == selected ? -1 : 1);
           return SizedBox(
@@ -821,9 +970,12 @@ class TripleButtonState extends State<TripleButton>
                   child: Stack(
                       children: indexes.map((i) {
                     Color color = Colors.transparent;
-                    if (i == selected)
-                      color = _activateColorTween.value;
-                    else if (i == oldSelected)
+                    if (i == selected) {
+                      if (_animationController.isAnimating)
+                        color = _activateColorTween.value;
+                      else
+                        color = Colors.blue;
+                    } else if (i == oldSelected)
                       color = _deactivateColorTween.value;
 
                     return Positioned(
@@ -889,20 +1041,51 @@ class _MainPageState extends State<MainPage> {
   var _controller = SnappingSheetController();
   double _snapPosition = 0.0;
 
+  CameraController cameraCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    // Always choose a front camera
+    cameraCtrl = CameraController(
+        cameras[0],
+        //.where((c) => c.lensDirection == CameraLensDirection.front)
+        //.toList()[0],
+        ResolutionPreset.ultraHigh,
+        enableAudio: false);
+    cameraCtrl.initialize().then((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    cameraCtrl?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-        create: (BuildContext context) => FilterCubit(),
+    return MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (BuildContext context) => FilterCubit()),
+          BlocProvider(create: (BuildContext context) => CameraCubit())
+        ],
         child: Scaffold(
             body: Stack(children: [
           SnappingSheet(
             sheetAbove: SnappingSheetContent(
-                child: Stack(children: [
-              if (_view == ViewType.list) ListWidget(),
-              if (_view == ViewType.camera) CameraWidget(),
-              // Figma: Toggle buttons map/list view
-              //Positioned(right: 0.0, bottom: 0.0, child: TripleButton())
-            ])),
+                child: _view == ViewType.list
+                    ? ListWidget()
+                    : (_view == ViewType.camera &&
+                            cameraCtrl.value.isInitialized)
+                        ? SingleChildScrollView(
+                            child: AspectRatio(
+                                aspectRatio: cameraCtrl.value.aspectRatio,
+                                child: CameraPreview(cameraCtrl)))
+                        : Container()),
             onSnapEnd: () {
               setState(() {});
             },
@@ -912,13 +1095,13 @@ class _MainPageState extends State<MainPage> {
               });
             },
             snappingSheetController: _controller,
-            snapPositions: const [
+            snapPositions: [
               SnapPosition(
-                  positionPixel: 60.0,
+                  positionPixel: _view == ViewType.camera ? 0.0 : 60.0,
                   snappingCurve: Curves.elasticOut,
                   snappingDuration: Duration(milliseconds: 750)),
               SnapPosition(
-                positionPixel: 290.0,
+                positionPixel: _view == ViewType.camera ? 150.0 : 290.0,
               ),
               //SnapPosition(positionFactor: 0.4),
             ],
@@ -928,10 +1111,12 @@ class _MainPageState extends State<MainPage> {
             sheetBelow: SnappingSheetContent(
                 child: Container(
                     color: Colors.white,
-                    child: SearchPanel(collapsed: _snapPosition < 290.0))),
+                    child: _view == ViewType.camera
+                        ? CameraPanel(collapsed: _snapPosition < 150.0)
+                        : SearchPanel(collapsed: _snapPosition < 290.0))),
           ),
           Positioned(
-              bottom: _snapPosition - 35.0,
+              bottom: max(_snapPosition - 35.0, 10.0),
               right: 5.0,
               child: TripleButton(
                 selected: 0,
@@ -955,10 +1140,49 @@ class _MainPageState extends State<MainPage> {
                     });
                   }
                 ],
-                onPressedSelected: [() {}, () {}, () {}],
+                onPressedSelected: [
+                  () {},
+                  // onPressedSelected for CAMERA
+                  () {
+                    print('!!!DEBUG Selected button pressed for CAMERA');
+                    takePicture();
+                  },
+                  () {}
+                ],
                 icons: [Icons.location_pin, Icons.camera_alt, Icons.list_alt],
               ))
         ])));
+  }
+
+  String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
+
+  Future<void> takePicture() async {
+    if (!cameraCtrl.value.isInitialized) {
+      //TODO: do exceptional processing for not initialized camera
+      //showInSnackBar('Error: select a camera first.');
+      return;
+    }
+
+    if (cameraCtrl.value.isTakingPicture) {
+      // A capture is already pending, do nothing.
+      return null;
+    }
+
+    final Directory extDir = await getApplicationDocumentsDirectory();
+    final String dirPath = '${extDir.path}/Pictures/flutter_test';
+    await Directory(dirPath).create(recursive: true);
+    final String filePath = '$dirPath/${timestamp()}.jpg';
+
+    try {
+      await cameraCtrl.takePicture(filePath);
+    } on CameraException catch (e) {
+      //TODO: Do exception processing for the camera;
+      return null;
+    }
+
+    //TODO: Add processing for images
+
+    //TODO: Add animated transition of image to Map
   }
 }
 
@@ -1340,51 +1564,5 @@ class _DetailsPageState extends State<DetailsPage> {
         appBar: AppBar(backgroundColor: Colors.grey),
         body:
             SingleChildScrollView(child: BookCard(book: book, details: true)));
-  }
-}
-
-class CameraWidget extends StatefulWidget {
-  CameraWidget({Key key}) : super(key: key);
-
-  @override
-  _CameraWidgetState createState() => _CameraWidgetState();
-}
-
-class _CameraWidgetState extends State<CameraWidget> {
-  CameraController controller;
-
-  @override
-  void initState() {
-    super.initState();
-    // Always choose a front camera
-    controller = CameraController(
-        cameras
-            .where((c) => c.lensDirection == CameraLensDirection.front)
-            .toList()[0],
-        ResolutionPreset.ultraHigh,
-        enableAudio: false);
-    controller.initialize().then((_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    controller?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!controller.value.isInitialized) {
-      return Container();
-    }
-    return SingleChildScrollView(
-        child: AspectRatio(
-            aspectRatio: controller.value.aspectRatio,
-            child: CameraPreview(controller)));
   }
 }
