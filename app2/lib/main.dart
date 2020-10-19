@@ -22,6 +22,8 @@ import 'package:snapping_sheet/snapping_sheet.dart';
 import 'package:camera/camera.dart';
 // Files and directories to save images
 import 'package:path_provider/path_provider.dart';
+// Compare objects by content
+import 'package:equatable/equatable.dart';
 
 List<CameraDescription> cameras;
 
@@ -31,30 +33,100 @@ Future<void> main() async {
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
+  MyApp({Key key}) : super(key: key);
+
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-        // This makes the visual density adapt to the platform that you run
-        // the app on. For desktop platforms, the controls will be smaller and
-        // closer together (more dense) than on mobile platforms.
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: LoginPage(),
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          // This is the theme of your application.
+          //
+          // Try running your application with "flutter run". You'll see the
+          // application has a blue toolbar. Then, without quitting the app, try
+          // changing the primarySwatch below to Colors.green and then invoke
+          // "hot reload" (press "r" in the console where you ran "flutter run",
+          // or simply save your changes to "hot reload" in a Flutter IDE).
+          // Notice that the counter didn't reset back to zero; the application
+          // is not restarted.
+          primarySwatch: Colors.blue,
+          // This makes the visual density adapt to the platform that you run
+          // the app on. For desktop platforms, the controls will be smaller and
+          // closer together (more dense) than on mobile platforms.
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        home: MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (BuildContext context) => FilterCubit()),
+              BlocProvider(create: (BuildContext context) => CameraCubit()),
+              BlocProvider(create: (BuildContext context) => LoginCubit())
+            ],
+            child:
+                BlocBuilder<LoginCubit, LoginState>(builder: (context, login) {
+              if (login.status == LoginStatus.subscribed) {
+                return MainPage();
+              } else {
+                return LoginPage();
+              }
+            })));
+  }
+}
+// Three stages of login:
+// - Input phone: Firebase Login with phone (skip it if signed in already)
+// - Confirm code: It's part of phone login, skipped automatically on Android
+// - Subscription: Validate paid subscription on Google Play/App Store (skip if subscribed)
+// - Run application
+
+enum LoginStatus { unauthorized, phoneEntered, phoneConfirmed, subscribed }
+
+class LoginState extends Equatable {
+  final LoginStatus status;
+  final String phone;
+  final String code;
+
+  @override
+  List<Object> get props => [status, phone, code];
+
+  const LoginState(
+      {this.status = LoginStatus.unauthorized,
+      this.phone = '',
+      this.code = ''});
+
+  LoginState copyWith({
+    String phone,
+    String code,
+    LoginStatus status,
+  }) {
+    return LoginState(
+      status: status ?? this.status,
+      phone: phone ?? this.phone,
+      code: code ?? this.code,
     );
+  }
+}
+
+class LoginCubit extends Cubit<LoginState> {
+  LoginCubit() : super(LoginState());
+
+  void phoneEntered(String value) {
+    emit(state.copyWith(
+      phone: value,
+      status: LoginStatus.phoneEntered,
+    ));
+  }
+
+  void phoneConfirmed(String value) {
+    emit(state.copyWith(
+      code: value,
+      status: LoginStatus.subscribed,
+    ));
   }
 }
 
@@ -66,152 +138,205 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  bool _authorized = false;
-  bool _smsSent = false;
   bool _agreeToPP = false;
   bool _agreeToTS = false;
 
-  void sendSms() {
-    setState(() {
-      _smsSent = true;
-    });
-  }
-
-  void validateCode() {
-    //TODO: Go to main screen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => MainPage()),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        body: Container(
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: <
-          Widget>[
-        const Spacer(),
-        Expanded(flex: 1, child: Center(child: Text('BIBLIO'))),
-        // Input fields (Phone or Confirmation Code)
-        Expanded(
-            flex: 1,
-            child: Container(
-                margin: EdgeInsets.only(left: 40.0, right: 40.0),
-                child: Column(
-                  children: [
-                    // Figma: Country Code
-                    if (!_smsSent)
-                      Container(
-                          child: Row(children: [
-                        Text('Country code:'),
-                        CountryCodePicker(
-                          onChanged: (CountryCode countryCode) {
-                            //TODO : manipulate the selected country code here
-                            print("New Country selected: " +
-                                countryCode.toString());
+    return Scaffold(body: Container(
+      child: BlocBuilder<LoginCubit, LoginState>(builder: (context, login) {
+        if (login.status == LoginStatus.unauthorized) {
+          return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                const Spacer(),
+                Expanded(flex: 1, child: Center(child: Text('BIBLIO'))),
+                // Input fields (Phone or Confirmation Code)
+                Expanded(
+                    flex: 1,
+                    child: Container(
+                        margin: EdgeInsets.only(left: 40.0, right: 40.0),
+                        child: Column(
+                          children: [
+                            // Figma: Country Code
+                            Container(
+                                child: Row(children: [
+                              Text('Country code:'),
+                              CountryCodePicker(
+                                onChanged: (CountryCode countryCode) {
+                                  //TODO : manipulate the selected country code here
+                                  print("New Country selected: " +
+                                      countryCode.toString());
+                                },
+                                // Initial selection and favorite can be one of code ('IT') OR dial_code('+39')
+                                initialSelection: 'IT',
+                                favorite: ['+39', 'FR'],
+                                // optional. Shows only country name and flag
+                                showCountryOnly: false,
+                                // optional. Shows only country name and flag when popup is closed.
+                                showOnlyCountryWhenClosed: false,
+                                // optional. aligns the flag and the Text left
+                                alignLeft: false,
+                              ),
+                            ])),
+
+                            // Figma: Phone number
+                            Container(
+                                child: Row(children: [
+                              Text('Phone number:'),
+                              Expanded(
+                                  child: TextField(
+                                      keyboardType: TextInputType.phone))
+                            ])),
+                          ],
+                        ))),
+
+                // Button (Sign-In or Confirm)
+                Expanded(
+                  flex: 0,
+                  child:
+                      // Figma: Log In
+                      RaisedButton(
+                          onPressed: () {
+                            // TODO: Use actual phone number from text field
+                            context
+                                .bloc<LoginCubit>()
+                                .phoneEntered('67867885585857');
                           },
-                          // Initial selection and favorite can be one of code ('IT') OR dial_code('+39')
-                          initialSelection: 'IT',
-                          favorite: ['+39', 'FR'],
-                          // optional. Shows only country name and flag
-                          showCountryOnly: false,
-                          // optional. Shows only country name and flag when popup is closed.
-                          showOnlyCountryWhenClosed: false,
-                          // optional. aligns the flag and the Text left
-                          alignLeft: false,
-                        ),
-                      ])),
+                          child: Text('Login')),
+                ),
+                // Confirm PP & TS
+                Expanded(
+                    flex: 1,
+                    child: Container(
+                        margin: EdgeInsets.only(left: 20.0, right: 20.0),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Figma: Privacy Policy
+                              Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: <Widget>[
+                                    Checkbox(
+                                        value: _agreeToPP,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _agreeToPP = value;
+                                          });
+                                        }),
+                                    Text('Agree to Privacy Policy'),
+                                  ]),
 
-                    // Figma: Phone number
-                    if (!_smsSent)
-                      Container(
-                          child: Row(children: [
-                        Text('Phone number:'),
-                        Expanded(
-                            child: TextField(keyboardType: TextInputType.phone))
-                      ])),
+                              // Figma: Terms of service
+                              Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: <Widget>[
+                                    Checkbox(
+                                        value: _agreeToTS,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _agreeToTS = value;
+                                          });
+                                        }),
+                                    Text('Agree to Privacy Policy'),
+                                  ]),
+                            ]))),
+                const Spacer()
+              ]);
+        }
+        if (login.status == LoginStatus.phoneEntered) {
+          return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                const Spacer(),
+                Expanded(flex: 1, child: Center(child: Text('BIBLIO'))),
+                // Input fields (Phone or Confirmation Code)
+                Expanded(
+                    flex: 1,
+                    child: Container(
+                        margin: EdgeInsets.only(left: 40.0, right: 40.0),
+                        child: Column(
+                          children: [
+                            // Figma: Country Code
+                            Container(
+                                alignment: Alignment.centerRight,
+                                child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text('Resend in 20 sec'),
+                                    ])),
 
-                    // Figma: Confirmation code
-                    if (_smsSent)
-                      Container(
-                          alignment: Alignment.centerRight,
-                          child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text('Resend in 20 sec'),
-                              ])),
+                            // Figma: Confirmation code
+                            Container(
+                                child: Row(children: [
+                              Text('Code from SMS:'),
+                              Expanded(
+                                  child: TextField(
+                                      keyboardType: TextInputType.number))
+                            ])),
+                          ],
+                        ))),
 
-                    // Figma: Confirmation code
-                    if (_smsSent)
-                      Container(
-                          child: Row(children: [
-                        Text('Code from SMS:'),
-                        Expanded(
-                            child:
-                                TextField(keyboardType: TextInputType.number))
-                      ])),
-                  ],
-                ))),
+                // Button (Sign-In or Confirm)
+                Expanded(
+                  flex: 0,
+                  child: RaisedButton(
+                      onPressed: () {
+                        // TODO: Use actual code from text field or AUTO for Android
+                        context.bloc<LoginCubit>().phoneConfirmed('555');
+                      },
+                      child: Text('Confirm code')),
+                ),
+                const Spacer()
+              ]);
+        } else {
+          // (login.status == LoginStatus.phoneConfirmed) {
+          return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                const Spacer(),
+                Expanded(flex: 1, child: Center(child: Text('BIBLIO'))),
+                // Input fields (Phone or Confirmation Code)
+                Expanded(
+                    flex: 1,
+                    child: Container(
+                        margin: EdgeInsets.only(left: 40.0, right: 40.0),
+                        child: Column(
+                          children: [
+                            // Figma: Country Code
+                            Container(
+                                alignment: Alignment.centerRight,
+                                child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text('Resend in 20 sec'),
+                                    ])),
 
-        // Button (Sign-In or Confirm)
-        Expanded(
-            flex: 0,
-            child: Column(children: [
-              // Figma: Log In
-              if (!_smsSent)
-                RaisedButton(
-                    onPressed: () {
-                      sendSms();
-                    },
-                    child: Text('Login')),
-              if (_smsSent)
-                RaisedButton(
-                    onPressed: () {
-                      validateCode();
-                    },
-                    child: Text('Confirm code')),
-            ])),
-        // Confirm PP & TS
-        Expanded(
-            flex: 1,
-            child: Container(
-                margin: EdgeInsets.only(left: 20.0, right: 20.0),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Figma: Privacy Policy
-                      if (!_smsSent)
-                        Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: <Widget>[
-                              Checkbox(
-                                  value: _agreeToPP,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _agreeToPP = value;
-                                    });
-                                  }),
-                              Text('Agree to Privacy Policy'),
-                            ]),
+                            // Figma: Confirmation code
+                            Container(
+                                child: Row(children: [
+                              Text('Code from SMS:'),
+                              Expanded(
+                                  child: TextField(
+                                      keyboardType: TextInputType.number))
+                            ])),
+                          ],
+                        ))),
 
-                      // Figma: Terms of service
-                      if (!_smsSent)
-                        Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: <Widget>[
-                              Checkbox(
-                                  value: _agreeToTS,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _agreeToTS = value;
-                                    });
-                                  }),
-                              Text('Agree to Privacy Policy'),
-                            ]),
-                    ]))),
-        const Spacer()
-      ]),
+                // Button (Sign-In or Confirm)
+                Expanded(
+                  flex: 0,
+                  child: RaisedButton(
+                      onPressed: () {
+                        // TODO: Use actual code from text field or AUTO for Android
+                        context.bloc<LoginCubit>().phoneConfirmed('555');
+                      },
+                      child: Text('Confirm code')),
+                ),
+                const Spacer()
+              ]);
+        }
+      }),
     ));
   }
 }
@@ -1068,90 +1193,84 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-        providers: [
-          BlocProvider(create: (BuildContext context) => FilterCubit()),
-          BlocProvider(create: (BuildContext context) => CameraCubit())
-        ],
-        child: Scaffold(
-            body: Stack(children: [
-          SnappingSheet(
-            sheetAbove: SnappingSheetContent(
-                child: _view == ViewType.list
-                    ? ListWidget()
-                    : (_view == ViewType.camera &&
-                            cameraCtrl.value.isInitialized)
-                        ? SingleChildScrollView(
-                            child: AspectRatio(
-                                aspectRatio: cameraCtrl.value.aspectRatio,
-                                child: CameraPreview(cameraCtrl)))
-                        : Container()),
-            onSnapEnd: () {
-              setState(() {});
-            },
-            onMove: (moveAmount) {
-              setState(() {
-                _snapPosition = moveAmount;
-              });
-            },
-            snappingSheetController: _controller,
-            snapPositions: [
-              SnapPosition(
-                  positionPixel: _view == ViewType.camera ? 0.0 : 60.0,
-                  snappingCurve: Curves.elasticOut,
-                  snappingDuration: Duration(milliseconds: 750)),
-              SnapPosition(
-                positionPixel: _view == ViewType.camera ? 150.0 : 290.0,
-              ),
-              //SnapPosition(positionFactor: 0.4),
-            ],
-            child: MapWidget(),
-            grabbingHeight: MediaQuery.of(context).padding.bottom + 40,
-            grabbing: GrabSection(), //Container(color: Colors.grey),
-            sheetBelow: SnappingSheetContent(
-                child: Container(
-                    color: Colors.white,
-                    child: _view == ViewType.camera
-                        ? CameraPanel(collapsed: _snapPosition < 150.0)
-                        : SearchPanel(collapsed: _snapPosition < 290.0))),
+    return Scaffold(
+        body: Stack(children: [
+      SnappingSheet(
+        sheetAbove: SnappingSheetContent(
+            child: _view == ViewType.list
+                ? ListWidget()
+                : (_view == ViewType.camera && cameraCtrl.value.isInitialized)
+                    ? SingleChildScrollView(
+                        child: AspectRatio(
+                            aspectRatio: cameraCtrl.value.aspectRatio,
+                            child: CameraPreview(cameraCtrl)))
+                    : Container()),
+        onSnapEnd: () {
+          setState(() {});
+        },
+        onMove: (moveAmount) {
+          setState(() {
+            _snapPosition = moveAmount;
+          });
+        },
+        snappingSheetController: _controller,
+        snapPositions: [
+          SnapPosition(
+              positionPixel: _view == ViewType.camera ? 0.0 : 60.0,
+              snappingCurve: Curves.elasticOut,
+              snappingDuration: Duration(milliseconds: 750)),
+          SnapPosition(
+            positionPixel: _view == ViewType.camera ? 150.0 : 290.0,
           ),
-          Positioned(
-              bottom: max(_snapPosition - 35.0, 10.0),
-              right: 5.0,
-              child: TripleButton(
-                selected: 0,
-                onPressed: [
-                  //onPressed for MAP
-                  () {
-                    setState(() {
-                      _view = ViewType.map;
-                    });
-                  },
-                  //onPressed for CAMERA
-                  () {
-                    setState(() {
-                      _view = ViewType.camera;
-                    });
-                  },
-                  //onPressed for LIST
-                  () {
-                    setState(() {
-                      _view = ViewType.list;
-                    });
-                  }
-                ],
-                onPressedSelected: [
-                  () {},
-                  // onPressedSelected for CAMERA
-                  () {
-                    print('!!!DEBUG Selected button pressed for CAMERA');
-                    takePicture();
-                  },
-                  () {}
-                ],
-                icons: [Icons.location_pin, Icons.camera_alt, Icons.list_alt],
-              ))
-        ])));
+          //SnapPosition(positionFactor: 0.4),
+        ],
+        child: MapWidget(),
+        grabbingHeight: MediaQuery.of(context).padding.bottom + 40,
+        grabbing: GrabSection(), //Container(color: Colors.grey),
+        sheetBelow: SnappingSheetContent(
+            child: Container(
+                color: Colors.white,
+                child: _view == ViewType.camera
+                    ? CameraPanel(collapsed: _snapPosition < 150.0)
+                    : SearchPanel(collapsed: _snapPosition < 290.0))),
+      ),
+      Positioned(
+          bottom: max(_snapPosition - 35.0, 10.0),
+          right: 5.0,
+          child: TripleButton(
+            selected: 0,
+            onPressed: [
+              //onPressed for MAP
+              () {
+                setState(() {
+                  _view = ViewType.map;
+                });
+              },
+              //onPressed for CAMERA
+              () {
+                setState(() {
+                  _view = ViewType.camera;
+                });
+              },
+              //onPressed for LIST
+              () {
+                setState(() {
+                  _view = ViewType.list;
+                });
+              }
+            ],
+            onPressedSelected: [
+              () {},
+              // onPressedSelected for CAMERA
+              () {
+                print('!!!DEBUG Selected button pressed for CAMERA');
+                takePicture();
+              },
+              () {}
+            ],
+            icons: [Icons.location_pin, Icons.camera_alt, Icons.list_alt],
+          ))
+    ]));
   }
 
   String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();

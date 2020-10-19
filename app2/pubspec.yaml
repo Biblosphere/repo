@@ -53,6 +53,9 @@ dependencies:
   # Camera plugin
   camera: ^0.5.8+9
 
+  # Plugin to compare objects by content
+  equatable: ^1.2.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
