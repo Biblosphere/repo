@@ -103,7 +103,7 @@ class LoginState extends Equatable {
       {this.status = LoginStatus.unauthorized,
       this.phone = '',
       this.code = '',
-      this.plan = SubscriptionPlan.anual});
+      this.plan = SubscriptionPlan.monthly});
 
   LoginState copyWith({
     String phone,
@@ -408,23 +408,13 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget productDescription(SubscriptionPlan plan) {
-    switch (plan) {
-      case SubscriptionPlan.anual:
-        return Text('Enjoy annual plan! Save \$12',
-            style: Theme.of(context).textTheme.subtitle2);
-        break;
-      case SubscriptionPlan.monthly:
-        return Text('Enjoy monfly plan!',
-            style: Theme.of(context).textTheme.subtitle2);
-        break;
-      case SubscriptionPlan.anual:
-        return Text(
-            'Improve online presence of your bookstore with business plan.',
-            style: Theme.of(context).textTheme.subtitle2);
-        break;
-      default:
-        return Container();
-    }
+    if (plan != null)
+      return Container(
+          margin: EdgeInsets.only(top: 10.0),
+          child: Text(plans[plan]['info'],
+              style: Theme.of(context).textTheme.subtitle2));
+    else
+      return Container();
   }
 
   // TODO: Get real data of packages from purchases plugin
@@ -432,18 +422,21 @@ class _LoginPageState extends State<LoginPage> {
   Map<SubscriptionPlan, dynamic> plans = {
     SubscriptionPlan.monthly: {
       'title': 'Monthly',
+      'info': 'Enjoy annual plan! Save \$12',
       'monthly': '\$2.00',
       'price': '\$2.00',
       'period': 'per month'
     },
     SubscriptionPlan.anual: {
       'title': 'Annual',
+      'info': 'Enjoy monfly plan!',
       'monthly': '\$1.00',
       'price': '\$12.00',
       'period': 'per year'
     },
     SubscriptionPlan.business: {
       'title': 'Business',
+      'info': 'Improve online presence of your bookstore with business plan.',
       'monthly': '\$50.00',
       'price': '\$50.00',
       'period': 'per month'
