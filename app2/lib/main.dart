@@ -1431,18 +1431,30 @@ class _MainPageState extends State<MainPage> {
             onPressed: [
               //onPressed for MAP
               () {
+                // TODO: remember a position and restore it
+                _controller.snapToPosition(SnapPosition(
+                  positionPixel: 60.0,
+                ));
                 setState(() {
                   _view = ViewType.map;
                 });
               },
               //onPressed for CAMERA
               () {
+                // TODO: Make it 0.0 position if place is already confirmed
+                _controller.snapToPosition(SnapPosition(
+                  positionPixel: 150.0,
+                ));
                 setState(() {
                   _view = ViewType.camera;
                 });
               },
               //onPressed for LIST
               () {
+                // TODO: remember a position and restore it
+                _controller.snapToPosition(SnapPosition(
+                  positionPixel: 60.0,
+                ));
                 setState(() {
                   _view = ViewType.list;
                 });
