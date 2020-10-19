@@ -56,6 +56,9 @@ dependencies:
   # Plugin to compare objects by content
   equatable: ^1.2.5
 
+  # Revenue cat in-app purchases
+  purchases_flutter: ^1.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
