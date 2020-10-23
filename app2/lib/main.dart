@@ -27,10 +27,12 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:equatable/equatable.dart';
 
 part 'login.dart';
+part 'login_bloc.dart';
 part 'camera.dart';
 part 'books.dart';
 part 'map.dart';
 part 'filter.dart';
+part 'filter_bloc.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -238,8 +240,6 @@ class MainPage extends StatefulWidget {
   @override
   _MainPageState createState() => _MainPageState();
 }
-
-enum ViewType { map, list, camera }
 
 class _MainPageState extends State<MainPage> {
   ViewType _view = ViewType.map;

@@ -53,19 +53,16 @@ class _TitleChipsState extends State<TitleChipsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
+    return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: [
-          filters.wishFilter,
-          ...filters.filters[FilterType.title]
-        ],
+        initialValue: filters.filters[FilterType.title],
         decoration: InputDecoration(labelText: "Title / Author"),
         maxChips: 5,
         findSuggestions: findTitleSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().setFilter(FilterType.title, data);
+          context.bloc<FilterCubit>().changeFilters(FilterType.title, data);
         },
-        chipBuilder: Filter.chipBuilder,
+        chipBuilder: chipBuilder,
         suggestionBuilder: titleSugestionBuilder,
       );
     });
@@ -123,7 +120,7 @@ class _GenreChipsState extends State<GenreChipsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
+    return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return ChipsInput(
         initialValue: filters.filters[FilterType.genre],
         decoration: InputDecoration(
@@ -132,9 +129,9 @@ class _GenreChipsState extends State<GenreChipsWidget> {
         maxChips: 5,
         findSuggestions: findGenreSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().setFilter(FilterType.genre, data);
+          context.bloc<FilterCubit>().changeFilters(FilterType.genre, data);
         },
-        chipBuilder: Filter.chipBuilder,
+        chipBuilder: chipBuilder,
         suggestionBuilder: genreSugestionBuilder,
       );
     });
@@ -192,21 +189,18 @@ class _PlaceChipsState extends State<PlaceChipsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
+    return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: [
-          filters.contactFilter,
-          ...filters.filters[FilterType.place]
-        ],
+        initialValue: filters.filters[FilterType.place],
         decoration: InputDecoration(
           labelText: "Place / Contact",
         ),
         maxChips: 5,
         findSuggestions: findPlaceSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().setFilter(FilterType.place, data);
+          context.bloc<FilterCubit>().changeFilters(FilterType.place, data);
         },
-        chipBuilder: Filter.chipBuilder,
+        chipBuilder: chipBuilder,
         suggestionBuilder: placeSugestionBuilder,
       );
     });
@@ -258,7 +252,7 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
+    return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return ChipsInput(
         initialValue: filters.filters[FilterType.language],
         decoration: InputDecoration(
@@ -267,13 +261,46 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
         maxChips: 5,
         findSuggestions: findLanguageSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().setFilter(FilterType.language, data);
+          context.bloc<FilterCubit>().changeFilters(FilterType.language, data);
         },
-        chipBuilder: Filter.chipBuilder,
+        chipBuilder: chipBuilder,
         suggestionBuilder: languageSugestionBuilder,
       );
     });
   }
+}
+
+Widget chipBuilder(
+    BuildContext context, ChipsInputState<Filter> state, Filter filter) {
+  Widget label;
+
+  if (filter.type == FilterType.wish)
+    label = Icon(Icons.favorite);
+  else if (filter.type == FilterType.contacts)
+    label = Icon(Icons.contact_phone);
+  else
+    label = Text(filter.value);
+
+  return InputChip(
+    key: ObjectKey(filter),
+    //avatar: avatar,
+    selected: filter.selected,
+    label: label,
+    // TODO: Put book icon here
+    // avatar: CircleAvatar(),
+    onDeleted:
+        filter.type == FilterType.contacts || filter.type == FilterType.wish
+            ? null
+            : () {
+                state.deleteChip(filter);
+              },
+    onPressed: () {
+      state.setState(() {
+        context.bloc<FilterCubit>().toggleFilter(filter.type, filter);
+      });
+    },
+    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+  );
 }
 
 class SearchPanel extends StatefulWidget {
@@ -301,7 +328,7 @@ class _SearchPanelState extends State<SearchPanel> {
   @override
   Widget build(BuildContext context) {
     if (collapsed) {
-      return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
+      return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
         return Container(
             margin: EdgeInsets.all(10.0),
             color: Colors.white,
@@ -321,9 +348,7 @@ class _SearchPanelState extends State<SearchPanel> {
                     // TODO: Put book icon here
                     // avatar: CircleAvatar(),
                     onDeleted: () {
-                      context
-                          .bloc<FilterCubit>()
-                          .unselectFilter(f.type, f.value);
+                      context.bloc<FilterCubit>().toggleFilter(f.type, f);
                       setState(() {});
                     },
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -331,7 +356,7 @@ class _SearchPanelState extends State<SearchPanel> {
                 }).toList()));
       });
     } else {
-      return BlocBuilder<FilterCubit, FilterSet>(builder: (context, filters) {
+      return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
         return Column(children: [
           TitleChipsWidget(),
           GenreChipsWidget(),

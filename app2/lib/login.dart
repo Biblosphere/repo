@@ -1,70 +1,5 @@
 part of 'main.dart';
 
-// Three stages of login:
-// - Input phone: Firebase Login with phone (skip it if signed in already)
-// - Confirm code: It's part of phone login, skipped automatically on Android
-// - Subscription: Validate paid subscription on Google Play/App Store (skip if subscribed)
-// - Run application
-
-enum LoginStatus { unauthorized, phoneEntered, phoneConfirmed, subscribed }
-
-enum SubscriptionPlan { monthly, anual, business }
-
-class LoginState extends Equatable {
-  final LoginStatus status;
-  final String phone;
-  final String code;
-  final SubscriptionPlan plan;
-
-  @override
-  List<Object> get props => [status, phone, code, plan];
-
-  const LoginState(
-      {this.status = LoginStatus.unauthorized,
-      this.phone = '',
-      this.code = '',
-      this.plan = SubscriptionPlan.monthly});
-
-  LoginState copyWith({
-    String phone,
-    String code,
-    LoginStatus status,
-    SubscriptionPlan plan,
-  }) {
-    return LoginState(
-        status: status ?? this.status,
-        phone: phone ?? this.phone,
-        code: code ?? this.code,
-        plan: plan ?? this.plan);
-  }
-}
-
-class LoginCubit extends Cubit<LoginState> {
-  LoginCubit() : super(LoginState());
-
-  void phoneEntered(String value) {
-    emit(state.copyWith(
-      phone: value,
-      status: LoginStatus.phoneEntered,
-    ));
-  }
-
-  void phoneConfirmed(String value) {
-    emit(state.copyWith(code: value, status: LoginStatus.phoneConfirmed));
-  }
-
-  void planSelected(SubscriptionPlan value) {
-    emit(state.copyWith(plan: value));
-  }
-
-  void phoneSubscribed(String value) {
-    emit(state.copyWith(
-      code: value,
-      status: LoginStatus.subscribed,
-    ));
-  }
-}
-
 class LoginPage extends StatefulWidget {
   LoginPage({Key key}) : super(key: key);
 
@@ -218,7 +153,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: RaisedButton(
                       onPressed: () {
                         // TODO: Use actual code from text field or AUTO for Android
-                        context.bloc<LoginCubit>().phoneConfirmed('555');
+                        context.bloc<LoginCubit>().confirmPressed();
                       },
                       child: Text('Confirm code')),
                 ),
@@ -241,7 +176,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: RaisedButton(
                       onPressed: () {
                         // TODO: Use actual code from text field or AUTO for Android
-                        context.bloc<LoginCubit>().phoneSubscribed('1');
+                        context.bloc<LoginCubit>().subscribePressed();
                       },
                       child: Text('Subscribe')),
                 ),
