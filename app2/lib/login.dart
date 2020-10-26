@@ -13,214 +13,322 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Container(
-      child: BlocBuilder<LoginCubit, LoginState>(builder: (context, login) {
-        if (login.status == LoginStatus.unauthorized) {
-          return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const Spacer(),
-                Expanded(flex: 1, child: Center(child: Text('BIBLIO'))),
-                // Input fields (Phone or Confirmation Code)
-                Expanded(
-                    flex: 4,
-                    child: Container(
-                        margin: EdgeInsets.only(left: 40.0, right: 40.0),
-                        child: Column(
-                          children: [
-                            // Figma: Country Code
-                            Container(
-                                child: Row(children: [
-                              Text('Country code:'),
-                              CountryCodePicker(
-                                onChanged: (CountryCode countryCode) {
-                                  //TODO : manipulate the selected country code here
-                                  print("New Country selected: " +
-                                      countryCode.toString());
-                                },
-                                // Initial selection and favorite can be one of code ('IT') OR dial_code('+39')
-                                initialSelection: 'IT',
-                                favorite: ['+39', 'FR'],
-                                // optional. Shows only country name and flag
-                                showCountryOnly: false,
-                                // optional. Shows only country name and flag when popup is closed.
-                                showOnlyCountryWhenClosed: false,
-                                // optional. aligns the flag and the Text left
-                                alignLeft: false,
+    return Scaffold(
+        backgroundColor: Color(0xfff5f4f3),
+        body: Container(
+          child: BlocBuilder<LoginCubit, LoginState>(builder: (context, login) {
+            if (login.status == LoginStatus.unauthorized) {
+              return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    SizedBox(height: MediaQuery.of(context).size.height * .2),
+                    Center(child: Text('BIBLIO')),
+                    // Input fields (Phone or Confirmation Code)
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * .2,
+                    ),
+                    Expanded(
+                        flex: 4,
+                        child: Container(
+                            margin: EdgeInsets.only(left: 40.0, right: 40.0),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  // Figma: Country Code
+                                  Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        border: Border.all(
+                                            color: Colors
+                                                .transparent, // set border color
+                                            width: 1.0), // set border width
+                                        borderRadius: BorderRadius.only(
+                                          topRight: Radius.circular(30.0),
+                                          topLeft: Radius.circular(30.0),
+                                        ), // set rounded corner radius
+                                        // make rounded corner of border
+                                      ),
+                                      child: Row(children: [
+                                        Text(
+                                          'Country code:',
+                                          style: TextStyle(
+                                              color: Color(0xffb1adb4)),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              30, 0, 0, 0),
+                                          child: CountryCodePicker(
+                                            onChanged:
+                                                (CountryCode countryCode) {
+                                              //TODO : manipulate the selected country code here
+                                              print("New Country selected: " +
+                                                  countryCode.toString());
+                                            },
+                                            // Initial selection and favorite can be one of code ('IT') OR dial_code('+39')
+                                            initialSelection: 'IT',
+                                            favorite: ['+39', 'FR'],
+                                            // optional. Shows only country name and flag
+                                            showCountryOnly: false,
+                                            // optional. Shows only country name and flag when popup is closed.
+                                            showOnlyCountryWhenClosed: false,
+                                            // optional. aligns the flag and the Text left
+                                            alignLeft: false,
+                                          ),
+                                        ),
+                                      ])),
+
+                                  // Figma: Phone number
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(0, 5, 0, 30),
+                                    child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                              color: Colors
+                                                  .transparent, // set border color
+                                              width: 1.0), // set border width
+                                          borderRadius: BorderRadius.only(
+                                            bottomRight: Radius.circular(30.0),
+                                            bottomLeft: Radius.circular(30.0),
+                                          ), // set rounded corner radius
+                                          // make rounded corner of border
+                                        ),
+                                        child: Row(children: [
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                8, 0, 0, 0),
+                                            child: Text(
+                                              'Phone number:',
+                                              style: TextStyle(
+                                                  color: Color(0xffb1adb4)),
+                                            ),
+                                          ),
+                                          Expanded(
+                                              child: TextField(
+                                                  decoration: InputDecoration(
+                                                      border: InputBorder.none),
+                                                  keyboardType:
+                                                      TextInputType.phone))
+                                        ])),
+                                  ),
+                                  // Button (Sign-In or Confirm)
+                                  ButtonTheme(
+                                    minWidth: 300,
+                                    height: 40,
+                                    child: RaisedButton(
+                                        textColor: Colors.white,
+                                        color: Color(0xff598a99),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(50.0),
+                                            side: BorderSide(
+                                                color: Colors.transparent)),
+                                        onPressed: () {
+                                          // TODO: Use actual phone number from text field
+                                          context
+                                              .bloc<LoginCubit>()
+                                              .phoneEntered('67867885585857');
+                                        },
+                                        child: Text('Login')),
+                                  ),
+                                  // Confirm PP & TS
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(50, 0, 0, 0),
+                                    child: Container(
+                                        margin: EdgeInsets.only(
+                                            left: 20.0, right: 20.0),
+                                        child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              // Figma: Privacy Policy
+                                              Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.start,
+                                                  children: <Widget>[
+                                                    Checkbox(
+                                                        value: _agreeToPP,
+                                                        onChanged: (value) {
+                                                          setState(() {
+                                                            _agreeToPP = value;
+                                                          });
+                                                        }),
+                                                    Text(
+                                                        'Agree to Privacy Policy'),
+                                                  ]),
+
+                                              // Figma: Terms of service
+                                              Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.start,
+                                                  children: <Widget>[
+                                                    Checkbox(
+                                                        value: _agreeToTS,
+                                                        onChanged: (value) {
+                                                          setState(() {
+                                                            _agreeToTS = value;
+                                                          });
+                                                        }),
+                                                    Text(
+                                                        'Agree to Privacy Policy'),
+                                                  ]),
+                                            ])),
+                                  ),
+                                ],
                               ),
-                            ])),
+                            ))),
+                  ]);
+            }
+            if (login.status == LoginStatus.phoneEntered) {
+              return SingleChildScrollView(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      SizedBox(height: MediaQuery.of(context).size.height * .2),
 
-                            // Figma: Phone number
-                            Container(
-                                child: Row(children: [
-                              Text('Phone number:'),
-                              Expanded(
-                                  child: TextField(
-                                      keyboardType: TextInputType.phone))
-                            ])),
-                          ],
-                        ))),
+                      Center(child: Text('BIBLIO')),
+                      SizedBox(height: MediaQuery.of(context).size.height * .2),
 
-                // Button (Sign-In or Confirm)
-                Expanded(
-                  flex: 1,
-                  child:
-                      // Figma: Log In
-                      RaisedButton(
-                          onPressed: () {
-                            // TODO: Use actual phone number from text field
-                            context
-                                .bloc<LoginCubit>()
-                                .phoneEntered('67867885585857');
-                          },
-                          child: Text('Login')),
-                ),
-                // Confirm PP & TS
-                Expanded(
-                    flex: 2,
-                    child: Container(
-                        margin: EdgeInsets.only(left: 20.0, right: 20.0),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      // Input fields (Phone or Confirmation Code)
+                      Container(
+                          margin: EdgeInsets.only(left: 40.0, right: 40.0),
+                          child: Column(
                             children: [
-                              // Figma: Privacy Policy
-                              Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: <Widget>[
-                                    Checkbox(
-                                        value: _agreeToPP,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _agreeToPP = value;
-                                          });
-                                        }),
-                                    Text('Agree to Privacy Policy'),
-                                  ]),
+                              // Figma: Country Code
+                              Container(
+                                  alignment: Alignment.centerRight,
+                                  child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Text('Resend in 20 sec'),
+                                      ])),
 
-                              // Figma: Terms of service
-                              Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: <Widget>[
-                                    Checkbox(
-                                        value: _agreeToTS,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _agreeToTS = value;
-                                          });
-                                        }),
-                                    Text('Agree to Privacy Policy'),
-                                  ]),
-                            ]))),
-                const Spacer()
-              ]);
-        }
-        if (login.status == LoginStatus.phoneEntered) {
-          return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const Spacer(),
-                Expanded(flex: 1, child: Center(child: Text('BIBLIO'))),
-                // Input fields (Phone or Confirmation Code)
-                Expanded(
-                    flex: 4,
-                    child: Container(
-                        margin: EdgeInsets.only(left: 40.0, right: 40.0),
-                        child: Column(
-                          children: [
-                            // Figma: Country Code
-                            Container(
-                                alignment: Alignment.centerRight,
-                                child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Text('Resend in 20 sec'),
+                              // Figma: Confirmation code
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(0, 20, 0, 30),
+                                child: Container(
+                                    width: 280,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(
+                                          color: Colors
+                                              .transparent, // set border color
+                                          width: 1.0), // set border width
+                                      borderRadius: BorderRadius.all(
+                                        Radius.circular(30.0),
+                                      ), // set rounded corner radius
+                                      // make rounded corner of border
+                                    ),
+                                    child: Row(children: [
+                                      Text(
+                                        'Code from SMS:',
+                                        style:
+                                            TextStyle(color: Color(0xffb1adb4)),
+                                      ),
+                                      Expanded(
+                                          child: TextField(
+                                              decoration: InputDecoration(
+                                                  border: InputBorder.none),
+                                              keyboardType:
+                                                  TextInputType.number))
                                     ])),
+                              ),
+                              Container(
+                                height: 40,
+                                child: RaisedButton(
+                                  textColor: Colors.white,
+                                  color: Color(0xff598a99),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(50.0),
+                                      side: BorderSide(
+                                          color: Colors.transparent)),
+                                  onPressed: () {
+                                    // TODO: Use actual code from text field or AUTO for Android
+                                    context.bloc<LoginCubit>().confirmPressed();
+                                  },
+                                  child: Text('Confirm code'),
+                                ),
+                              ),
+                            ],
+                          )),
 
-                            // Figma: Confirmation code
-                            Container(
-                                child: Row(children: [
-                              Text('Code from SMS:'),
-                              Expanded(
-                                  child: TextField(
-                                      keyboardType: TextInputType.number))
-                            ])),
-                          ],
-                        ))),
+                      // Button (Sign-In or Confirm)
+                    ]),
+              );
+            } else {
+              // (login.status == LoginStatus.phoneConfirmed) {
+              return Padding(
+                padding: const EdgeInsets.all(30.0),
+                child: SingleChildScrollView(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        SizedBox(
+                            height: MediaQuery.of(context).size.height * .2),
 
-                // Button (Sign-In or Confirm)
-                Expanded(
-                  flex: 1,
-                  child: RaisedButton(
-                      onPressed: () {
-                        // TODO: Use actual code from text field or AUTO for Android
-                        context.bloc<LoginCubit>().confirmPressed();
-                      },
-                      child: Text('Confirm code')),
+                        Center(child: Text('BIBLIO')),
+                        // Input fields (Phone or Confirmation Code)
+                        SizedBox(
+                            height: MediaQuery.of(context).size.height * .05),
+                        upgradeWidget(),
+
+                        // Button (Sign-In or Confirm)
+                        RaisedButton(
+                            textColor: Colors.white,
+                            color: Color(0xff598a99),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(50.0),
+                                side: BorderSide(color: Colors.transparent)),
+                            onPressed: () {
+                              // TODO: Use actual code from text field or AUTO for Android
+                              context.bloc<LoginCubit>().subscribePressed();
+                            },
+                            child: Text('Subscribe')),
+                        // Confirm PP & TS
+                        Container(
+                            margin: EdgeInsets.only(left: 20.0, right: 20.0),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Figma: Privacy Policy
+                                  Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: <Widget>[
+                                        Checkbox(
+                                            value: _agreeToPP,
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _agreeToPP = value;
+                                              });
+                                            }),
+                                        Text('Agree to Privacy Policy'),
+                                      ]),
+
+                                  // Figma: Terms of service
+                                  Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: <Widget>[
+                                        Checkbox(
+                                            value: _agreeToTS,
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _agreeToTS = value;
+                                              });
+                                            }),
+                                        Text('Agree to Privacy Policy'),
+                                      ]),
+                                ])),
+                      ]),
                 ),
-                Expanded(flex: 2, child: Container()),
-                const Spacer()
-              ]);
-        } else {
-          // (login.status == LoginStatus.phoneConfirmed) {
-          return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const Spacer(),
-                Expanded(flex: 1, child: Center(child: Text('BIBLIO'))),
-                // Input fields (Phone or Confirmation Code)
-                Expanded(flex: 4, child: upgradeWidget()),
-
-                // Button (Sign-In or Confirm)
-                Expanded(
-                  flex: 1,
-                  child: RaisedButton(
-                      onPressed: () {
-                        // TODO: Use actual code from text field or AUTO for Android
-                        context.bloc<LoginCubit>().subscribePressed();
-                      },
-                      child: Text('Subscribe')),
-                ),
-                // Confirm PP & TS
-                Expanded(
-                    flex: 2,
-                    child: Container(
-                        margin: EdgeInsets.only(left: 20.0, right: 20.0),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Figma: Privacy Policy
-                              Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: <Widget>[
-                                    Checkbox(
-                                        value: _agreeToPP,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _agreeToPP = value;
-                                          });
-                                        }),
-                                    Text('Agree to Privacy Policy'),
-                                  ]),
-
-                              // Figma: Terms of service
-                              Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: <Widget>[
-                                    Checkbox(
-                                        value: _agreeToTS,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _agreeToTS = value;
-                                          });
-                                        }),
-                                    Text('Agree to Privacy Policy'),
-                                  ]),
-                            ]))),
-                const Spacer()
-              ]);
-        }
-      }),
-    ));
+              );
+            }
+          }),
+        ));
   }
 
   Widget upgradeWidget() {
