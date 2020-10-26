@@ -260,28 +260,35 @@ class _LoginPageState extends State<LoginPage> {
               );
             } else {
               // (login.status == LoginStatus.phoneConfirmed) {
-              return Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    const Spacer(),
-                    Expanded(flex: 1, child: Center(child: Text('BIBLIO'))),
-                    // Input fields (Phone or Confirmation Code)
-                    Expanded(flex: 4, child: upgradeWidget()),
+              return Padding(
+                padding: const EdgeInsets.all(30.0),
+                child: SingleChildScrollView(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        SizedBox(
+                            height: MediaQuery.of(context).size.height * .2),
 
-                    // Button (Sign-In or Confirm)
-                    Expanded(
-                      flex: 1,
-                      child: RaisedButton(
-                          onPressed: () {
-                            // TODO: Use actual code from text field or AUTO for Android
-                            context.bloc<LoginCubit>().subscribePressed();
-                          },
-                          child: Text('Subscribe')),
-                    ),
-                    // Confirm PP & TS
-                    Expanded(
-                        flex: 2,
-                        child: Container(
+                        Center(child: Text('BIBLIO')),
+                        // Input fields (Phone or Confirmation Code)
+                        SizedBox(
+                            height: MediaQuery.of(context).size.height * .05),
+                        upgradeWidget(),
+
+                        // Button (Sign-In or Confirm)
+                        RaisedButton(
+                            textColor: Colors.white,
+                            color: Color(0xff598a99),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(50.0),
+                                side: BorderSide(color: Colors.transparent)),
+                            onPressed: () {
+                              // TODO: Use actual code from text field or AUTO for Android
+                              context.bloc<LoginCubit>().subscribePressed();
+                            },
+                            child: Text('Subscribe')),
+                        // Confirm PP & TS
+                        Container(
                             margin: EdgeInsets.only(left: 20.0, right: 20.0),
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,9 +322,10 @@ class _LoginPageState extends State<LoginPage> {
                                             }),
                                         Text('Agree to Privacy Policy'),
                                       ]),
-                                ]))),
-                    const Spacer()
-                  ]);
+                                ])),
+                      ]),
+                ),
+              );
             }
           }),
         ));
