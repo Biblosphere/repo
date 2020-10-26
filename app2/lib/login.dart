@@ -182,52 +182,82 @@ class _LoginPageState extends State<LoginPage> {
                   ]);
             }
             if (login.status == LoginStatus.phoneEntered) {
-              return Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    const Spacer(),
-                    Expanded(flex: 1, child: Center(child: Text('BIBLIO'))),
-                    // Input fields (Phone or Confirmation Code)
-                    Expanded(
-                        flex: 4,
-                        child: Container(
-                            margin: EdgeInsets.only(left: 40.0, right: 40.0),
-                            child: Column(
-                              children: [
-                                // Figma: Country Code
-                                Container(
-                                    alignment: Alignment.centerRight,
-                                    child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          Text('Resend in 20 sec'),
-                                        ])),
+              return SingleChildScrollView(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      SizedBox(height: MediaQuery.of(context).size.height * .2),
 
-                                // Figma: Confirmation code
-                                Container(
+                      Center(child: Text('BIBLIO')),
+                      SizedBox(height: MediaQuery.of(context).size.height * .2),
+
+                      // Input fields (Phone or Confirmation Code)
+                      Container(
+                          margin: EdgeInsets.only(left: 40.0, right: 40.0),
+                          child: Column(
+                            children: [
+                              // Figma: Country Code
+                              Container(
+                                  alignment: Alignment.centerRight,
+                                  child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Text('Resend in 20 sec'),
+                                      ])),
+
+                              // Figma: Confirmation code
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(0, 20, 0, 30),
+                                child: Container(
+                                    width: 280,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(
+                                          color: Colors
+                                              .transparent, // set border color
+                                          width: 1.0), // set border width
+                                      borderRadius: BorderRadius.all(
+                                        Radius.circular(30.0),
+                                      ), // set rounded corner radius
+                                      // make rounded corner of border
+                                    ),
                                     child: Row(children: [
-                                  Text('Code from SMS:'),
-                                  Expanded(
-                                      child: TextField(
-                                          keyboardType: TextInputType.number))
-                                ])),
-                              ],
-                            ))),
+                                      Text(
+                                        'Code from SMS:',
+                                        style:
+                                            TextStyle(color: Color(0xffb1adb4)),
+                                      ),
+                                      Expanded(
+                                          child: TextField(
+                                              decoration: InputDecoration(
+                                                  border: InputBorder.none),
+                                              keyboardType:
+                                                  TextInputType.number))
+                                    ])),
+                              ),
+                              Container(
+                                height: 40,
+                                child: RaisedButton(
+                                  textColor: Colors.white,
+                                  color: Color(0xff598a99),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(50.0),
+                                      side: BorderSide(
+                                          color: Colors.transparent)),
+                                  onPressed: () {
+                                    // TODO: Use actual code from text field or AUTO for Android
+                                    context.bloc<LoginCubit>().confirmPressed();
+                                  },
+                                  child: Text('Confirm code'),
+                                ),
+                              ),
+                            ],
+                          )),
 
-                    // Button (Sign-In or Confirm)
-                    Expanded(
-                      flex: 1,
-                      child: RaisedButton(
-                          onPressed: () {
-                            // TODO: Use actual code from text field or AUTO for Android
-                            context.bloc<LoginCubit>().confirmPressed();
-                          },
-                          child: Text('Confirm code')),
-                    ),
-                    Expanded(flex: 2, child: Container()),
-                    const Spacer()
-                  ]);
+                      // Button (Sign-In or Confirm)
+                    ]),
+              );
             } else {
               // (login.status == LoginStatus.phoneConfirmed) {
               return Column(

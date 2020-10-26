@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 // BLoC patterns
 import 'package:flutter_bloc/flutter_bloc.dart';
-// Pick a country phone code
+// Pick a git phone code
 import 'package:country_code_picker/country_code_picker.dart';
 // Google map
 import 'package:google_maps_flutter/google_maps_flutter.dart';
