@@ -72,7 +72,25 @@ class LoginState extends Equatable {
 }
 
 class LoginCubit extends Cubit<LoginState> {
-  LoginCubit() : super(LoginState());
+  LoginCubit() : super(LoginState()) {
+    init();
+  }
+
+  Future<void> init() async {
+    await Firebase.initializeApp();
+    FirebaseAuth.instance.authStateChanges().listen((User user) {
+      if (user == null) {
+        print('User is currently signed out!');
+        emit(state.copyWith(status: LoginStatus.unauthorized));
+      } else {
+        print('User is signed in!');
+        emit(state.copyWith(status: LoginStatus.subscribed));
+      }
+    });
+
+    // UserCredential userCredential =
+    await FirebaseAuth.instance.signInAnonymously();
+  }
 
   // Enter phone => LOGIN
   void phoneEntered(String value) {

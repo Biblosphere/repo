@@ -21,7 +21,6 @@ TRIPLE BUTTON
 
 MAP VIEW
 - Map move => FILTER
-- Map change scale => FILTER 
 - Tap on Marker => FILTER
 
 DETAILS
@@ -71,6 +70,7 @@ class FilterState extends Equatable {
   final LatLng center;
   final double zoom;
   final ViewType view;
+  final List<DocumentSnapshot> stream;
 
   @override
   List<Object> get props => [filters, position, center, zoom, view];
@@ -84,21 +84,24 @@ class FilterState extends Equatable {
       },
       this.position = PanelPosition.minimized,
       this.center = const LatLng(37.42796133580664, -122.085749655962),
-      this.zoom = 14.4746,
-      this.view});
+      this.zoom = 5.0,
+      this.view,
+      this.stream});
 
   FilterState copyWith(
       {Map<FilterType, List<Filter>> filters,
       PanelPosition position,
       LatLng center,
       double zoom,
-      ViewType view}) {
+      ViewType view,
+      List<DocumentSnapshot> stream}) {
     return FilterState(
       filters: filters ?? this.filters,
       position: position ?? this.position,
       center: center ?? this.center,
       zoom: zoom ?? this.zoom,
       view: view ?? this.view,
+      stream: stream ?? this.stream,
     );
   }
 
@@ -119,7 +122,60 @@ class FilterState extends Equatable {
 }
 
 class FilterCubit extends Cubit<FilterState> {
-  FilterCubit() : super(FilterState());
+  FilterCubit() : super(FilterState()) {
+    queryBooks();
+  }
+
+  double screenInKm() {
+    return 156543.03392 *
+        cos(state.center.latitude * pi / 180) /
+        pow(2, state.zoom) *
+        600.0 /
+        1000;
+  }
+
+  double distanceBetween(LatLng p1, LatLng p2) {
+    double lat1 = p1.latitude;
+    double lon1 = p1.longitude;
+    double lat2 = p2.latitude;
+    double lon2 = p2.longitude;
+
+    double R = 6378.137; // Radius of earth in KM
+    double dLat = lat2 * pi / 180 - lat1 * pi / 180;
+    double dLon = lon2 * pi / 180 - lon1 * pi / 180;
+    double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * pi / 180) *
+            cos(lat2 * pi / 180) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    double d = R * c;
+    return d; // Km
+  }
+
+  // Function to refresh stream with books and emit it
+  void queryBooks({LatLng center, double zoom}) async {
+    print('!!!DEBUG Query books ${state.center}');
+
+    if (center == null) center = state.center;
+    if (zoom == null) zoom = state.zoom;
+
+    // Get a filters, map center and radius and query books
+    // Emit state with updated stream
+    GeoFirePoint point = Geoflutterfire()
+        .point(latitude: center.latitude, longitude: center.longitude);
+
+    // Kilometers fit to screen asuming screen width is 600px
+    double radius = screenInKm();
+
+    List<DocumentSnapshot> stream = await Geoflutterfire()
+        .collection(
+            collectionRef: FirebaseFirestore.instance.collection('books'))
+        .within(center: point, radius: radius, field: 'location')
+        .first;
+
+    emit(state.copyWith(stream: stream, center: center, zoom: zoom));
+  }
 
   // FILTER PANEL:
   // - Author/title filter changed => FILTER
@@ -132,6 +188,8 @@ class FilterCubit extends Cubit<FilterState> {
     emit(state.copyWith(
       filters: filters,
     ));
+
+    queryBooks();
   }
 
   // FILTER PANEL:
@@ -146,6 +204,8 @@ class FilterCubit extends Cubit<FilterState> {
     emit(state.copyWith(
       filters: filters,
     ));
+
+    queryBooks();
   }
 
   // FILTER PANEL:
@@ -182,6 +242,8 @@ class FilterCubit extends Cubit<FilterState> {
       center: state.center, // TODO: Replace with current location
       zoom: state.zoom, // TODO: Replace with calculated zoom
     ));
+
+    queryBooks();
   }
 
   // TRIPLE BUTTON
@@ -193,6 +255,8 @@ class FilterCubit extends Cubit<FilterState> {
       center: state.center, // TODO: Replace with current location
       zoom: state.zoom, // TODO: Replace with calculated zoom
     ));
+
+    queryBooks();
   }
 
   // TRIPLE BUTTON
@@ -205,22 +269,17 @@ class FilterCubit extends Cubit<FilterState> {
 
   // MAP VIEW
   // - Map move => FILTER
-  void mapMoved(LatLng center) {
+  void mapMoved(CameraPosition position) {
     // TODO: If moved significantly emit state to have list of books refreshed
     // with the new center
-    emit(state.copyWith(
-      center: center,
-    ));
-  }
 
-  // MAP VIEW
-  // - Map change scale => FILTER
-  void mapZoomed(double zoom) {
-    // TODO: If zoomed significantly emit state to have list of books refreshed
-    // with the new zoom
-    emit(state.copyWith(
-      zoom: zoom,
-    ));
+    // Only emit if more than half of the screen is moved
+    if (distanceBetween(state.center, position.target) > screenInKm() / 2.0) {
+      print(
+          '!!!DEBUG distance shifted ${distanceBetween(state.center, position.target)}');
+      // Only refresh query if move is significant
+      queryBooks(center: position.target, zoom: position.zoom);
+    }
   }
 
   // MAP VIEW
@@ -240,6 +299,8 @@ class FilterCubit extends Cubit<FilterState> {
       zoom: state.zoom, // TODO: Set zoom based on the calculated radius
       view: ViewType.list,
     ));
+
+    queryBooks();
   }
 
   // DETAILS
@@ -258,5 +319,7 @@ class FilterCubit extends Cubit<FilterState> {
     emit(state.copyWith(
       filters: filters,
     ));
+
+    queryBooks();
   }
 }

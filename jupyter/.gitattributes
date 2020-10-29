@@ -1,0 +1,2 @@
+.gitattributes !filter !diff
+biblosphere-firebase-adminsdk.json filter=git-crypt diff=git-crypt

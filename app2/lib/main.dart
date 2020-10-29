@@ -25,6 +25,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 // Compare objects by content
 import 'package:equatable/equatable.dart';
+// Firebase auth
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+// Geo queries
+import 'package:geoflutterfire/geoflutterfire.dart';
 
 part 'login.dart';
 part 'login_bloc.dart';

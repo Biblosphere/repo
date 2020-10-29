@@ -59,6 +59,14 @@ dependencies:
   # Revenue cat in-app purchases
   purchases_flutter: ^1.4.0
 
+  # Firebase auth
+  firebase_core: ^0.5.1
+  firebase_auth: ^0.18.2
+  cloud_firestore: ^0.14.2
+
+  # Geo queries
+  geoflutterfire: ^2.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
