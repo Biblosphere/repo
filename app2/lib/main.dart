@@ -73,8 +73,16 @@ class _MyAppState extends State<MyApp> {
               headline1: TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold),
               headline6: TextStyle(fontSize: 36.0, fontStyle: FontStyle.italic),
               bodyText2: TextStyle(fontSize: 14.0, fontFamily: 'Hind'),
+              button: TextStyle(
+                  fontSize: 14.0, fontFamily: 'Hind', color: Colors.white),
             ),
-            buttonTheme: ButtonThemeData(buttonColor: Color(0xff598a99))),
+            buttonTheme: ButtonThemeData(
+              minWidth: 200,
+              buttonColor: Color(0xff598a99),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50.0),
+                  side: BorderSide(color: Colors.transparent)),
+            )),
         home: MultiBlocProvider(
             providers: [
               BlocProvider(create: (BuildContext context) => FilterCubit()),
