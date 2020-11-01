@@ -36,6 +36,9 @@ class _LoginPageState extends State<LoginPage> {
                                 children: [
                                   // Figma: Country Code
                                   Container(
+                                      width: MediaQuery.of(context).size.width *
+                                          .7,
+                                      height: 60,
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         border: Border.all(
@@ -54,9 +57,12 @@ class _LoginPageState extends State<LoginPage> {
                                           style: TextStyle(
                                               color: Color(0xffb1adb4)),
                                         ),
-                                        Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              30, 0, 0, 0),
+                                        SizedBox(
+                                            width: MediaQuery.of(context)
+                                                    .size
+                                                    .width *
+                                                .3),
+                                        Expanded(
                                           child: CountryCodePicker(
                                             onChanged:
                                                 (CountryCode countryCode) {
@@ -64,6 +70,8 @@ class _LoginPageState extends State<LoginPage> {
                                               print("New Country selected: " +
                                                   countryCode.toString());
                                             },
+                                            textStyle:
+                                                TextStyle(color: Colors.black),
                                             // Initial selection and favorite can be one of code ('IT') OR dial_code('+39')
                                             initialSelection: 'IT',
                                             favorite: ['+39', 'FR'],
@@ -74,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
                                             // optional. aligns the flag and the Text left
                                             alignLeft: false,
                                           ),
-                                        ),
+                                        )
                                       ])),
 
                                   // Figma: Phone number
@@ -82,6 +90,10 @@ class _LoginPageState extends State<LoginPage> {
                                     padding:
                                         const EdgeInsets.fromLTRB(0, 5, 0, 30),
                                     child: Container(
+                                        width:
+                                            MediaQuery.of(context).size.width *
+                                                .7,
+                                        height: 60,
                                         decoration: BoxDecoration(
                                           color: Colors.white,
                                           border: Border.all(
@@ -104,6 +116,11 @@ class _LoginPageState extends State<LoginPage> {
                                                   color: Color(0xffb1adb4)),
                                             ),
                                           ),
+                                          SizedBox(
+                                              width: MediaQuery.of(context)
+                                                      .size
+                                                      .width *
+                                                  .3),
                                           Expanded(
                                               child: TextField(
                                                   decoration: InputDecoration(
@@ -114,18 +131,22 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                   // Button (Sign-In or Confirm)
 
-                                  RaisedButton(
-                                      textColor: Theme.of(context)
-                                          .textTheme
-                                          .button
-                                          .color,
-                                      onPressed: () {
-                                        // TODO: Use actual phone number from text field
-                                        context
-                                            .bloc<LoginCubit>()
-                                            .phoneEntered('67867885585857');
-                                      },
-                                      child: Text('Login')),
+                                  Container(
+                                    width:
+                                        MediaQuery.of(context).size.width * .7,
+                                    child: RaisedButton(
+                                        textColor: Theme.of(context)
+                                            .textTheme
+                                            .button
+                                            .color,
+                                        onPressed: () {
+                                          // TODO: Use actual phone number from text field
+                                          context
+                                              .bloc<LoginCubit>()
+                                              .phoneEntered('67867885585857');
+                                        },
+                                        child: Text('Login')),
+                                  ),
 
                                   // Confirm PP & TS
                                   Padding(

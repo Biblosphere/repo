@@ -77,7 +77,7 @@ class _MyAppState extends State<MyApp> {
                   fontSize: 14.0, fontFamily: 'Hind', color: Colors.white),
             ),
             buttonTheme: ButtonThemeData(
-              minWidth: 200,
+              height: 50,
               buttonColor: Color(0xff598a99),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(50.0),
