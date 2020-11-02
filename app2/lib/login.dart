@@ -14,7 +14,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: Color(0xfff5f4f3),
+        backgroundColor: Theme.of(context).backgroundColor,
         body: Container(
           child: BlocBuilder<LoginCubit, LoginState>(builder: (context, login) {
             if (login.status == LoginStatus.unauthorized) {
@@ -22,10 +22,13 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     SizedBox(height: MediaQuery.of(context).size.height * .2),
-                    Center(child: Text('BIBLIO')),
+
+                    Center(
+                        child: Image.network(
+                            "https://image.prntscr.com/image/TjtEQkm2QWyQmTxKLjz0QQ.png")),
                     // Input fields (Phone or Confirmation Code)
                     SizedBox(
-                      height: MediaQuery.of(context).size.height * .2,
+                      height: MediaQuery.of(context).size.height * .07,
                     ),
                     Expanded(
                         flex: 4,
@@ -36,6 +39,9 @@ class _LoginPageState extends State<LoginPage> {
                                 children: [
                                   // Figma: Country Code
                                   Container(
+                                      width: MediaQuery.of(context).size.width *
+                                          .7,
+                                      height: 60,
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         border: Border.all(
@@ -54,9 +60,12 @@ class _LoginPageState extends State<LoginPage> {
                                           style: TextStyle(
                                               color: Color(0xffb1adb4)),
                                         ),
-                                        Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              30, 0, 0, 0),
+                                        SizedBox(
+                                            width: MediaQuery.of(context)
+                                                    .size
+                                                    .width *
+                                                .3),
+                                        Expanded(
                                           child: CountryCodePicker(
                                             onChanged:
                                                 (CountryCode countryCode) {
@@ -64,6 +73,8 @@ class _LoginPageState extends State<LoginPage> {
                                               print("New Country selected: " +
                                                   countryCode.toString());
                                             },
+                                            textStyle:
+                                                TextStyle(color: Colors.black),
                                             // Initial selection and favorite can be one of code ('IT') OR dial_code('+39')
                                             initialSelection: 'IT',
                                             favorite: ['+39', 'FR'],
@@ -74,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                                             // optional. aligns the flag and the Text left
                                             alignLeft: false,
                                           ),
-                                        ),
+                                        )
                                       ])),
 
                                   // Figma: Phone number
@@ -82,6 +93,10 @@ class _LoginPageState extends State<LoginPage> {
                                     padding:
                                         const EdgeInsets.fromLTRB(0, 5, 0, 30),
                                     child: Container(
+                                        width:
+                                            MediaQuery.of(context).size.width *
+                                                .7,
+                                        height: 60,
                                         decoration: BoxDecoration(
                                           color: Colors.white,
                                           border: Border.all(
@@ -104,26 +119,31 @@ class _LoginPageState extends State<LoginPage> {
                                                   color: Color(0xffb1adb4)),
                                             ),
                                           ),
+                                          SizedBox(
+                                              width: MediaQuery.of(context)
+                                                      .size
+                                                      .width *
+                                                  .1),
                                           Expanded(
                                               child: TextField(
                                                   decoration: InputDecoration(
-                                                      border: InputBorder.none),
+                                                      border: InputBorder.none,
+                                                      hintText:
+                                                          '(480)-228-8007'),
                                                   keyboardType:
                                                       TextInputType.phone))
                                         ])),
                                   ),
                                   // Button (Sign-In or Confirm)
-                                  ButtonTheme(
-                                    minWidth: 300,
-                                    height: 40,
+
+                                  Container(
+                                    width:
+                                        MediaQuery.of(context).size.width * .7,
                                     child: RaisedButton(
-                                        textColor: Colors.white,
-                                        color: Color(0xff598a99),
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(50.0),
-                                            side: BorderSide(
-                                                color: Colors.transparent)),
+                                        textColor: Theme.of(context)
+                                            .textTheme
+                                            .button
+                                            .color,
                                         onPressed: () {
                                           // TODO: Use actual phone number from text field
                                           context
@@ -132,6 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                                         },
                                         child: Text('Login')),
                                   ),
+
                                   // Confirm PP & TS
                                   Padding(
                                     padding:
@@ -188,8 +209,11 @@ class _LoginPageState extends State<LoginPage> {
                     children: <Widget>[
                       SizedBox(height: MediaQuery.of(context).size.height * .2),
 
-                      Center(child: Text('BIBLIO')),
-                      SizedBox(height: MediaQuery.of(context).size.height * .2),
+                      Center(
+                          child: Image.network(
+                              "https://image.prntscr.com/image/TjtEQkm2QWyQmTxKLjz0QQ.png")),
+                      SizedBox(
+                          height: MediaQuery.of(context).size.height * .07),
 
                       // Input fields (Phone or Confirmation Code)
                       Container(
@@ -210,7 +234,8 @@ class _LoginPageState extends State<LoginPage> {
                                 padding:
                                     const EdgeInsets.fromLTRB(0, 20, 0, 30),
                                 child: Container(
-                                    width: 280,
+                                    width:
+                                        MediaQuery.of(context).size.width * .7,
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       border: Border.all(
@@ -228,16 +253,22 @@ class _LoginPageState extends State<LoginPage> {
                                         style:
                                             TextStyle(color: Color(0xffb1adb4)),
                                       ),
+                                      SizedBox(
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              .26),
                                       Expanded(
                                           child: TextField(
                                               decoration: InputDecoration(
-                                                  border: InputBorder.none),
+                                                  border: InputBorder.none,
+                                                  hintText: 'XXXX'),
                                               keyboardType:
                                                   TextInputType.number))
                                     ])),
                               ),
                               Container(
-                                height: 40,
+                                width: MediaQuery.of(context).size.width * .7,
                                 child: RaisedButton(
                                   textColor: Colors.white,
                                   color: Color(0xff598a99),
@@ -269,7 +300,9 @@ class _LoginPageState extends State<LoginPage> {
                         SizedBox(
                             height: MediaQuery.of(context).size.height * .2),
 
-                        Center(child: Text('BIBLIO')),
+                        Center(
+                            child: Image.network(
+                                "https://image.prntscr.com/image/TjtEQkm2QWyQmTxKLjz0QQ.png")),
                         // Input fields (Phone or Confirmation Code)
                         SizedBox(
                             height: MediaQuery.of(context).size.height * .05),
