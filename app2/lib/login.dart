@@ -22,10 +22,13 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     SizedBox(height: MediaQuery.of(context).size.height * .2),
-                    Center(child: Text('BIBLIO')),
+
+                    Center(
+                        child: Image.network(
+                            "https://image.prntscr.com/image/TjtEQkm2QWyQmTxKLjz0QQ.png")),
                     // Input fields (Phone or Confirmation Code)
                     SizedBox(
-                      height: MediaQuery.of(context).size.height * .2,
+                      height: MediaQuery.of(context).size.height * .07,
                     ),
                     Expanded(
                         flex: 4,
@@ -120,11 +123,13 @@ class _LoginPageState extends State<LoginPage> {
                                               width: MediaQuery.of(context)
                                                       .size
                                                       .width *
-                                                  .3),
+                                                  .1),
                                           Expanded(
                                               child: TextField(
                                                   decoration: InputDecoration(
-                                                      border: InputBorder.none),
+                                                      border: InputBorder.none,
+                                                      hintText:
+                                                          '(480)-228-8007'),
                                                   keyboardType:
                                                       TextInputType.phone))
                                         ])),
@@ -204,8 +209,11 @@ class _LoginPageState extends State<LoginPage> {
                     children: <Widget>[
                       SizedBox(height: MediaQuery.of(context).size.height * .2),
 
-                      Center(child: Text('BIBLIO')),
-                      SizedBox(height: MediaQuery.of(context).size.height * .2),
+                      Center(
+                          child: Image.network(
+                              "https://image.prntscr.com/image/TjtEQkm2QWyQmTxKLjz0QQ.png")),
+                      SizedBox(
+                          height: MediaQuery.of(context).size.height * .07),
 
                       // Input fields (Phone or Confirmation Code)
                       Container(
@@ -226,7 +234,8 @@ class _LoginPageState extends State<LoginPage> {
                                 padding:
                                     const EdgeInsets.fromLTRB(0, 20, 0, 30),
                                 child: Container(
-                                    width: 280,
+                                    width:
+                                        MediaQuery.of(context).size.width * .7,
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       border: Border.all(
@@ -244,16 +253,22 @@ class _LoginPageState extends State<LoginPage> {
                                         style:
                                             TextStyle(color: Color(0xffb1adb4)),
                                       ),
+                                      SizedBox(
+                                          width: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              .26),
                                       Expanded(
                                           child: TextField(
                                               decoration: InputDecoration(
-                                                  border: InputBorder.none),
+                                                  border: InputBorder.none,
+                                                  hintText: 'XXXX'),
                                               keyboardType:
                                                   TextInputType.number))
                                     ])),
                               ),
                               Container(
-                                height: 40,
+                                width: MediaQuery.of(context).size.width * .7,
                                 child: RaisedButton(
                                   textColor: Colors.white,
                                   color: Color(0xff598a99),
@@ -285,7 +300,9 @@ class _LoginPageState extends State<LoginPage> {
                         SizedBox(
                             height: MediaQuery.of(context).size.height * .2),
 
-                        Center(child: Text('BIBLIO')),
+                        Center(
+                            child: Image.network(
+                                "https://image.prntscr.com/image/TjtEQkm2QWyQmTxKLjz0QQ.png")),
                         // Input fields (Phone or Confirmation Code)
                         SizedBox(
                             height: MediaQuery.of(context).size.height * .05),
