@@ -69,11 +69,13 @@ class FilterState extends Equatable {
   final PanelPosition position;
   final LatLng center;
   final double zoom;
+  final List<String> geohashes;
   final ViewType view;
   final List<DocumentSnapshot> stream;
 
   @override
-  List<Object> get props => [filters, position, center, zoom, view];
+  List<Object> get props =>
+      [filters, position, center, zoom, geohashes, view, stream];
 
   const FilterState(
       {this.filters = const {
@@ -85,6 +87,7 @@ class FilterState extends Equatable {
       this.position = PanelPosition.minimized,
       this.center = const LatLng(37.42796133580664, -122.085749655962),
       this.zoom = 5.0,
+      this.geohashes,
       this.view,
       this.stream});
 
@@ -94,6 +97,7 @@ class FilterState extends Equatable {
       LatLng center,
       double zoom,
       ViewType view,
+      List<String> geohashes,
       List<DocumentSnapshot> stream}) {
     return FilterState(
       filters: filters ?? this.filters,
@@ -101,6 +105,7 @@ class FilterState extends Equatable {
       center: center ?? this.center,
       zoom: zoom ?? this.zoom,
       view: view ?? this.view,
+      geohashes: geohashes ?? this.geohashes,
       stream: stream ?? this.stream,
     );
   }
@@ -269,7 +274,22 @@ class FilterCubit extends Cubit<FilterState> {
 
   // MAP VIEW
   // - Map move => FILTER
-  void mapMoved(CameraPosition position) {
+  void mapMoved(CameraPosition position, LatLngBounds bounds) {
+    // Recalculate geo-hashes from camera position and bounds
+    GeoHasher gc = GeoHasher();
+    String ne =
+        gc.encode(bounds.northeast.longitude, bounds.northeast.latitude);
+    String sw =
+        gc.encode(bounds.southwest.longitude, bounds.southwest.latitude);
+    String nw =
+        gc.encode(bounds.southwest.longitude, bounds.northeast.latitude);
+    String se =
+        gc.encode(bounds.northeast.longitude, bounds.southwest.latitude);
+    String center =
+        gc.encode(position.target.longitude, position.target.latitude);
+
+    // Find longest common starting substring for center and corners
+
     // TODO: If moved significantly emit state to have list of books refreshed
     // with the new center
 

@@ -9,7 +9,7 @@ class MapWidget extends StatefulWidget {
 
 class _MapWidgetState extends State<MapWidget> {
   bool mapsIsLoading = true;
-  //Completer<GoogleMapController> _controller = Completer();
+  GoogleMapController _controller;
 
   @override
   Widget build(BuildContext context) {
@@ -40,12 +40,18 @@ class _MapWidgetState extends State<MapWidget> {
             target: filters.center,
             zoom: filters.zoom,
           ),
-          onCameraMove: (position) {
+          onCameraMove: (position) async {
             print('!!!DEBUG: Map moves');
             // TODO: Add condition for significant moves only
-            context.bloc<FilterCubit>().mapMoved(position);
+            context
+                .bloc<FilterCubit>()
+                .mapMoved(position, await _controller.getVisibleRegion());
           },
-          onMapCreated: (GoogleMapController controller) {},
+          onMapCreated: (GoogleMapController controller) {
+            //TODO: Keep controller to retrieve visible region
+            _controller = controller;
+            //controller.getVisibleRegion();
+          },
           markers: markers);
     });
   }

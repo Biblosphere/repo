@@ -31,6 +31,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 // Geo queries
 import 'package:geoflutterfire/geoflutterfire.dart';
+// Geo hashes
+import 'package:dart_geohash/dart_geohash.dart';
 
 part 'login.dart';
 part 'login_bloc.dart';
