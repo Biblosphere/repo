@@ -1,5 +1,45 @@
 part of 'main.dart';
 
+Future<BitmapDescriptor> getClusterMarker(
+  int clusterSize,
+  double width,
+) async {
+  final PictureRecorder pictureRecorder = PictureRecorder();
+  final Canvas canvas = Canvas(pictureRecorder);
+  final Paint paint = Paint()..color = Colors.blue.withOpacity(0.55);
+  final TextPainter textPainter = TextPainter(
+    textDirection: TextDirection.ltr,
+  );
+  final double radius = width / 2;
+  canvas.drawCircle(
+    Offset(radius, radius),
+    radius,
+    paint,
+  );
+  textPainter.text = TextSpan(
+    text: clusterSize.toString(),
+    style: TextStyle(
+      fontSize: radius - 5,
+      fontWeight: FontWeight.bold,
+      color: Colors.white,
+    ),
+  );
+  textPainter.layout();
+  textPainter.paint(
+    canvas,
+    Offset(
+      radius - textPainter.width / 2,
+      radius - textPainter.height / 2,
+    ),
+  );
+  final image = await pictureRecorder.endRecording().toImage(
+        radius.toInt() * 2,
+        radius.toInt() * 2,
+      );
+  final data = await image.toByteData(format: ImageByteFormat.png);
+  return BitmapDescriptor.fromBytes(data.buffer.asUint8List());
+}
+
 class BookMarker extends Marker {
   final Book book;
 
@@ -19,12 +59,16 @@ class BookMarker extends Marker {
 class GroupMarker extends Marker {
   final List<Book> books;
 
-  GroupMarker({MarkerId markerId, String geohash, LatLng position, this.books})
+  GroupMarker(
+      {MarkerId markerId,
+      String geohash,
+      LatLng position,
+      BitmapDescriptor icon,
+      this.books})
       : super(
             markerId: markerId,
             position: position,
-            icon:
-                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+            icon: icon,
             infoWindow:
                 // TODO: retrieve actual list of languages
                 InfoWindow(title: '${books.length} books', snippet: 'RUS, ENG'),
@@ -74,9 +118,10 @@ class _MapWidgetState extends State<MapWidget> {
           onCameraIdle: () async {
             print('!!!DEBUG: Map move completed');
             // TODO: Add condition for significant moves only
-            context
-                .bloc<FilterCubit>()
-                .mapMoved(_position, await _controller.getVisibleRegion());
+            context.bloc<FilterCubit>().mapMoved(
+                _position,
+                await _controller.getVisibleRegion(),
+                MediaQuery.of(context).devicePixelRatio);
           },
           onCameraMove: (position) {
             _position = position;

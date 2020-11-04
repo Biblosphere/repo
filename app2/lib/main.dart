@@ -1,9 +1,10 @@
 import 'dart:math';
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
+import 'package:flutter/material.dart';
 import "package:collection/collection.dart";
 
-import 'package:flutter/material.dart';
 // BLoC patterns
 import 'package:flutter_bloc/flutter_bloc.dart';
 // Pick a git phone code
@@ -89,20 +90,25 @@ class _MyAppState extends State<MyApp> {
                   borderRadius: BorderRadius.circular(50.0),
                   side: BorderSide(color: Colors.transparent)),
             )),
-        home: MultiBlocProvider(
-            providers: [
-              BlocProvider(create: (BuildContext context) => FilterCubit()),
-              BlocProvider(create: (BuildContext context) => CameraCubit()),
-              BlocProvider(create: (BuildContext context) => LoginCubit())
-            ],
-            child:
-                BlocBuilder<LoginCubit, LoginState>(builder: (context, login) {
-              if (login.status == LoginStatus.subscribed) {
-                return MainPage();
-              } else {
-                return LoginPage();
-              }
-            })));
+        home: Builder(builder: (context) {
+          double devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+          return MultiBlocProvider(
+              providers: [
+                BlocProvider(
+                    create: (BuildContext context) =>
+                        FilterCubit(devicePixelRatio)),
+                BlocProvider(create: (BuildContext context) => CameraCubit()),
+                BlocProvider(create: (BuildContext context) => LoginCubit())
+              ],
+              child: BlocBuilder<LoginCubit, LoginState>(
+                  builder: (context, login) {
+                if (login.status == LoginStatus.subscribed) {
+                  return MainPage();
+                } else {
+                  return LoginPage();
+                }
+              }));
+        }));
   }
 }
 
