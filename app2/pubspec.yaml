@@ -64,11 +64,11 @@ dependencies:
   firebase_auth: ^0.18.2
   cloud_firestore: ^0.14.2
 
-  # Geo queries
-  geoflutterfire: ^2.2.1
-
   # Geo hashes
   dart_geohash: ^1.0.2
+
+  # Geo location
+  geolocator: ^6.1.4
 
   flutter_svg: ^0.19.1
 

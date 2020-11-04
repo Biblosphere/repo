@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:async';
 import 'dart:io';
+import "package:collection/collection.dart";
 
 import 'package:flutter/material.dart';
 // BLoC patterns
@@ -29,10 +30,10 @@ import 'package:equatable/equatable.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-// Geo queries
-import 'package:geoflutterfire/geoflutterfire.dart';
 // Geo hashes
 import 'package:dart_geohash/dart_geohash.dart';
+// Geo location
+import 'package:geolocator/geolocator.dart';
 
 part 'login.dart';
 part 'login_bloc.dart';
