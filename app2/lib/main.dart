@@ -91,12 +91,9 @@ class _MyAppState extends State<MyApp> {
                   side: BorderSide(color: Colors.transparent)),
             )),
         home: Builder(builder: (context) {
-          double devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
           return MultiBlocProvider(
               providers: [
-                BlocProvider(
-                    create: (BuildContext context) =>
-                        FilterCubit(devicePixelRatio)),
+                BlocProvider(create: (BuildContext context) => FilterCubit()),
                 BlocProvider(create: (BuildContext context) => CameraCubit()),
                 BlocProvider(create: (BuildContext context) => LoginCubit())
               ],
@@ -152,6 +149,28 @@ class TripleButtonState extends State<TripleButton>
   TripleButtonState(
       {this.selected, this.onPressed, this.onPressedSelected, this.icons}) {
     oldSelected = selected;
+  }
+
+  @override
+  void didUpdateWidget(covariant TripleButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.selected != widget.selected) {
+      // oldSelected = oldWidget.selected;
+      animate(widget.selected);
+    }
+  }
+
+  void animate(int i) {
+    oldSelected = selected;
+    selected = i;
+    double dir = ((oldSelected - selected) % 3 - 1.5) * 2.0;
+    _angleTween = Tween<double>(
+            begin: (dir - selected) * pi * 2.0 / 3.0,
+            end: -selected * pi * 2.0 / 3.0)
+        .animate(_animationController);
+    _animationController.reset();
+    _animationController.forward();
   }
 
   @override
@@ -230,19 +249,6 @@ class TripleButtonState extends State<TripleButton>
                                 if (i == selected)
                                   onPressedSelected[i]();
                                 else {
-                                  oldSelected = selected;
-                                  selected = i;
-                                  double dir =
-                                      ((oldSelected - selected) % 3 - 1.5) *
-                                          2.0;
-                                  _angleTween = Tween<double>(
-                                          begin:
-                                              (dir - selected) * pi * 2.0 / 3.0,
-                                          end: -selected * pi * 2.0 / 3.0)
-                                      .animate(_animationController);
-                                  _animationController.reset();
-                                  _animationController.forward();
-
                                   onPressed[i]();
                                 }
                               },
@@ -268,7 +274,6 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  ViewType _view = ViewType.map;
   List<Filter> filters = [];
   bool collapsed = true;
   var _controller = SnappingSheetController();
@@ -302,95 +307,106 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: Stack(children: [
-      SnappingSheet(
-        sheetAbove: SnappingSheetContent(
-            child: _view == ViewType.list
-                ? ListWidget()
-                : (_view == ViewType.camera && cameraCtrl.value.isInitialized)
-                    ? SingleChildScrollView(
-                        child: AspectRatio(
-                            aspectRatio: cameraCtrl.value.aspectRatio,
-                            child: CameraPreview(cameraCtrl)))
-                    : Container()),
-        onSnapEnd: () {
-          setState(() {});
-        },
-        onMove: (moveAmount) {
-          setState(() {
-            _snapPosition = moveAmount;
-          });
-        },
-        snappingSheetController: _controller,
-        snapPositions: [
-          SnapPosition(
-              positionPixel: _view == ViewType.camera ? 0.0 : 60.0,
-              snappingCurve: Curves.elasticOut,
-              snappingDuration: Duration(milliseconds: 750)),
-          SnapPosition(
-            positionPixel: _view == ViewType.camera ? 150.0 : 290.0,
-          ),
-          //SnapPosition(positionFactor: 0.4),
-        ],
-        child: MapWidget(),
-        grabbingHeight: MediaQuery.of(context).padding.bottom + 40,
-        grabbing: GrabSection(), //Container(color: Colors.grey),
-        sheetBelow: SnappingSheetContent(
-            child: Container(
-                color: Colors.white,
-                child: _view == ViewType.camera
-                    ? CameraPanel(collapsed: _snapPosition < 150.0)
-                    : SearchPanel(collapsed: _snapPosition < 290.0))),
-      ),
-      Positioned(
-          bottom: max(_snapPosition - 35.0, 10.0),
-          right: 5.0,
-          child: TripleButton(
-            selected: 0,
-            onPressed: [
-              //onPressed for MAP
-              () {
-                // TODO: remember a position and restore it
-                _controller.snapToPosition(SnapPosition(
-                  positionPixel: 60.0,
-                ));
-                setState(() {
-                  _view = ViewType.map;
-                });
-              },
-              //onPressed for CAMERA
-              () {
-                // TODO: Make it 0.0 position if place is already confirmed
-                _controller.snapToPosition(SnapPosition(
-                  positionPixel: 150.0,
-                ));
-                setState(() {
-                  _view = ViewType.camera;
-                });
-              },
-              //onPressed for LIST
-              () {
-                // TODO: remember a position and restore it
-                _controller.snapToPosition(SnapPosition(
-                  positionPixel: 60.0,
-                ));
-                setState(() {
-                  _view = ViewType.list;
-                });
-              }
-            ],
-            onPressedSelected: [
-              () {},
-              // onPressedSelected for CAMERA
-              () {
-                print('!!!DEBUG Selected button pressed for CAMERA');
-                takePicture(cameraCtrl);
-              },
-              () {}
-            ],
-            icons: [Icons.location_pin, Icons.camera_alt, Icons.list_alt],
-          ))
-    ]));
+        body: BlocBuilder<FilterCubit, FilterState>(
+            buildWhen: (previous, current) => previous.view != current.view,
+            builder: (context, filters) {
+              return Stack(children: [
+                SnappingSheet(
+                  sheetAbove: SnappingSheetContent(
+                      child: filters.view == ViewType.list
+                          ? ListWidget()
+                          : (filters.view == ViewType.camera &&
+                                  cameraCtrl.value.isInitialized)
+                              ? SingleChildScrollView(
+                                  child: AspectRatio(
+                                      aspectRatio: cameraCtrl.value.aspectRatio,
+                                      child: CameraPreview(cameraCtrl)))
+                              : Container()),
+                  onSnapEnd: () {
+                    setState(() {});
+                  },
+                  onMove: (moveAmount) {
+                    setState(() {
+                      _snapPosition = moveAmount;
+                    });
+                  },
+                  snappingSheetController: _controller,
+                  snapPositions: [
+                    SnapPosition(
+                        positionPixel:
+                            filters.view == ViewType.camera ? 0.0 : 60.0,
+                        snappingCurve: Curves.elasticOut,
+                        snappingDuration: Duration(milliseconds: 750)),
+                    SnapPosition(
+                      positionPixel:
+                          filters.view == ViewType.camera ? 150.0 : 290.0,
+                    ),
+                    //SnapPosition(positionFactor: 0.4),
+                  ],
+                  child: MapWidget(),
+                  grabbingHeight: MediaQuery.of(context).padding.bottom + 40,
+                  grabbing: GrabSection(), //Container(color: Colors.grey),
+                  sheetBelow: SnappingSheetContent(
+                      child: Container(
+                          color: Colors.white,
+                          child: filters.view == ViewType.camera
+                              ? CameraPanel(collapsed: _snapPosition < 150.0)
+                              : SearchPanel(collapsed: _snapPosition < 290.0))),
+                ),
+                Positioned(
+                    bottom: max(_snapPosition - 35.0, 10.0),
+                    right: 5.0,
+                    child: TripleButton(
+                      selected: filters.view.index,
+                      onPressed: [
+                        //onPressed for MAP
+                        () {
+                          // TODO: remember a position and restore it
+                          _controller.snapToPosition(SnapPosition(
+                            positionPixel: 60.0,
+                          ));
+                          setState(() {
+                            context.bloc<FilterCubit>().setView(ViewType.map);
+                          });
+                        },
+                        //onPressed for CAMERA
+                        () {
+                          // TODO: Make it 0.0 position if place is already confirmed
+                          _controller.snapToPosition(SnapPosition(
+                            positionPixel: 150.0,
+                          ));
+                          setState(() {
+                            context
+                                .bloc<FilterCubit>()
+                                .setView(ViewType.camera);
+                          });
+                        },
+                        //onPressed for LIST
+                        () {
+                          // TODO: remember a position and restore it
+                          _controller.snapToPosition(SnapPosition(
+                            positionPixel: 60.0,
+                          ));
+                          context.bloc<FilterCubit>().setView(ViewType.list);
+                        }
+                      ],
+                      onPressedSelected: [
+                        () {},
+                        // onPressedSelected for CAMERA
+                        () {
+                          print('!!!DEBUG Selected button pressed for CAMERA');
+                          takePicture(cameraCtrl);
+                        },
+                        () {}
+                      ],
+                      icons: [
+                        Icons.location_pin,
+                        Icons.camera_alt,
+                        Icons.list_alt
+                      ],
+                    ))
+              ]);
+            }));
   }
 }
 

@@ -63,6 +63,19 @@ class Book extends Equatable {
   List<Object> get props => [id];
 }
 
+Widget coverImage(String url) {
+  if (url != null && url.isNotEmpty)
+    try {
+      return Image.network(url);
+    } catch (e) {
+      print('Image loading exception: ${e}');
+      // TODO: Report exception to analytics
+      return Container();
+    }
+  else
+    return Container();
+}
+
 class BookCard extends StatelessWidget {
   final Book book;
   final bool details;
@@ -71,52 +84,27 @@ class BookCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!details) {
-      return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => DetailsPage(book: book)),
-            );
-          },
-          child: Card(
-              child: Container(
-                  margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
-                  child: Row(children: [
-                    ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minWidth: 100,
-                          minHeight: 100,
-                          maxWidth: 120,
-                          maxHeight: 100,
-                        ),
-//                  child: CachedNetworkImage(imageUrl: book.cover)),
-//                  child: Image(image: CachedNetworkImageProvider(book.cover))),
-                        child: Image.network(book.cover)),
-                    Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Text(book.authors.join(', ')),
-                          Text(book.title),
-                          Text(book.genre),
-                          Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Expanded(flex: 1, child: Text('1.5 km')),
-                                Icon(Icons.location_pin),
-                                Expanded(flex: 4, child: Text(book.bookplace))
-                              ])
-                        ]))
-                  ]))));
-    } else {
-      return Card(
-          child: Container(
-              margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
+    return BlocBuilder<FilterCubit, FilterState>(
+        // buildWhen: (previous, current) => previous.center != current.center,
+        builder: (context, filters) {
+      print('!!!DEBUG rebuild BookCard ${filters.center}');
+      double d = distanceBetween(filters.center, book.location);
+      String distance = d < 1000
+          ? d.toStringAsFixed(0) + " m"
+          : (d / 1000).toStringAsFixed(0) + " km";
+      if (!details) {
+        return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => DetailsPage(book: book)),
+              );
+            },
+            child: Card(
+                child: Container(
+                    margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
+                    child: Row(children: [
                       ConstrainedBox(
                           constraints: BoxConstraints(
                             minWidth: 100,
@@ -126,86 +114,122 @@ class BookCard extends StatelessWidget {
                           ),
 //                  child: CachedNetworkImage(imageUrl: book.cover)),
 //                  child: Image(image: CachedNetworkImageProvider(book.cover))),
-                          child: Image.network(book.cover)),
+                          child: coverImage(book.cover)),
                       Expanded(
                           child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                             Text(book.authors.join(', ')),
-                            Text(book.title),
-                            Text(book.genre),
+                            Text(book.title ?? ''),
+                            Text(book.genre ?? ''),
                             Row(
                                 mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
-                                  Expanded(flex: 1, child: Text('1.5 km')),
+                                  Expanded(flex: 1, child: Text(distance)),
                                   Icon(Icons.location_pin),
                                   Expanded(flex: 4, child: Text(book.bookplace))
                                 ])
                           ]))
-                    ]),
-                    // Figma: buttons
-                    Row(children: [
-                      MaterialButton(
-                        onPressed: () {},
-                        color: Colors.orange,
-                        textColor: Colors.white,
-                        child: Icon(
-                          Icons.search,
-                          size: 16,
+                    ]))));
+      } else {
+        return Card(
+            child: Container(
+                margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: 100,
+                              minHeight: 100,
+                              maxWidth: 120,
+                              maxHeight: 100,
+                            ),
+//                  child: CachedNetworkImage(imageUrl: book.cover)),
+//                  child: Image(image: CachedNetworkImageProvider(book.cover))),
+                            child: coverImage(book.cover)),
+                        Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                              Text(book.authors.join(', ')),
+                              Text(book.title ?? ''),
+                              Text(book.genre ?? ''),
+                              Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    Expanded(flex: 1, child: Text(distance)),
+                                    Icon(Icons.location_pin),
+                                    Expanded(
+                                        flex: 4, child: Text(book.bookplace))
+                                  ])
+                            ]))
+                      ]),
+                      // Figma: buttons
+                      Row(children: [
+                        MaterialButton(
+                          onPressed: () {},
+                          color: Colors.orange,
+                          textColor: Colors.white,
+                          child: Icon(
+                            Icons.search,
+                            size: 16,
+                          ),
+                          padding: EdgeInsets.all(3),
+                          shape: CircleBorder(),
                         ),
-                        padding: EdgeInsets.all(3),
-                        shape: CircleBorder(),
-                      ),
-                      MaterialButton(
-                        onPressed: () {},
-                        color: Colors.orange,
-                        textColor: Colors.white,
-                        child: Icon(
-                          Icons.favorite,
-                          size: 16,
+                        MaterialButton(
+                          onPressed: () {},
+                          color: Colors.orange,
+                          textColor: Colors.white,
+                          child: Icon(
+                            Icons.favorite,
+                            size: 16,
+                          ),
+                          padding: EdgeInsets.all(3),
+                          shape: CircleBorder(),
                         ),
-                        padding: EdgeInsets.all(3),
-                        shape: CircleBorder(),
-                      ),
-                      MaterialButton(
-                        onPressed: () {},
-                        color: Colors.orange,
-                        textColor: Colors.white,
-                        child: Icon(
-                          Icons.message,
-                          size: 16,
+                        MaterialButton(
+                          onPressed: () {},
+                          color: Colors.orange,
+                          textColor: Colors.white,
+                          child: Icon(
+                            Icons.message,
+                            size: 16,
+                          ),
+                          padding: EdgeInsets.all(3),
+                          shape: CircleBorder(),
                         ),
-                        padding: EdgeInsets.all(3),
-                        shape: CircleBorder(),
-                      ),
-                      MaterialButton(
-                        onPressed: () {},
-                        color: Colors.orange,
-                        textColor: Colors.white,
-                        child: Icon(
-                          Icons.share,
-                          size: 16,
+                        MaterialButton(
+                          onPressed: () {},
+                          color: Colors.orange,
+                          textColor: Colors.white,
+                          child: Icon(
+                            Icons.share,
+                            size: 16,
+                          ),
+                          padding: EdgeInsets.all(3),
+                          shape: CircleBorder(),
                         ),
-                        padding: EdgeInsets.all(3),
-                        shape: CircleBorder(),
-                      ),
-                    ]),
-                    // Figma: Description
-                    Container(
-                        margin: EdgeInsets.only(top: 15.0),
-                        child: Text('DESCRIPTION')),
-                    Text(book.description),
-                    Container(
-                        margin: EdgeInsets.only(top: 15.0),
-                        child: Text('TAGS')),
-                    Wrap(
-                        children: book.tags.map((tag) {
-                      return Chip(label: Text(tag));
-                    }).toList()),
-                    Image.network(book.photoUrl),
-                    Text('Last scan 21.01.2020')
-                  ])));
-    }
+                      ]),
+                      // Figma: Description
+                      Container(
+                          margin: EdgeInsets.only(top: 15.0),
+                          child: Text('DESCRIPTION')),
+                      Text(book.description ?? ''),
+                      Container(
+                          margin: EdgeInsets.only(top: 15.0),
+                          child: Text('TAGS')),
+                      Wrap(
+                          children: book.tags.map((tag) {
+                        return Chip(label: Text(tag));
+                      }).toList()),
+                      Image.network(book.photoUrl),
+                      Text('Last scan 21.01.2020')
+                    ])));
+      }
+    });
   }
 }
 

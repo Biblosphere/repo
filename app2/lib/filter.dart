@@ -60,8 +60,7 @@ class _TitleChipsState extends State<TitleChipsWidget> {
         maxChips: 5,
         findSuggestions: findTitleSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(
-              FilterType.title, data, MediaQuery.of(context).devicePixelRatio);
+          context.bloc<FilterCubit>().changeFilters(FilterType.title, data);
         },
         chipBuilder: chipBuilder,
         suggestionBuilder: titleSugestionBuilder,
@@ -130,8 +129,7 @@ class _GenreChipsState extends State<GenreChipsWidget> {
         maxChips: 5,
         findSuggestions: findGenreSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(
-              FilterType.genre, data, MediaQuery.of(context).devicePixelRatio);
+          context.bloc<FilterCubit>().changeFilters(FilterType.genre, data);
         },
         chipBuilder: chipBuilder,
         suggestionBuilder: genreSugestionBuilder,
@@ -200,8 +198,7 @@ class _PlaceChipsState extends State<PlaceChipsWidget> {
         maxChips: 5,
         findSuggestions: findPlaceSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(
-              FilterType.place, data, MediaQuery.of(context).devicePixelRatio);
+          context.bloc<FilterCubit>().changeFilters(FilterType.place, data);
         },
         chipBuilder: chipBuilder,
         suggestionBuilder: placeSugestionBuilder,
@@ -264,8 +261,7 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
         maxChips: 5,
         findSuggestions: findLanguageSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(FilterType.language, data,
-              MediaQuery.of(context).devicePixelRatio);
+          context.bloc<FilterCubit>().changeFilters(FilterType.language, data);
         },
         chipBuilder: chipBuilder,
         suggestionBuilder: languageSugestionBuilder,
@@ -300,8 +296,7 @@ Widget chipBuilder(
               },
     onPressed: () {
       state.setState(() {
-        context.bloc<FilterCubit>().toggleFilter(
-            filter.type, filter, MediaQuery.of(context).devicePixelRatio);
+        context.bloc<FilterCubit>().toggleFilter(filter.type, filter);
       });
     },
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -353,8 +348,7 @@ class _SearchPanelState extends State<SearchPanel> {
                     // TODO: Put book icon here
                     // avatar: CircleAvatar(),
                     onDeleted: () {
-                      context.bloc<FilterCubit>().toggleFilter(
-                          f.type, f, MediaQuery.of(context).devicePixelRatio);
+                      context.bloc<FilterCubit>().toggleFilter(f.type, f);
                       setState(() {});
                     },
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

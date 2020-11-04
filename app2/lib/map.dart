@@ -1,6 +1,6 @@
 part of 'main.dart';
 
-Future<BitmapDescriptor> getClusterMarker(
+Future<BitmapDescriptor> getGroupIcon(
   int clusterSize,
   double width,
 ) async {
@@ -40,42 +40,95 @@ Future<BitmapDescriptor> getClusterMarker(
   return BitmapDescriptor.fromBytes(data.buffer.asUint8List());
 }
 
-class BookMarker extends Marker {
-  final Book book;
+Future<BitmapDescriptor> getBookIcon(double size) async {
+  final pictureRecorder = PictureRecorder();
+  final canvas = Canvas(pictureRecorder);
+  final textPainter = TextPainter(textDirection: TextDirection.ltr);
+  //Icons.menu_book_rounded
+  String iconStr = String.fromCharCode(Icons.location_pin.codePoint);
+  textPainter.text = TextSpan(
+      text: iconStr,
+      style: TextStyle(
+          letterSpacing: 0.0,
+          fontSize: size,
+          fontFamily: Icons.location_pin.fontFamily,
+          color: Colors.grey.withOpacity(0.6)));
+  textPainter.layout();
+  textPainter.paint(canvas, Offset(0.0, 0.0));
 
-  BookMarker({MarkerId markerId, this.book})
-      : super(
-            markerId: markerId,
-            position: book.location,
-            icon:
-                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-            infoWindow:
-                InfoWindow(title: book.title, snippet: book.authors.join(', ')),
-            onTap: () {
-              // TODO: Open book details view
-            });
+  iconStr = String.fromCharCode(Icons.menu_book_rounded.codePoint);
+  textPainter.text = TextSpan(
+      text: iconStr,
+      style: TextStyle(
+        letterSpacing: 0.0,
+        fontSize: size * 0.45,
+        fontFamily: Icons.menu_book_rounded.fontFamily,
+        color: Colors.blue,
+      ));
+  textPainter.layout();
+  textPainter.paint(canvas, Offset(size * 0.275, size * 0.152));
+
+  final picture = pictureRecorder.endRecording();
+  final image = await picture.toImage(size.round(), size.round());
+  final bytes = await image.toByteData(format: ImageByteFormat.png);
+  return BitmapDescriptor.fromBytes(bytes.buffer.asUint8List());
 }
 
-class GroupMarker extends Marker {
-  final List<Book> books;
+Future<Set<Marker>> markersFor(
+    BuildContext context, Map<String, Set<MarkerData>> map) async {
+  if (map == null || map.length == 0) return Set();
 
-  GroupMarker(
-      {MarkerId markerId,
-      String geohash,
-      LatLng position,
-      BitmapDescriptor icon,
-      this.books})
-      : super(
-            markerId: markerId,
-            position: position,
-            icon: icon,
-            infoWindow:
-                // TODO: retrieve actual list of languages
-                InfoWindow(title: '${books.length} books', snippet: 'RUS, ENG'),
-            onTap: () {
-              // TODO: Open list view for froup below 100
-              //       and zoom in for bigger groups
-            });
+  // Flat map with hashes into single list of marker data
+  List<MarkerData> data = map.values.expand((e) => e).toList();
+
+  // Calculate sizes for cluster icons
+  List<int> lengths = data.map((value) => value.books.length).toList();
+  int maxGroup = lengths.reduce(max);
+  int minGroup = lengths.reduce(min);
+  double minR = 30.0, maxR = 45.0;
+
+  // Icon for single book
+  BitmapDescriptor bookBitmap =
+      await getBookIcon(40.0 * MediaQuery.of(context).devicePixelRatio);
+
+  // Create icons of different sizes
+  Set<Marker> markers = Set();
+
+  await Future.forEach(data, (d) async {
+    if (d.books.length > 1) {
+      double radius =
+          ((d.books.length - minGroup) / (maxGroup - minGroup) * (maxR - minR) +
+                  minR) *
+              MediaQuery.of(context).devicePixelRatio;
+
+      markers.add(Marker(
+          markerId: MarkerId(d.geohash),
+          position: d.position,
+          icon: await getGroupIcon(
+            d.books.length,
+            radius,
+          ),
+          infoWindow:
+              // TODO: retrieve actual list of languages
+              InfoWindow(title: '${d.books.length} books', snippet: 'RUS, ENG'),
+          onTap: () {
+            context.bloc<FilterCubit>().markerPressed(d);
+          }));
+    } else {
+      markers.add(Marker(
+          markerId: MarkerId(d.geohash),
+          position: d.position,
+          icon: bookBitmap,
+          infoWindow: InfoWindow(
+              title: d.books.first.title,
+              snippet: d.books.first.authors.join(', ')),
+          onTap: () {
+            context.bloc<FilterCubit>().markerPressed(d);
+          }));
+    }
+  });
+
+  return markers;
 }
 
 class MapWidget extends StatefulWidget {
@@ -93,45 +146,41 @@ class _MapWidgetState extends State<MapWidget> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
+      return FutureBuilder(
+          initialData: {},
+          future: markersFor(context, filters.markers),
+          builder: (context, snapshot) {
+            Set<Marker> markers = {};
+            if (snapshot.hasData) markers = snapshot.data;
+
+            print('!!!DEBUG Total markers: ${markers.length}');
+
+            return GoogleMap(
+                myLocationButtonEnabled: false,
+                mapToolbarEnabled: false,
+                zoomControlsEnabled: false,
+                mapType: MapType.normal,
+                initialCameraPosition: CameraPosition(
+                  target: filters.center,
+                  zoom: filters.zoom,
+                ),
+                onCameraIdle: () async {
+                  print('!!!DEBUG: Map move completed');
+                  // TODO: Add condition for significant moves only
+                  context.bloc<FilterCubit>().mapMoved(
+                      _position, await _controller.getVisibleRegion());
+                },
+                onCameraMove: (position) {
+                  _position = position;
+                },
+                onMapCreated: (GoogleMapController controller) {
+                  //TODO: Keep controller to retrieve visible region
+                  _controller = controller;
+                  //controller.getVisibleRegion();
+                },
+                markers: markers);
+          });
       // Add markers for all visible geo-hashes to single set
-      Set<Marker> markers = {};
-
-      print('!!!DEBUG BUILD MAP');
-
-      if (filters.markers != null)
-        filters.markers.forEach((key, value) {
-          print('!!!DEBUG build MAP add ${value.length} markers');
-          markers.addAll(value);
-        });
-
-      print('!!!DEBUG Total markers: ${markers.length}');
-
-      return GoogleMap(
-          myLocationButtonEnabled: false,
-          mapToolbarEnabled: false,
-          zoomControlsEnabled: false,
-          mapType: MapType.normal,
-          initialCameraPosition: CameraPosition(
-            target: filters.center,
-            zoom: filters.zoom,
-          ),
-          onCameraIdle: () async {
-            print('!!!DEBUG: Map move completed');
-            // TODO: Add condition for significant moves only
-            context.bloc<FilterCubit>().mapMoved(
-                _position,
-                await _controller.getVisibleRegion(),
-                MediaQuery.of(context).devicePixelRatio);
-          },
-          onCameraMove: (position) {
-            _position = position;
-          },
-          onMapCreated: (GoogleMapController controller) {
-            //TODO: Keep controller to retrieve visible region
-            _controller = controller;
-            //controller.getVisibleRegion();
-          },
-          markers: markers);
     });
   }
 }

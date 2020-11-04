@@ -71,23 +71,45 @@ String up(String geohash) {
   }
 }
 
+class MarkerData extends Equatable {
+  final String geohash;
+  final LatLng position;
+  final List<Book> books;
+
+  MarkerData({this.geohash, this.position, this.books});
+
+  @override
+  List<Object> get props => [geohash, position];
+}
+
 enum PanelPosition { hiden, minimized, open }
 
-enum ViewType { map, list, details, camera }
+enum ViewType { map, camera, list, details }
 
 class FilterState extends Equatable {
   final Map<FilterType, List<Filter>> filters;
+  final List<String> isbns;
   final PanelPosition position;
   final LatLng center;
   final double zoom;
   final Set<String> geohashes;
   final ViewType view;
   final List<Book> books;
-  final Map<String, Set<Marker>> markers;
+  final Book selected;
+  final Map<String, Set<MarkerData>> markers;
 
   @override
-  List<Object> get props =>
-      [filters, position, center, zoom, geohashes, view, books, markers];
+  List<Object> get props => [
+        filters,
+        position,
+        center,
+        zoom,
+        geohashes,
+        view,
+        books,
+        selected,
+        markers
+      ];
 
   const FilterState(
       {this.filters = const {
@@ -96,31 +118,37 @@ class FilterState extends Equatable {
         FilterType.place: [Filter(type: FilterType.contacts, selected: false)],
         FilterType.language: [],
       },
+      this.isbns = const [],
       this.position = PanelPosition.minimized,
-      this.center = const LatLng(37.42796133580664, -122.085749655962),
+      this.center = const LatLng(49.8397, 24.0297),
       this.zoom = 5.0,
-      this.geohashes = const {'9q9hv'},
-      this.view,
+      this.geohashes = const {'u8c5d'},
+      this.view = ViewType.map,
       this.books,
+      this.selected,
       this.markers});
 
   FilterState copyWith(
       {Map<FilterType, List<Filter>> filters,
+      List<String> isbns,
       PanelPosition position,
       LatLng center,
       double zoom,
       ViewType view,
       Set<String> geohashes,
       List<Book> books,
-      Map<String, Set<Marker>> markers}) {
+      Book selected,
+      Map<String, Set<MarkerData>> markers}) {
     return FilterState(
       filters: filters ?? this.filters,
+      isbns: isbns ?? this.isbns,
       position: position ?? this.position,
       center: center ?? this.center,
       zoom: zoom ?? this.zoom,
       view: view ?? this.view,
       geohashes: geohashes ?? this.geohashes,
       books: books ?? this.books,
+      selected: selected ?? this.selected,
       markers: markers ?? this.markers,
     );
   }
@@ -144,12 +172,22 @@ class FilterState extends Equatable {
     String low = (geohash + '000000000').substring(0, 9);
     String high = (geohash + 'zzzzzzzzz').substring(0, 9);
 
-    QuerySnapshot bookSnap = await FirebaseFirestore.instance
-        .collection('books')
-        .where('location.geohash', isGreaterThanOrEqualTo: low)
-        .where('location.geohash', isLessThan: high)
-        .limit(2000)
-        .get();
+    QuerySnapshot bookSnap;
+
+    if (isbns == null || isbns.length == 0) {
+      bookSnap = await FirebaseFirestore.instance
+          .collection('books')
+          .where('location.geohash', isGreaterThanOrEqualTo: low)
+          .where('location.geohash', isLessThan: high)
+          .limit(2000)
+          .get();
+    } else {
+      bookSnap = await FirebaseFirestore.instance
+          .collection('books')
+          .where('isbn', whereIn: isbns)
+          .limit(2000)
+          .get();
+    }
 
     // Group all books for geohash areas one level down
     List<Book> books =
@@ -160,54 +198,31 @@ class FilterState extends Equatable {
     return books;
   }
 
-  Future<Set<Marker>> markersFor(
-      String geohash, List<Book> books, devicePixelRatio) async {
+  Future<Set<MarkerData>> markersFor(String geohash, List<Book> books) async {
     int level = min(geohash.length + 2, 9);
 
-    Set<Marker> markers = Set();
+    Set<MarkerData> markers = Set();
 
     if (books != null && books.length > 0) {
       // Group all books for geohash areas one level down
       Map<String, List<Book>> booktree =
           groupBy(books, (book) => book.geohash.substring(0, level));
 
-      List<int> sizes = booktree.values.map((value) => value.length).toList();
-      int maxGroup = sizes.reduce(max);
-      int minGroup = sizes.reduce(min);
-      double minR = 30.0, maxR = 45.0;
-
       await Future.forEach(booktree.keys, (key) async {
         List<Book> value = booktree[key];
-        if (value.length > 1) {
-          // Calculate position for the marker via average geo-hash code
-          double lat = 0.0, lng = 0.0;
-          value.forEach((b) {
-            lat += b.location.latitude;
-            lng += b.location.longitude;
-          });
+        // Calculate position for the marker via average geo-hash code
+        // for positions of individual books
+        double lat = 0.0, lng = 0.0;
+        value.forEach((b) {
+          lat += b.location.latitude;
+          lng += b.location.longitude;
+        });
 
-          lat /= value.length;
-          lng /= value.length;
+        lat /= value.length;
+        lng /= value.length;
 
-          double radius = ((value.length - minGroup) *
-                      (maxR - minR) /
-                      (maxGroup - minGroup) +
-                  minR) *
-              devicePixelRatio;
-
-          markers.add(GroupMarker(
-              markerId: MarkerId(key),
-              geohash: key,
-              position: LatLng(lat, lng),
-              icon: await getClusterMarker(
-                value.length,
-                radius,
-              ),
-              books: value));
-        } else {
-          Book book = value[0];
-          markers.add(BookMarker(markerId: MarkerId(book.id), book: book));
-        }
+        markers.add(
+            MarkerData(geohash: key, position: LatLng(lat, lng), books: value));
       });
     }
 
@@ -224,13 +239,32 @@ int lcp(String s1, String s2) {
   return min(s1.length, s2.length);
 }
 
+double distanceBetween(LatLng p1, LatLng p2) {
+  double lat1 = p1.latitude;
+  double lon1 = p1.longitude;
+  double lat2 = p2.latitude;
+  double lon2 = p2.longitude;
+
+  double R = 6378.137; // Radius of earth in KM
+  double dLat = lat2 * pi / 180 - lat1 * pi / 180;
+  double dLon = lon2 * pi / 180 - lon1 * pi / 180;
+  double a = sin(dLat / 2) * sin(dLat / 2) +
+      cos(lat1 * pi / 180) *
+          cos(lat2 * pi / 180) *
+          sin(dLon / 2) *
+          sin(dLon / 2);
+  double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+  double d = R * c;
+  return d * 1000; // Meters
+}
+
 class FilterCubit extends Cubit<FilterState> {
-  FilterCubit(double devicePixelRatio) : super(FilterState()) {
+  FilterCubit() : super(FilterState()) {
     List<Book> books;
-    Map<String, Set<Marker>> markers = {};
+    Map<String, Set<MarkerData>> markers = {};
     Future.forEach(state.geohashes, (hash) async {
       books = await state.booksFor(hash);
-      markers[hash] = await state.markersFor(hash, books, devicePixelRatio);
+      markers[hash] = await state.markersFor(hash, books);
     }).then((value) {
       emit(state.copyWith(
         books: books,
@@ -248,40 +282,20 @@ class FilterCubit extends Cubit<FilterState> {
         1000;
   }
 
-  double distanceBetween(LatLng p1, LatLng p2) {
-    double lat1 = p1.latitude;
-    double lon1 = p1.longitude;
-    double lat2 = p2.latitude;
-    double lon2 = p2.longitude;
-
-    double R = 6378.137; // Radius of earth in KM
-    double dLat = lat2 * pi / 180 - lat1 * pi / 180;
-    double dLon = lon2 * pi / 180 - lon1 * pi / 180;
-    double a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1 * pi / 180) *
-            cos(lat2 * pi / 180) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
-    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    double d = R * c;
-    return d; // Km
-  }
-
   // FILTER PANEL:
   // - Author/title filter changed => FILTER
   // - Places filter changed => FILTER (permission for Address Book if My Places)
   // - Language filter changed => FILTER
   // - Genre filter changed => FILTER
-  void changeFilters(
-      FilterType type, List<Filter> filter, double devicePixelRatio) async {
+  void changeFilters(FilterType type, List<Filter> filter) async {
     // TODO: Set filter for given conditions, so only requested books are
     //        displayed. Probably zoom out to contains more copies of this book.
 
     List<Book> books;
-    Map<String, Set<Marker>> markers;
+    Map<String, Set<MarkerData>> markers;
     await Future.forEach(state.geohashes, (hash) async {
       books = await state.booksFor(hash);
-      markers[hash] = await state.markersFor(hash, books, devicePixelRatio);
+      markers[hash] = await state.markersFor(hash, books);
     });
 
     emit(state.copyWith(
@@ -296,16 +310,15 @@ class FilterCubit extends Cubit<FilterState> {
   // - Places filter changed => FILTER (permission for Address Book if My Places)
   // - Language filter changed => FILTER
   // - Genre filter changed => FILTER
-  void toggleFilter(
-      FilterType type, Filter filter, double devicePixelRatio) async {
+  void toggleFilter(FilterType type, Filter filter) async {
     // TODO: Set filter for given conditions, so only requested books are
     //        displayed. Probably zoom out to contains more copies of this book.
 
     List<Book> books;
-    Map<String, Set<Marker>> markers;
+    Map<String, Set<MarkerData>> markers;
     await Future.forEach(state.geohashes, (hash) async {
       books = await state.booksFor(hash);
-      markers[hash] = await state.markersFor(hash, books, devicePixelRatio);
+      markers[hash] = await state.markersFor(hash, books);
     });
 
     emit(state.copyWith(
@@ -363,27 +376,33 @@ class FilterCubit extends Cubit<FilterState> {
   void setView(ViewType view) {
     if (view == ViewType.list) {
       // Sort books based on a distance to the center of the Map screen
-      List<Book> books = state.books;
+      // List<Book> books = state.books;
+
+      // Restore books from visible markers (otherwise cut by clicking on marker)
+      List<Book> books = state.markers.values
+          .expand((e1) => e1.expand((e2) => e2.books))
+          .toList();
 
       books.sort((a, b) => (distanceBetween(a.location, state.center) -
               distanceBetween(b.location, state.center))
           .round());
 
+      print('!!!DEBUG books sorted around ${state.center}');
+
       emit(state.copyWith(
         books: books,
         view: ViewType.list,
       ));
+    } else {
+      emit(state.copyWith(
+        view: view,
+      ));
     }
-
-    emit(state.copyWith(
-      view: view,
-    ));
   }
 
   // MAP VIEW
   // - Map move => FILTER
-  void mapMoved(CameraPosition position, LatLngBounds bounds,
-      double devicePixelRatio) async {
+  void mapMoved(CameraPosition position, LatLngBounds bounds) async {
     print('!!!DEBUG mapMoved: starting hashes ${state.geohashes.join(',')}');
 
     // Recalculate geo-hashes from camera position and bounds
@@ -445,7 +464,7 @@ class FilterCubit extends Cubit<FilterState> {
     // Remove duplicates (Duplicates appeared on zoom-out)
     books = books.toSet().toList();
 
-    Map<String, Set<Marker>> markers = state.markers;
+    Map<String, Set<MarkerData>> markers = state.markers;
     // Remove markers clusters. If same level remove hiden, otherwise all.
     if (level == oldLevel)
       markers.removeWhere((key, value) => !hashes.contains(key));
@@ -456,7 +475,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     // Add markers for extra geo-hashes
     await Future.forEach(toAddMarkers, (hash) async {
-      markers[hash] = await state.markersFor(hash, books, devicePixelRatio);
+      markers[hash] = await state.markersFor(hash, books);
     });
 
     // !!!DEBUG
@@ -479,18 +498,25 @@ class FilterCubit extends Cubit<FilterState> {
 
   // MAP VIEW
   // - Tap on Marker => FILTER
-  void markerPressed(Marker marker) {
-    if (marker is BookMarker) {
+  void markerPressed(MarkerData marker) {
+    print('!!!DEBUG Marker pressed ${marker.position}');
+    if (marker.books.length == 1) {
       // Open detailes screen if marker is for one book
       emit(state.copyWith(
-        books: [marker.book],
+        selected: marker.books.first,
         view: ViewType.details,
+        center: marker.position,
       ));
-    } else if (marker is GroupMarker) {
+    } else if (marker.books.length > 1) {
+      List<Book> books = marker.books;
+      books.sort((a, b) => (distanceBetween(a.location, marker.position) -
+              distanceBetween(b.location, marker.position))
+          .round());
       // Zoom in if marker has too many books
       emit(state.copyWith(
-        books: marker.books,
+        books: books,
         view: ViewType.list,
+        center: marker.position,
       ));
     }
 
@@ -500,15 +526,15 @@ class FilterCubit extends Cubit<FilterState> {
 
   // DETAILS
   // - Search button pressed => FILTER
-  void searchBookPressed(Book book, double devicePixelRatio) async {
+  void searchBookPressed(Book book) async {
     // TODO: Set filter for given book, so only this book is displayed
     //       probably zoom out to contains more copies of this book.
 
     List<Book> books;
-    Map<String, Set<Marker>> markers;
+    Map<String, Set<MarkerData>> markers;
     await Future.forEach(state.geohashes, (hash) async {
       books = await state.booksFor(hash);
-      markers[hash] = await state.markersFor(hash, books, devicePixelRatio);
+      markers[hash] = await state.markersFor(hash, books);
     });
 
     emit(state.copyWith(
