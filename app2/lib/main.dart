@@ -391,7 +391,10 @@ class _MainPageState extends State<MainPage> {
                         }
                       ],
                       onPressedSelected: [
-                        () {},
+                        // onPressedSelected for MAP
+                        () {
+                          context.bloc<FilterCubit>().mapButtonPressed();
+                        },
                         // onPressedSelected for CAMERA
                         () {
                           print('!!!DEBUG Selected button pressed for CAMERA');

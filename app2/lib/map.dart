@@ -147,7 +147,7 @@ class _MapWidgetState extends State<MapWidget> {
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return FutureBuilder(
-          initialData: {},
+          initialData: Set<Marker>(),
           future: markersFor(context, filters.markers),
           builder: (context, snapshot) {
             Set<Marker> markers = {};
@@ -176,7 +176,7 @@ class _MapWidgetState extends State<MapWidget> {
                 onMapCreated: (GoogleMapController controller) {
                   //TODO: Keep controller to retrieve visible region
                   _controller = controller;
-                  //controller.getVisibleRegion();
+                  context.bloc<FilterCubit>().setController(controller);
                 },
                 markers: markers);
           });

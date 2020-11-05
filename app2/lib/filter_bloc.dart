@@ -259,6 +259,8 @@ double distanceBetween(LatLng p1, LatLng p2) {
 }
 
 class FilterCubit extends Cubit<FilterState> {
+  GoogleMapController _controller;
+
   FilterCubit() : super(FilterState()) {
     List<Book> books;
     Map<String, Set<MarkerData>> markers = {};
@@ -357,10 +359,17 @@ class FilterCubit extends Cubit<FilterState> {
   void mapButtonPressed() async {
     Position loc = await Geolocator.getCurrentPosition();
 
-    emit(state.copyWith(
-      center: LatLng(loc.latitude, loc.longitude),
-      zoom: 14.0,
-    ));
+    print('!!!DEBUG New location ${LatLng(loc.latitude, loc.longitude)}');
+
+    // TODO: Calculate zoom based on the book availability at a location
+
+    if (_controller != null)
+//      _controller.moveCamera(CameraUpdate.newCameraPosition(CameraPosition(
+//          target: LatLng(loc.latitude, loc.longitude), zoom: 10.0)));
+
+      _controller.moveCamera(
+          CameraUpdate.newLatLng(LatLng(loc.latitude, loc.longitude)));
+
     // TODO: Check if zoom reset is a good thing. Do we need to
     //       auto-calculate zoom to always contain some book search results.
   }
@@ -402,6 +411,12 @@ class FilterCubit extends Cubit<FilterState> {
 
   // MAP VIEW
   // - Map move => FILTER
+  void setController(GoogleMapController controller) {
+    _controller = controller;
+  }
+
+  // MAP VIEW
+  // - Map move => FILTER
   void mapMoved(CameraPosition position, LatLngBounds bounds) async {
     print('!!!DEBUG mapMoved: starting hashes ${state.geohashes.join(',')}');
 
@@ -436,6 +451,7 @@ class FilterCubit extends Cubit<FilterState> {
     int oldLevel = state.geohashes.first.length;
 
     // Do nothing if all new geo-hashes already present in the state
+    // Reset target if it's not null
     if (oldLevel == level && state.geohashes.containsAll(hashes)) return;
 
     List<Book> books = state.books;
