@@ -37,24 +37,50 @@ FILTER => Book filter changed
 
 enum FilterType { author, title, genre, language, place, wish, contacts }
 
+enum FilterGroup { book, genre, language, place }
+
 class Filter extends Equatable {
   final FilterType type;
   final String value;
+  final Book book;
   final bool selected;
 
   @override
   List<Object> get props => [type, value, selected];
 
-  const Filter({@required this.type, this.value, this.selected});
+  const Filter({@required this.type, this.value, this.book, this.selected});
+
+  FilterGroup get group {
+    switch (type) {
+      case FilterType.author:
+      case FilterType.title:
+      case FilterType.wish:
+        return FilterGroup.book;
+
+      case FilterType.genre:
+        return FilterGroup.genre;
+
+      case FilterType.language:
+        return FilterGroup.language;
+
+      case FilterType.place:
+      case FilterType.contacts:
+        return FilterGroup.place;
+    }
+    //TODO: report in the crashalytics
+    return null;
+  }
 
   Filter copyWith({
     FilterType type,
     String value,
+    String book,
     bool selected,
   }) {
     return Filter(
       type: type ?? this.type,
       value: value ?? this.value,
+      book: book ?? this.book,
       selected: selected ?? this.selected,
     );
   }
@@ -87,8 +113,10 @@ enum PanelPosition { hiden, minimized, open }
 enum ViewType { map, camera, list, details }
 
 class FilterState extends Equatable {
-  final Map<FilterType, List<Filter>> filters;
+  final List<Filter> filters;
   final List<String> isbns;
+  final bool genreInput;
+  final bool languageInput;
   final PanelPosition position;
   final LatLng center;
   final double zoom;
@@ -101,6 +129,9 @@ class FilterState extends Equatable {
   @override
   List<Object> get props => [
         filters,
+        isbns,
+        genreInput,
+        languageInput,
         position,
         center,
         zoom,
@@ -112,12 +143,12 @@ class FilterState extends Equatable {
       ];
 
   const FilterState(
-      {this.filters = const {
-        FilterType.title: [Filter(type: FilterType.wish, selected: false)],
-        FilterType.genre: [],
-        FilterType.place: [Filter(type: FilterType.contacts, selected: false)],
-        FilterType.language: [],
-      },
+      {this.filters = const [
+        Filter(type: FilterType.wish, selected: false),
+        Filter(type: FilterType.contacts, selected: false),
+      ],
+      this.genreInput = true,
+      this.languageInput = true,
       this.isbns = const [],
       this.position = PanelPosition.minimized,
       this.center = const LatLng(49.8397, 24.0297),
@@ -129,7 +160,9 @@ class FilterState extends Equatable {
       this.markers});
 
   FilterState copyWith(
-      {Map<FilterType, List<Filter>> filters,
+      {List<Filter> filters,
+      bool genreInput,
+      bool languageInput,
       List<String> isbns,
       PanelPosition position,
       LatLng center,
@@ -141,6 +174,8 @@ class FilterState extends Equatable {
       Map<String, Set<MarkerData>> markers}) {
     return FilterState(
       filters: filters ?? this.filters,
+      genreInput: genreInput ?? this.genreInput,
+      languageInput: languageInput ?? this.languageInput,
       isbns: isbns ?? this.isbns,
       position: position ?? this.position,
       center: center ?? this.center,
@@ -153,19 +188,18 @@ class FilterState extends Equatable {
     );
   }
 
+  List<Filter> getFilters(FilterGroup group) {
+    return filters.where((f) => f.group == group).toList();
+  }
+
   List<Filter> getSelected() {
-    return [
-      ...filters[FilterType.title]
+    List<Filter> selected = filters.where((f) => f.selected).toList();
+    if (filters.length == 0)
+      selected = filters
           .where((f) =>
-              (f.type == FilterType.author || f.type == FilterType.title) &&
-              f.selected)
-          .toList(),
-      ...filters[FilterType.genre].where((f) => f.selected).toList(),
-      ...filters[FilterType.place]
-          .where((f) => (f.type == FilterType.place) && f.selected)
-          .toList(),
-      ...filters[FilterType.language].where((f) => f.selected).toList(),
-    ];
+              (f.type == FilterType.wish || f.type == FilterType.contacts))
+          .toList();
+    return selected;
   }
 
   Future<List<Book>> booksFor(String geohash) async {
@@ -289,22 +323,33 @@ class FilterCubit extends Cubit<FilterState> {
   // - Places filter changed => FILTER (permission for Address Book if My Places)
   // - Language filter changed => FILTER
   // - Genre filter changed => FILTER
-  void changeFilters(FilterType type, List<Filter> filter) async {
+  void changeFilters(FilterGroup group, List<Filter> data) async {
     // TODO: Set filter for given conditions, so only requested books are
     //        displayed. Probably zoom out to contains more copies of this book.
 
-    List<Book> books;
-    Map<String, Set<MarkerData>> markers;
-    await Future.forEach(state.geohashes, (hash) async {
-      books = await state.booksFor(hash);
-      markers[hash] = await state.markersFor(hash, books);
-    });
+    List<Filter> filters = state.getFilters(group);
 
-    emit(state.copyWith(
-      books: books,
-      markers: markers,
-      view: ViewType.map,
-    ));
+    if (data.length > filters.length) {
+      List<Filter> toAdd = data.where((f) => !filters.contains(f)).toList();
+      assert(toAdd.length == 1, 'Only one filter can be added at a time');
+
+      print('!!!DEBUG ADD filters: ${toAdd.first.type}');
+
+      emit(state.copyWith(
+        filters: [...state.filters, toAdd.first],
+      ));
+    } else {
+      print('!!!DEBUG filters length ${filters.length} data ${data.length}');
+      List<Filter> toRemove = filters.where((f) => !data.contains(f)).toList();
+
+      print('!!!DEBUG to remove length ${toRemove.length}');
+      assert(toRemove.length == 1, 'Only one filter can be removed at a time');
+      print('!!!DEBUG REMOVE filters: ${toRemove.first.type}');
+
+      emit(state.copyWith(
+        filters: state.filters.where((f) => f != toRemove.first).toList(),
+      ));
+    }
   }
 
   // FILTER PANEL:
@@ -313,20 +358,13 @@ class FilterCubit extends Cubit<FilterState> {
   // - Language filter changed => FILTER
   // - Genre filter changed => FILTER
   void toggleFilter(FilterType type, Filter filter) async {
-    // TODO: Set filter for given conditions, so only requested books are
-    //        displayed. Probably zoom out to contains more copies of this book.
-
-    List<Book> books;
-    Map<String, Set<MarkerData>> markers;
-    await Future.forEach(state.geohashes, (hash) async {
-      books = await state.booksFor(hash);
-      markers[hash] = await state.markersFor(hash, books);
-    });
+    List<Filter> filters = List.from(state.filters);
+    int i = filters
+        .indexWhere((f) => f.type == filter.type && f.value == filter.value);
+    filters[i] = filter.copyWith(selected: !filter.selected);
 
     emit(state.copyWith(
-      books: books,
-      markers: markers,
-      view: ViewType.map,
+      filters: filters,
     ));
   }
 

@@ -2,7 +2,6 @@ import numpy as np
 import cv2
 import re
 from google.cloud import vision
-from google.cloud.vision import types
 
 
 # Instantiates a client
@@ -10,7 +9,7 @@ vision_client = vision.ImageAnnotatorClient()
 
 
 def ocr_url(url):
-    image = types.Image()
+    image = vision.Image()
     image.source.image_uri = url
 
     return vision_client.document_text_detection(image=image)
@@ -19,7 +18,7 @@ def ocr_url(url):
 def ocr_image(img):
 
     content = cv2.imencode('.jpg', img)[1].tostring()
-    image = types.Image(content=content)
+    image = vision.Image(content=content)
 
     # Performs label detection on the image file
     return vision_client.document_text_detection(image=image)

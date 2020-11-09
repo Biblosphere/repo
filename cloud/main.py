@@ -15,7 +15,7 @@ from tools import imread_blob, ocr_url, ocr_image, convex_for_points, line_angle
     center_for_points, box_angle, box_for_words, lexems, lexem, rotate_points, diff_angle, \
     is_overlap, minrect_area, in_section, rotate
 from books import is_same_book, has_cyrillic, Book
-from catalog import find_book, add_book_sql, get_book_sql, lang_codes, get_tag_list
+from catalog import list_books, find_book, add_book_sql, get_book_sql, lang_codes, get_tag_list
 from scrappers import lookup_ozon, lookup_abebooks, search_google_by_isbn, search_rsl_by_isbn, \
     search_google_by_titleauthor, search_rsl_by_titleauthor
 
@@ -373,6 +373,7 @@ def get_book(request, cursor):
 # gcloud functions logs read search_book
 @connect_mysql
 def search_book(request, cursor):
+    print('!!!DEBUG Search book %s, v.10' % request)
     try:
         req_json = request.get_json(silent=True)
         req_args = request.args
@@ -384,32 +385,8 @@ def search_book(request, cursor):
         else:
             json_abort(400, message="Missing [q] parameter")
 
-        #print('Query', text)
-        keys = lexems(text)
-
         # Search book in Biblosphere
-        _, books = find_book(cursor, keys)
-
-        # Filter results if number of key words to search more than 2
-        if len(keys) > 2:
-            books = [b for b in books if is_same_book(b.catalog_title(), text)]
-
-        # If not found in Biblosphere search in APIs and web
-        if len(books) == 0:
-            books = search_google_by_titleauthor(text, cursor, trace=False)
-
-            if (books is None or len(books) == 0) and has_cyrillic(text):
-                # If cyrillic symbols search in RSL
-                books = search_rsl_by_titleauthor(text, cursor, trace=False)
-
-            if (books is None or len(books) == 0):
-                # If not cyrillic search in google books API, Goodreads and Abebooks
-                book, match = lookup_abebooks(text, cursor, trace=False)
-                books = [book]
-
-            # Filter books if more than 3 key words given
-            if len(keys) > 2 and books is not None and len(books) > 0:
-                books = [b for b in books if is_same_book(b.catalog_title(), text)]
+        books = list_books(cursor, text)
 
         return json.dumps(books, cls=JsonEncoder)
 

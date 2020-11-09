@@ -2,9 +2,12 @@ import 'dart:math';
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import "package:collection/collection.dart";
 
+// HTTP requests for API calls
+import 'package:http/http.dart';
 // BLoC patterns
 import 'package:flutter_bloc/flutter_bloc.dart';
 // Pick a git phone code
@@ -43,6 +46,7 @@ part 'books.dart';
 part 'map.dart';
 part 'filter.dart';
 part 'filter_bloc.dart';
+part 'catalog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +62,12 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  @override
+  void dispose() {
+    api.client.close();
+    super.dispose();
+  }
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {

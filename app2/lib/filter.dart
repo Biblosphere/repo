@@ -8,44 +8,62 @@ class TitleChipsWidget extends StatefulWidget {
 }
 
 class _TitleChipsState extends State<TitleChipsWidget> {
-  // TODo: Replace mock with real values
-  static List<String> titles = <String>[
-    'Good to great',
-    'Great by choice',
-    '8 habits highly effective people',
-    'Lord of the ring',
-    'Jim Collins',
-    'Max Fry'
-  ];
+  static Future<List<Filter>> findTitleSugestions(String query) async {
+    if (query.length < 4) return const <Filter>[];
 
-  static List<Filter> findTitleSugestions(String query) {
-    if (query.length != 0) {
-      var lowercaseQuery = query.toLowerCase();
-      return titles
-          .where((title) {
-            return title.toLowerCase().contains(query.toLowerCase());
-          })
-          .map((g) => Filter(type: FilterType.title, value: g))
-          .toList(growable: false)
-            ..sort((a, b) => a.value
-                .toLowerCase()
-                .indexOf(lowercaseQuery)
-                .compareTo(b.value.toLowerCase().indexOf(lowercaseQuery)));
-    } else {
-      return const <Filter>[];
-    }
+    var lowercase = query.toLowerCase();
+
+    // Query in database catalog
+    List<Book> books = await searchByText(lowercase);
+
+    print('!!!DEBUG: Catalog query return ${books?.length} records');
+
+    if (books == null) return const <Filter>[];
+
+    // If author match use FilterType.author, otherwise FilterType.title
+    return books
+        //  .where((b) =>
+        //      b.title.toLowerCase().contains(lowercase) ||
+        //      b.authors.join().toLowerCase().contains(lowercase))
+        .map((b) {
+          String matchAuthor = b.authors.firstWhere(
+              (a) => lowercase
+                  .split(' ')
+                  .every((word) => a.toLowerCase().contains(word)),
+              orElse: () => null);
+
+          if (matchAuthor != null)
+            return Filter(
+                type: FilterType.author, selected: true, value: matchAuthor);
+          else
+            return Filter(
+                type: FilterType.title,
+                selected: true,
+                value: b.title,
+                book: b);
+        })
+        .toSet()
+        .toList();
   }
 
   static Widget titleSugestionBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter title) {
-    return ListTile(
-      key: ObjectKey(title),
-      // TODO: Add leading avatar with book
-      // leading: CircleAvatar(),
-      title: Text(title.value),
-      subtitle: Text(title.value),
-      onTap: () => state.selectSuggestion(title),
-    );
+      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
+    if (filter.type == FilterType.title)
+      return ListTile(
+        key: ObjectKey(filter),
+        leading: Icon(Icons.book),
+        title: Text(filter.value),
+        subtitle: filter.book != null ? Text(filter.book.authors.first) : null,
+        onTap: () => state.selectSuggestion(filter),
+      );
+    else
+      return ListTile(
+        key: ObjectKey(filter),
+        leading: Icon(Icons.person),
+        title: Text(filter.value),
+        subtitle: null,
+        onTap: () => state.selectSuggestion(filter),
+      );
   }
 
   // List of genre filters
@@ -55,12 +73,12 @@ class _TitleChipsState extends State<TitleChipsWidget> {
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters.filters[FilterType.title],
+        initialValue: filters.getFilters(FilterGroup.book),
         decoration: InputDecoration(labelText: "Title / Author"),
         maxChips: 5,
         findSuggestions: findTitleSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(FilterType.title, data);
+          context.bloc<FilterCubit>().changeFilters(FilterGroup.book, data);
         },
         chipBuilder: chipBuilder,
         suggestionBuilder: titleSugestionBuilder,
@@ -122,14 +140,14 @@ class _GenreChipsState extends State<GenreChipsWidget> {
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters.filters[FilterType.genre],
+        initialValue: filters.getFilters(FilterGroup.genre),
         decoration: InputDecoration(
           labelText: "Genre",
         ),
         maxChips: 5,
         findSuggestions: findGenreSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(FilterType.genre, data);
+          context.bloc<FilterCubit>().changeFilters(FilterGroup.genre, data);
         },
         chipBuilder: chipBuilder,
         suggestionBuilder: genreSugestionBuilder,
@@ -191,14 +209,14 @@ class _PlaceChipsState extends State<PlaceChipsWidget> {
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters.filters[FilterType.place],
+        initialValue: filters.getFilters(FilterGroup.place),
         decoration: InputDecoration(
           labelText: "Place / Contact",
         ),
         maxChips: 5,
         findSuggestions: findPlaceSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(FilterType.place, data);
+          context.bloc<FilterCubit>().changeFilters(FilterGroup.place, data);
         },
         chipBuilder: chipBuilder,
         suggestionBuilder: placeSugestionBuilder,
@@ -254,14 +272,14 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters.filters[FilterType.language],
+        initialValue: filters.getFilters(FilterGroup.language),
         decoration: InputDecoration(
           labelText: "Language",
         ),
         maxChips: 5,
         findSuggestions: findLanguageSugestions,
         onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(FilterType.language, data);
+          context.bloc<FilterCubit>().changeFilters(FilterGroup.language, data);
         },
         chipBuilder: chipBuilder,
         suggestionBuilder: languageSugestionBuilder,
@@ -284,7 +302,7 @@ Widget chipBuilder(
   return InputChip(
     key: ObjectKey(filter),
     //avatar: avatar,
-    selected: filter.selected,
+    selected: filter.selected ?? false,
     label: label,
     // TODO: Put book icon here
     // avatar: CircleAvatar(),

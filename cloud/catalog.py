@@ -268,8 +268,8 @@ def add_book_sql(cursor, book, trace=False):
 
 
 # MySQL query to search for books
-search_query = "SELECT isbn, title, authors, image, MATCH (lexems), genre, lang, description AGAINST (? IN BOOLEAN MODE) AS score FROM prints" \
-               " WHERE MATCH (lexems) AGAINST (? IN BOOLEAN MODE) ORDER BY score DESC limit 5"
+search_query = "SELECT isbn, title, authors, image, genre, lang, description, MATCH (lexems) AGAINST (? IN BOOLEAN MODE) AS score FROM prints" \
+               " WHERE MATCH (lexems) AGAINST (? IN BOOLEAN MODE) ORDER BY score DESC limit 10"
 
 
 # Function to find book by words
@@ -294,11 +294,11 @@ def find_book(cursor, words, trace=False):
         return None, []
 
     # Get top score and top results
-    max_score = results[0][4]
-    top_results = [r for r in results if r[4] == max_score]
+    max_score = results[0][7]
+    top_results = [r for r in results if r[7] == max_score]
 
     # List of books with same top score
-    top_books = [Book(isbn, title, authors, image, genre=genre, language=language, description=description) for isbn, title, authors, image, score, genre, language, description in top_results]
+    top_books = [Book(isbn, title, authors, image, genre=genre, language=language, description=description) for isbn, title, authors, image, genre, language, description, score in top_results]
 
     # Find the shortest book among the top ones
     res_len = [len(r[1]) + len(r[2]) for r in top_results]
@@ -309,3 +309,25 @@ def find_book(cursor, words, trace=False):
         print('%d book(s) found (%.2f)' % (len(top_books), max_score), [b.title for b in top_books])
 
     return book, top_books
+
+# Function to find book by words
+def list_books(cursor, query, trace=False):
+    if trace:
+        print('Call MqSQL with:', query)
+    cursor.execute(search_query, (query, query,))
+
+    results = cursor.fetchall()
+    if trace:
+        print(results)
+
+    # Nothing found
+    if len(results) == 0:
+        return None, []
+
+    # List of books
+    books = [Book(isbn, title, authors, image, genre=genre, language=language, description=description) for isbn, title, authors, image, genre, language, description, score in results]
+
+    if trace:
+        print('%d book(s) found' % len(books))
+
+    return books
