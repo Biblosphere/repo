@@ -89,7 +89,7 @@ class LoginCubit extends Cubit<LoginState> {
     });
 
     // UserCredential userCredential =
-    await FirebaseAuth.instance.signInAnonymously();
+    //await FirebaseAuth.instance.signInAnonymously();
   }
 
   // Enter phone => LOGIN
