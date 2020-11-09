@@ -331,6 +331,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     if (data.length > filters.length) {
       List<Filter> toAdd = data.where((f) => !filters.contains(f)).toList();
+      print('!!!DEBUG new fileters length ${toAdd.length} data ${data.length}');
       assert(toAdd.length == 1, 'Only one filter can be added at a time');
 
       print('!!!DEBUG ADD filters: ${toAdd.first.type}');
@@ -358,10 +359,14 @@ class FilterCubit extends Cubit<FilterState> {
   // - Language filter changed => FILTER
   // - Genre filter changed => FILTER
   void toggleFilter(FilterType type, Filter filter) async {
-    List<Filter> filters = List.from(state.filters);
-    int i = filters
-        .indexWhere((f) => f.type == filter.type && f.value == filter.value);
-    filters[i] = filter.copyWith(selected: !filter.selected);
+    print('!!!DEBUG Toggle filter ${filter.type}');
+
+    List<Filter> filters = state.filters.map((f) {
+      if (f.type == filter.type && f.value == filter.value)
+        return f.copyWith(selected: !filter.selected);
+      else
+        return f;
+    }).toList();
 
     emit(state.copyWith(
       filters: filters,

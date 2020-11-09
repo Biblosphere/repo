@@ -1,13 +1,17 @@
 part of 'main.dart';
 
-class TitleChipsWidget extends StatefulWidget {
-  TitleChipsWidget({Key key}) : super(key: key);
+class ChipsListWidget extends StatefulWidget {
+  final FilterGroup group;
+
+  ChipsListWidget({this.group, Key key}) : super(key: key);
 
   @override
-  _TitleChipsState createState() => _TitleChipsState();
+  _ChipsListState createState() => _ChipsListState(group: group);
 }
 
-class _TitleChipsState extends State<TitleChipsWidget> {
+class _ChipsListState extends State<ChipsListWidget> {
+  final FilterGroup group;
+
   static Future<List<Filter>> findTitleSugestions(String query) async {
     if (query.length < 4) return const <Filter>[];
 
@@ -66,91 +70,82 @@ class _TitleChipsState extends State<TitleChipsWidget> {
       );
   }
 
-  // List of genre filters
-  _TitleChipsState();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
-      return ChipsInput(
-        initialValue: filters.getFilters(FilterGroup.book),
-        decoration: InputDecoration(labelText: "Title / Author"),
-        maxChips: 5,
-        findSuggestions: findTitleSugestions,
-        onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(FilterGroup.book, data);
-        },
-        chipBuilder: chipBuilder,
-        suggestionBuilder: titleSugestionBuilder,
-      );
-    });
-  }
-}
-
-class GenreChipsWidget extends StatefulWidget {
-  GenreChipsWidget({Key key}) : super(key: key);
-
-  @override
-  _GenreChipsState createState() => _GenreChipsState();
-}
-
-class _GenreChipsState extends State<GenreChipsWidget> {
-  // TODo: Replace mock with real values
-  static List<String> genres = <String>[
-    'Fiction',
-    'Non-fiction',
-    'Fantasy',
-    'Novel'
-  ];
-
   static List<Filter> findGenreSugestions(String query) {
     if (query.length != 0) {
       var lowercaseQuery = query.toLowerCase();
-      return genres
-          .where((genre) {
-            return genre.toLowerCase().contains(query.toLowerCase());
+      return genres.keys
+          .where((key) {
+            return genres[key].toLowerCase().contains(query.toLowerCase());
           })
-          .map((g) => Filter(type: FilterType.genre, value: g))
+          .map((key) =>
+              Filter(type: FilterType.genre, selected: true, value: key))
           .toList(growable: false)
-            ..sort((a, b) => a.value
+            ..sort((a, b) => genres[a.value]
                 .toLowerCase()
                 .indexOf(lowercaseQuery)
-                .compareTo(b.value.toLowerCase().indexOf(lowercaseQuery)));
+                .compareTo(
+                    genres[b.value].toLowerCase().indexOf(lowercaseQuery)));
     } else {
       return const <Filter>[];
     }
   }
 
   static Widget genreSugestionBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter genre) {
+      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
     return ListTile(
-      key: ObjectKey(genre),
+      key: ObjectKey(filter),
       // TODO: Add leading avatar with book
       // leading: CircleAvatar(),
-      title: Text(genre.value),
-      subtitle: Text(genre.value),
-      onTap: () => state.selectSuggestion(genre),
+      title: Text(genres[filter.value]),
+      subtitle: null,
+      onTap: () => state.selectSuggestion(filter),
     );
   }
 
   // List of genre filters
-  _GenreChipsState();
+  _ChipsListState({this.group});
+
+  InputDecoration decoration() {
+    String label = '';
+    if (group == FilterGroup.book)
+      label = "Title / Author";
+    else if (group == FilterGroup.genre) label = "Genre";
+
+    return InputDecoration(labelText: label);
+  }
+
+  Future<List<Filter>> findSugestions(String query) async {
+    if (group == FilterGroup.book)
+      return findTitleSugestions(query);
+    else if (group == FilterGroup.genre)
+      return findGenreSugestions(query);
+    else
+      return [];
+  }
+
+  Widget sugestionBuilder(
+      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
+    if (group == FilterGroup.book)
+      return titleSugestionBuilder(context, state, filter);
+    else if (group == FilterGroup.genre)
+      return genreSugestionBuilder(context, state, filter);
+    else
+      return Container();
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return ChipsInput(
-        initialValue: filters.getFilters(FilterGroup.genre),
-        decoration: InputDecoration(
-          labelText: "Genre",
-        ),
+        initialValue: filters.getFilters(group),
+        decoration: decoration(),
         maxChips: 5,
-        findSuggestions: findGenreSugestions,
+        findSuggestions: findSugestions,
+        suggestionBuilder: sugestionBuilder,
         onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(FilterGroup.genre, data);
+          context.bloc<FilterCubit>().changeFilters(group, data);
         },
         chipBuilder: chipBuilder,
-        suggestionBuilder: genreSugestionBuilder,
       );
     });
   }
@@ -289,36 +284,54 @@ class _LanguageChipsState extends State<LanguageChipsWidget> {
 }
 
 Widget chipBuilder(
-    BuildContext context, ChipsInputState<Filter> state, Filter filter) {
+    BuildContext context, ChipsInputState<Filter> state, Filter filterInput) {
+  print('!!!DEBUG chipBuilder ${filterInput.type}');
+
   Widget label;
 
-  if (filter.type == FilterType.wish)
+  if (filterInput.type == FilterType.wish)
     label = Icon(Icons.favorite);
-  else if (filter.type == FilterType.contacts)
+  else if (filterInput.type == FilterType.contacts)
     label = Icon(Icons.contact_phone);
+  else if (filterInput.type == FilterType.genre)
+    label = Text(genres[filterInput.value]);
   else
-    label = Text(filter.value);
+    label = Text(filterInput.value);
 
-  return InputChip(
-    key: ObjectKey(filter),
-    //avatar: avatar,
-    selected: filter.selected ?? false,
-    label: label,
-    // TODO: Put book icon here
-    // avatar: CircleAvatar(),
-    onDeleted:
-        filter.type == FilterType.contacts || filter.type == FilterType.wish
-            ? null
-            : () {
-                state.deleteChip(filter);
-              },
-    onPressed: () {
-      state.setState(() {
-        context.bloc<FilterCubit>().toggleFilter(filter.type, filter);
-      });
-    },
-    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-  );
+  return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
+    Filter filter = filters.filters.firstWhere(
+        (f) => f.type == filterInput.type && f.value == filterInput.value,
+        orElse: null);
+    if (filter == null) {
+      print('!!!DEBUG Could not find filter on build ${filter.type}');
+      return Container();
+    }
+
+    return InputChip(
+      key: ObjectKey(filter),
+      //avatar: avatar,
+      selected: filter.selected ?? false,
+      label: label,
+      // TODO: Put book icon here
+      // avatar: CircleAvatar(),
+      onDeleted:
+          filter.type == FilterType.contacts || filter.type == FilterType.wish
+              ? null
+              : () {
+                  state.deleteChip(filter);
+                },
+      onPressed: () {
+        print('!!!DEBUG Trigger onPressed for filter ${filter.type}');
+        state.setState(() {
+          print(
+              '!!!DEBUG Trigger setState/onPressed for filter ${filter.type}');
+
+          context.bloc<FilterCubit>().toggleFilter(filter.type, filter);
+        });
+      },
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  });
 }
 
 class SearchPanel extends StatefulWidget {
@@ -376,8 +389,8 @@ class _SearchPanelState extends State<SearchPanel> {
     } else {
       return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
         return Column(children: [
-          TitleChipsWidget(),
-          GenreChipsWidget(),
+          ChipsListWidget(group: FilterGroup.book),
+          ChipsListWidget(group: FilterGroup.genre),
           PlaceChipsWidget(),
           LanguageChipsWidget(),
         ]);
