@@ -43,12 +43,14 @@ class Filter extends Equatable {
   final FilterType type;
   final String value;
   final Book book;
+  final Place place;
   final bool selected;
 
   @override
   List<Object> get props => [type, value, selected];
 
-  const Filter({@required this.type, this.value, this.book, this.selected});
+  const Filter(
+      {@required this.type, this.value, this.book, this.place, this.selected});
 
   FilterGroup get group {
     switch (type) {
@@ -81,6 +83,7 @@ class Filter extends Equatable {
       type: type ?? this.type,
       value: value ?? this.value,
       book: book ?? this.book,
+      place: place ?? this.place,
       selected: selected ?? this.selected,
     );
   }
@@ -113,18 +116,34 @@ enum PanelPosition { hiden, minimized, open }
 enum ViewType { map, camera, list, details }
 
 class FilterState extends Equatable {
+  // Current filters
   final List<Filter> filters;
+  // List of the ISBNs to filter the books
   final List<String> isbns;
+  // If input of genres and language allowed
   final bool genreInput;
   final bool languageInput;
+  // Ids of places from my address book
+  final List<String> favorite;
+
+  // Current view (map, list, details, camera) and panel open/close position
+  final ViewType view;
   final PanelPosition position;
+  // Coordinates and zoom of the map camera
   final LatLng center;
   final double zoom;
+  // Current geohashes on the map
   final Set<String> geohashes;
-  final ViewType view;
+
+  // List of books for the list view
   final List<Book> books;
+  // Currently selected book for details view
   final Book selected;
+  // Corrent markers for map view
   final Map<String, Set<MarkerData>> markers;
+
+  // Places near the current location
+  final List<Place> places;
 
   @override
   List<Object> get props => [
@@ -132,6 +151,7 @@ class FilterState extends Equatable {
         isbns,
         genreInput,
         languageInput,
+        favorite,
         position,
         center,
         zoom,
@@ -139,7 +159,8 @@ class FilterState extends Equatable {
         view,
         books,
         selected,
-        markers
+        markers,
+        places
       ];
 
   const FilterState(
@@ -149,6 +170,7 @@ class FilterState extends Equatable {
       ],
       this.genreInput = true,
       this.languageInput = true,
+      this.favorite,
       this.isbns = const [],
       this.position = PanelPosition.minimized,
       this.center = const LatLng(49.8397, 24.0297),
@@ -157,12 +179,14 @@ class FilterState extends Equatable {
       this.view = ViewType.map,
       this.books,
       this.selected,
-      this.markers});
+      this.markers,
+      this.places});
 
   FilterState copyWith(
       {List<Filter> filters,
       bool genreInput,
       bool languageInput,
+      List<String> favorite,
       List<String> isbns,
       PanelPosition position,
       LatLng center,
@@ -171,11 +195,13 @@ class FilterState extends Equatable {
       Set<String> geohashes,
       List<Book> books,
       Book selected,
-      Map<String, Set<MarkerData>> markers}) {
+      Map<String, Set<MarkerData>> markers,
+      List<Place> places}) {
     return FilterState(
       filters: filters ?? this.filters,
       genreInput: genreInput ?? this.genreInput,
       languageInput: languageInput ?? this.languageInput,
+      favorite: favorite ?? this.favorite,
       isbns: isbns ?? this.isbns,
       position: position ?? this.position,
       center: center ?? this.center,
@@ -185,6 +211,7 @@ class FilterState extends Equatable {
       books: books ?? this.books,
       selected: selected ?? this.selected,
       markers: markers ?? this.markers,
+      places: places ?? this.places,
     );
   }
 
@@ -230,6 +257,31 @@ class FilterState extends Equatable {
     print('!!!DEBUG: booksFor reads ${books.length} books');
 
     return books;
+  }
+
+  Future<List<Place>> placesFor(LatLng here, int hashLevel) async {
+    String geohash = GeoHasher()
+        .encode(here.longitude, here.latitude)
+        .substring(0, hashLevel);
+
+    String low = (geohash + '000000000').substring(0, 9);
+    String high = (geohash + 'zzzzzzzzz').substring(0, 9);
+
+    QuerySnapshot placeSnap = await FirebaseFirestore.instance
+        .collection('bookplaces')
+        .where('location.geohash', isGreaterThanOrEqualTo: low)
+        .where('location.geohash', isLessThan: high)
+        .limit(2000)
+        .get();
+
+    // Group all books for geohash areas one level down
+    List<Place> places = placeSnap.docs
+        .map((doc) => Place.fromJson(doc.id, doc.data()))
+        .toList();
+
+    print('!!!DEBUG: placesFor reads ${places.length} books');
+
+    return places;
   }
 
   Future<Set<MarkerData>> markersFor(String geohash, List<Book> books) async {
@@ -292,6 +344,13 @@ double distanceBetween(LatLng p1, LatLng p2) {
   return d * 1000; // Meters
 }
 
+String distanceString(LatLng p1, LatLng p2) {
+  double d = distanceBetween(p1, p2);
+  return d < 1000
+      ? d.toStringAsFixed(0) + " m"
+      : (d / 1000).toStringAsFixed(0) + " km";
+}
+
 class FilterCubit extends Cubit<FilterState> {
   GoogleMapController _controller;
 
@@ -316,6 +375,78 @@ class FilterCubit extends Cubit<FilterState> {
         pow(2, state.zoom) *
         600.0 /
         1000;
+  }
+
+  Future<void> scanContacts() async {
+    // Get all contacts on device
+    Iterable<Contact> addressBook = await ContactsService.getContacts();
+
+    print('!!!DEBUG ${addressBook.length} contacts found');
+
+    List<String> all = [];
+    List<String> places = [];
+
+    // Search each contact in Biblosphere
+    await Future.forEach(addressBook, (c) async {
+      // Get all contacts (phones/emails) for the person
+      List<String> contacts = [
+        ...c.phones.map((p) => p.value),
+        ...c.emails.map((e) => e.value)
+      ];
+
+      // Look for the book places with these contacts
+      // TODO: Only first 10 contacts for the same person are taken
+      QuerySnapshot placeSnap = await FirebaseFirestore.instance
+          .collection('bookplaces')
+          .where('contacts', arrayContainsAny: contacts.take(10).toList())
+          .get();
+
+      // If places are found link it in both direction: from user
+      // to place and from place to user
+      if (placeSnap.docs.length > 0) {
+        // List of book places ids
+        List<String> ids = placeSnap.docs.map((d) => d.id).toList();
+
+        // Add to places of this user
+        places.addAll(ids);
+
+        // Update link from the place to the user
+        // Add current user to found bookplaces
+        await Future.forEach(ids, (id) async {
+          await FirebaseFirestore.instance
+              .collection('bookplaces')
+              .doc(id)
+              .update({
+            'users':
+                FieldValue.arrayUnion([FirebaseAuth.instance.currentUser.uid])
+          });
+        });
+      }
+
+      // Extend list of all contacts
+      all.addAll(contacts);
+    });
+
+    // Update user record if any information are there
+    Map<String, dynamic> data = {};
+    if (all.length > 0) data['contacts'] = FieldValue.arrayUnion(all);
+
+    if (places.length > 0) data['places'] = FieldValue.arrayUnion(places);
+
+    // Update found contacts to the user record
+    if (data.length > 0)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser.uid)
+          .update(data);
+
+    // TODO: Inform user with snackbar if new users found from address book
+
+    // Emit state with updated places if any
+    if (places.length > 0)
+      emit(state.copyWith(
+        favorite: places,
+      ));
   }
 
   // FILTER PANEL:
@@ -361,6 +492,23 @@ class FilterCubit extends Cubit<FilterState> {
   void toggleFilter(FilterType type, Filter filter) async {
     print('!!!DEBUG Toggle filter ${filter.type}');
 
+    // If contacts filter selected we have to check/request contacts permission
+    if (filter.type == FilterType.contacts && !filter.selected) {
+      if (!await Permission.contacts.isGranted) {
+        // Initiate contacts for a first time then permission is granted
+        if (await Permission.contacts.request().isGranted) {
+          print('!!!DEBUG CONTACTS permission granted for a first time');
+          // Async procedure, no wait
+          scanContacts();
+        } else {
+          // Return without toggle if contacts permission is not granted
+          return;
+        }
+      }
+      // Either the permission was already granted before or the user just granted it.
+      print('!!!DEBUG CONTACTS permission checked');
+    }
+
     List<Filter> filters = state.filters.map((f) {
       if (f.type == filter.type && f.value == filter.value)
         return f.copyWith(selected: !filter.selected);
@@ -375,9 +523,29 @@ class FilterCubit extends Cubit<FilterState> {
 
   // FILTER PANEL:
   // - Filter panel opened => FILTER
-  void panelOpened() {
+  void panelOpened() async {
+    print('!!!DEBUG PANEL OPEN');
+
+    // TODO: Load near by book places and keep it in the state object
     emit(state.copyWith(
       position: PanelPosition.open,
+    ));
+
+    print('!!!DEBUG load near by book places');
+
+    //Position loc = await Geolocator.getCurrentPosition();
+    //LatLng here = LatLng(loc.latitude, loc.longitude);
+
+    // Get places around center of the map with hesh level 5 (4.9 km)
+    LatLng here = state.center;
+    List<Place> places = await state.placesFor(state.center, 5);
+
+    places.sort((a, b) =>
+        (distanceBetween(a.location, here) - distanceBetween(b.location, here))
+            .round());
+
+    emit(state.copyWith(
+      places: places,
     ));
   }
 
@@ -415,6 +583,8 @@ class FilterCubit extends Cubit<FilterState> {
 
     // TODO: Check if zoom reset is a good thing. Do we need to
     //       auto-calculate zoom to always contain some book search results.
+
+    // TODO: query books/places based on new location and current filters
   }
 
   // TRIPLE BUTTON

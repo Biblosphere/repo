@@ -38,6 +38,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dart_geohash/dart_geohash.dart';
 // Geo location
 import 'package:geolocator/geolocator.dart';
+// Contacts plugin
+import 'package:contacts_service/contacts_service.dart';
+// Permission handler
+import 'package:permission_handler/permission_handler.dart';
 
 part 'login.dart';
 part 'login_bloc.dart';
@@ -333,6 +337,11 @@ class _MainPageState extends State<MainPage> {
                                       child: CameraPreview(cameraCtrl)))
                               : Container()),
                   onSnapEnd: () {
+                    if (_snapPosition > 100.0)
+                      context.bloc<FilterCubit>().panelOpened();
+                    else
+                      context.bloc<FilterCubit>().panelHiden();
+
                     setState(() {});
                   },
                   onMove: (moveAmount) {

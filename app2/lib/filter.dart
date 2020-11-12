@@ -2,15 +2,18 @@ part of 'main.dart';
 
 class ChipsListWidget extends StatefulWidget {
   final FilterGroup group;
+  final LatLng location;
 
-  ChipsListWidget({this.group, Key key}) : super(key: key);
+  ChipsListWidget({key, this.group, this.location}) : super(key: key);
 
   @override
-  _ChipsListState createState() => _ChipsListState(group: group);
+  _ChipsListState createState() =>
+      _ChipsListState(group: group, location: location);
 }
 
 class _ChipsListState extends State<ChipsListWidget> {
   final FilterGroup group;
+  LatLng location;
 
   static Future<List<Filter>> findTitleSugestions(String query) async {
     if (query.length < 4) return const <Filter>[];
@@ -102,14 +105,106 @@ class _ChipsListState extends State<ChipsListWidget> {
     );
   }
 
+  List<Filter> findPlaceSugestions(String query) {
+    // TODO: If access to address book is allowed (contacts is not null)
+    //       add all contacts to the list with it's distance.
+
+    // Query bookplaces in a radius of 5 km (same hash length 5) to current
+    // location. Sort it by distance ascending (closest places first).
+
+    // TODO: Take care about locations near equator and 0/180 longitude.
+    List<Place> places = context.bloc<FilterCubit>().state.places;
+
+    if (places != null) {
+      if (query.length == 0) {
+        print('!!!DEBUG length 0');
+        places = places.sublist(0, min(5, places.length));
+      } else if (query.length > 0) {
+        places = places.where((p) {
+          return p.name.toLowerCase().contains(query.toLowerCase());
+        }).toList();
+      }
+
+      // No need to sort as places already sorted by distance
+      return places
+          .map((p) => Filter(
+              type: FilterType.place, value: p.name, selected: true, place: p))
+          .toList(growable: false);
+    } else {
+      return const <Filter>[];
+    }
+  }
+
+  Widget placeSugestionBuilder(
+      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
+    IconData icon;
+
+    // TODO: Add leading avatar for people from the contact list
+    //       with icon Icons.contact_phone
+    if (filter.place.type == 'personal')
+      icon = Icons.person;
+    else if (filter.place.type == 'company')
+      icon = Icons.store;
+    else
+      icon = Icons.location_pin;
+
+    return ListTile(
+      key: ObjectKey(filter),
+      leading: Icon(icon),
+      title: Text(filter.value),
+      subtitle: location != null
+          ? Text(distanceString(location, filter.place.location))
+          : null,
+      onTap: () => state.selectSuggestion(filter),
+    );
+  }
+
+  static List<Filter> findLanguageSugestions(String query) {
+    if (query.length != 0) {
+      return languages.keys
+          .where((key) {
+            return key.toLowerCase().contains(query.toLowerCase()) ||
+                languages[key].toLowerCase().contains(query.toLowerCase());
+          })
+          .map((key) =>
+              Filter(type: FilterType.language, selected: true, value: key))
+          .toList(growable: false);
+    } else {
+      return const <Filter>[];
+    }
+  }
+
+  static Widget languageSugestionBuilder(
+      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
+    return ListTile(
+      key: ObjectKey(filter),
+      // TODO: Add leading avatar with book
+      // leading: CircleAvatar(),
+      title: Text(languages[filter.value]),
+      subtitle: Text(filter.value),
+      onTap: () => state.selectSuggestion(filter),
+    );
+  }
+
   // List of genre filters
-  _ChipsListState({this.group});
+  _ChipsListState({this.group, this.location});
+
+  @override
+  void didUpdateWidget(ChipsListWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.location != oldWidget.location) location = widget.location;
+  }
 
   InputDecoration decoration() {
     String label = '';
     if (group == FilterGroup.book)
       label = "Title / Author";
-    else if (group == FilterGroup.genre) label = "Genre";
+    else if (group == FilterGroup.genre)
+      label = "Genre";
+    else if (group == FilterGroup.place)
+      label = "Place / Contact";
+    else if (group == FilterGroup.language) label = "Language";
 
     return InputDecoration(labelText: label);
   }
@@ -119,6 +214,10 @@ class _ChipsListState extends State<ChipsListWidget> {
       return findTitleSugestions(query);
     else if (group == FilterGroup.genre)
       return findGenreSugestions(query);
+    else if (group == FilterGroup.place)
+      return findPlaceSugestions(query);
+    else if (group == FilterGroup.language)
+      return findLanguageSugestions(query);
     else
       return [];
   }
@@ -129,6 +228,10 @@ class _ChipsListState extends State<ChipsListWidget> {
       return titleSugestionBuilder(context, state, filter);
     else if (group == FilterGroup.genre)
       return genreSugestionBuilder(context, state, filter);
+    else if (group == FilterGroup.place)
+      return placeSugestionBuilder(context, state, filter);
+    else if (group == FilterGroup.language)
+      return languageSugestionBuilder(context, state, filter);
     else
       return Container();
   }
@@ -151,138 +254,6 @@ class _ChipsListState extends State<ChipsListWidget> {
   }
 }
 
-class PlaceChipsWidget extends StatefulWidget {
-  PlaceChipsWidget({Key key}) : super(key: key);
-
-  @override
-  _PlaceChipsState createState() => _PlaceChipsState();
-}
-
-class _PlaceChipsState extends State<PlaceChipsWidget> {
-  // TODo: Replace mock with real values
-  static List<String> places = <String>[
-    'Bukvoed',
-    'Itaka',
-    'Denis Stark',
-    'Ernesto'
-  ];
-
-  static List<Filter> findPlaceSugestions(String query) {
-    if (query.length != 0) {
-      var lowercaseQuery = query.toLowerCase();
-      return places
-          .where((place) {
-            return place.toLowerCase().contains(query.toLowerCase());
-          })
-          .map((g) => Filter(type: FilterType.place, value: g))
-          .toList(growable: false)
-            ..sort((a, b) => a.value
-                .toLowerCase()
-                .indexOf(lowercaseQuery)
-                .compareTo(b.value.toLowerCase().indexOf(lowercaseQuery)));
-    } else {
-      return const <Filter>[];
-    }
-  }
-
-  static Widget placeSugestionBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter place) {
-    return ListTile(
-      key: ObjectKey(place),
-      // TODO: Add leading avatar with book
-      // leading: CircleAvatar(),
-      title: Text(place.value),
-      subtitle: Text(place.value),
-      onTap: () => state.selectSuggestion(place),
-    );
-  }
-
-  // List of genre filters
-  _PlaceChipsState();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
-      return ChipsInput(
-        initialValue: filters.getFilters(FilterGroup.place),
-        decoration: InputDecoration(
-          labelText: "Place / Contact",
-        ),
-        maxChips: 5,
-        findSuggestions: findPlaceSugestions,
-        onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(FilterGroup.place, data);
-        },
-        chipBuilder: chipBuilder,
-        suggestionBuilder: placeSugestionBuilder,
-      );
-    });
-  }
-}
-
-class LanguageChipsWidget extends StatefulWidget {
-  LanguageChipsWidget({Key key}) : super(key: key);
-
-  @override
-  _LanguageChipsState createState() => _LanguageChipsState();
-}
-
-class _LanguageChipsState extends State<LanguageChipsWidget> {
-  // TODo: Replace mock with real values
-  static List<String> languages = <String>['DEU', 'ENG', 'FRA', 'RUS'];
-
-  static List<Filter> findLanguageSugestions(String query) {
-    if (query.length != 0) {
-      var lowercaseQuery = query.toLowerCase();
-      return languages
-          .where((genre) {
-            return genre.toLowerCase().contains(query.toLowerCase());
-          })
-          .map((g) => Filter(type: FilterType.language, value: g))
-          .toList(growable: false)
-            ..sort((a, b) => a.value
-                .toLowerCase()
-                .indexOf(lowercaseQuery)
-                .compareTo(b.value.toLowerCase().indexOf(lowercaseQuery)));
-    } else {
-      return const <Filter>[];
-    }
-  }
-
-  static Widget languageSugestionBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter language) {
-    return ListTile(
-      key: ObjectKey(language),
-      // TODO: Add leading avatar with book
-      // leading: CircleAvatar(),
-      title: Text(language.value),
-      subtitle: Text(language.value),
-      onTap: () => state.selectSuggestion(language),
-    );
-  }
-
-  _LanguageChipsState();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
-      return ChipsInput(
-        initialValue: filters.getFilters(FilterGroup.language),
-        decoration: InputDecoration(
-          labelText: "Language",
-        ),
-        maxChips: 5,
-        findSuggestions: findLanguageSugestions,
-        onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(FilterGroup.language, data);
-        },
-        chipBuilder: chipBuilder,
-        suggestionBuilder: languageSugestionBuilder,
-      );
-    });
-  }
-}
-
 Widget chipBuilder(
     BuildContext context, ChipsInputState<Filter> state, Filter filterInput) {
   print('!!!DEBUG chipBuilder ${filterInput.type}');
@@ -294,9 +265,17 @@ Widget chipBuilder(
   else if (filterInput.type == FilterType.contacts)
     label = Icon(Icons.contact_phone);
   else if (filterInput.type == FilterType.genre)
-    label = Text(genres[filterInput.value]);
+    label = ConstrainedBox(
+        constraints: new BoxConstraints(
+          maxWidth: 100.0,
+        ),
+        child: Text(genres[filterInput.value]));
   else
-    label = Text(filterInput.value);
+    label = ConstrainedBox(
+        constraints: new BoxConstraints(
+          maxWidth: 100.0,
+        ),
+        child: Text(filterInput.value));
 
   return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
     Filter filter = filters.filters.firstWhere(
@@ -372,8 +351,18 @@ class _SearchPanelState extends State<SearchPanel> {
                     label = Icon(Icons.favorite);
                   else if (f.type == FilterType.contacts)
                     label = Icon(Icons.contact_phone);
+                  else if (f.type == FilterType.genre)
+                    label = ConstrainedBox(
+                        constraints: new BoxConstraints(
+                          maxWidth: 100.0,
+                        ),
+                        child: Text(genres[f.value]));
                   else
-                    label = Text(f.value);
+                    label = ConstrainedBox(
+                        constraints: new BoxConstraints(
+                          maxWidth: 100.0,
+                        ),
+                        child: Text(f.value));
                   return InputChip(
                     label: label,
                     // TODO: Put book icon here
@@ -389,10 +378,12 @@ class _SearchPanelState extends State<SearchPanel> {
     } else {
       return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
         return Column(children: [
-          ChipsListWidget(group: FilterGroup.book),
+          ChipsListWidget(
+            group: FilterGroup.book,
+          ),
           ChipsListWidget(group: FilterGroup.genre),
-          PlaceChipsWidget(),
-          LanguageChipsWidget(),
+          ChipsListWidget(group: FilterGroup.place, location: filters.center),
+          ChipsListWidget(group: FilterGroup.language),
         ]);
       });
     }

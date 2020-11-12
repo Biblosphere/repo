@@ -60,6 +60,193 @@ const Map<String, String> genres = {
   'young_adult': 'Young adult',
 };
 
+const Map<String, String> languages = {
+  'ABK': 'аҧсуа бызшәа',
+  'AAR': 'Afaraf',
+  'AFR': 'Afrikaans',
+  'AKA': 'Akan',
+  'SQI': 'Shqip',
+  'AMH': 'አማርኛ',
+  'ARA': 'العربية',
+  'ARG': 'aragonés',
+  'HYE': 'Հայերեն',
+  'ASM': 'অসমীয়া',
+  'AVA': 'авар мацӀ',
+  'AVE': 'avesta',
+  'AYM': 'aymar aru',
+  'AZE': 'azərbaycan dili',
+  'BAM': 'bamanankan',
+  'BAK': 'башҡорт теле',
+  'EUS': 'euskara, euskera',
+  'BEL': 'беларуская мова',
+  'BEN': 'বাংলা',
+  'BIH': 'भोजपुरी',
+  'BIS': 'Bislama',
+  'BOS': 'bosanski jezik',
+  'BRE': 'brezhoneg',
+  'BUL': 'български език',
+  'MYA': 'ဗမာစာ',
+  'CAT': 'català, valencià',
+  'CHA': 'Chamoru',
+  'CHE': 'нохчийн мотт',
+  'NYA': 'chiCheŵa',
+  'ZHO': '中文 (Zhōngwén)',
+  'CHV': 'чӑваш чӗлхи',
+  'COR': 'Kernewek',
+  'COS': 'corsu',
+  'CRE': 'ᓀᐦᐃᔭᐍᐏᐣ',
+  'HRV': 'hrvatski jezik',
+  'CES': 'čeština',
+  'DAN': 'dansk',
+  'DIV': 'ދިވެހި',
+  'NLD': 'Nederlands',
+  'DZO': 'རྫོང་ཁ',
+  'ENG': 'English',
+  'EPO': 'Esperanto',
+  'EST': 'eesti',
+  'EWE': 'Eʋegbe',
+  'FAO': 'føroyskt',
+  'FIJ': 'vosa Vakaviti',
+  'FIN': 'suomi',
+  'FRA': 'français',
+  'FUL': 'Fulfulde',
+  'GLG': 'Galego',
+  'KAT': 'ქართული',
+  'DEU': 'Deutsch',
+  'ELL': 'ελληνικά',
+  'GRN': 'Avañe' 'ẽ',
+  'GUJ': 'ગુજરાતી',
+  'HAT': 'Kreyòl ayisyen',
+  'HAU': '(Hausa) هَوُسَ',
+  'HEB': 'עברית',
+  'HER': 'Otjiherero',
+  'HIN': 'हिन्दी, हिंदी',
+  'HMO': 'Hiri Motu',
+  'HUN': 'magyar',
+  'INA': 'Interlingua',
+  'IND': 'Bahasa Indonesia',
+  'ILE': 'Interlingue',
+  'GLE': 'Gaeilge',
+  'IBO': 'Asụsụ Igbo',
+  'IPK': 'Iñupiaq',
+  'IDO': 'Ido',
+  'ISL': 'Íslenska',
+  'ITA': 'Italiano',
+  'IKU': 'ᐃᓄᒃᑎᑐᑦ',
+  'JPN': '日本語 (にほんご)',
+  'JAV': 'Basa Jawa',
+  'KAL': 'kalaallisut',
+  'KAN': 'ಕನ್ನಡ',
+  'KAU': 'Kanuri',
+  'KAS': 'कश्मीरी, كشميري‎',
+  'KAZ': 'қазақ тілі',
+  'KHM': 'ខ្មែរ, ខេមរភាសា, ភាសាខ្មែរ',
+  'KIK': 'Gĩkũyũ',
+  'KIN': 'Ikinyarwanda',
+  'KIR': 'Кыргызча',
+  'KOM': 'коми кыв',
+  'KON': 'Kikongo',
+  'KOR': '한국어',
+  'KUR': 'Kurdî, کوردی‎',
+  'KUA': 'Kuanyama',
+  'LAT': 'latine',
+  'LTZ': 'Lëtzebuergesch',
+  'LUG': 'Luganda',
+  'LIM': 'Limburgs',
+  'LIN': 'Lingála',
+  'LAO': 'ພາສາລາວ',
+  'LIT': 'lietuvių kalba',
+  'LUB': 'Kiluba',
+  'LAV': 'latviešu valoda',
+  'GLV': 'Gaelg, Gailck',
+  'MKD': 'македонски јазик',
+  'MLG': 'fiteny malagasy',
+  'MSA': 'Bahasa Melayu, بهاس ملايو‎',
+  'MAL': 'മലയാളം',
+  'MLT': 'Malti',
+  'MRI': 'te reo Māori',
+  'MAR': 'मराठी',
+  'MAH': 'Kajin M̧ajeļ',
+  'MON': 'Монгол хэл',
+  'NAU': 'Dorerin Naoero',
+  'NAV': 'Diné bizaad',
+  'NDE': 'isiNdebele',
+  'NEP': 'नेपाली',
+  'NDO': 'Owambo',
+  'NOB': 'Norsk Bokmål',
+  'NNO': 'Norsk Nynorsk',
+  'NOR': 'Norsk',
+  'III': 'Nuosuhxop',
+  'NBL': 'isiNdebele',
+  'OCI': 'occitan',
+  'OJI': 'ᐊᓂᔑᓈᐯᒧᐎᓐ',
+  'CHU': 'ѩзыкъ словѣньскъ',
+  'ORM': 'Afaan Oromoo',
+  'ORI': 'ଓଡ଼ିଆ',
+  'OSS': 'ирон æвзаг',
+  'PAN': 'ਪੰਜਾਬੀ, پنجابی‎',
+  'PLI': 'पालि, पाळि',
+  'FAS': 'فارسی',
+  'POL': 'język polski',
+  'PUS': 'پښتو',
+  'POR': 'Português',
+  'QUE': 'Runa Simi, Kichwa',
+  'ROH': 'Rumantsch Grischun',
+  'RUN': 'Ikirundi',
+  'RON': 'Română',
+  'RUS': 'русский',
+  'SAN': 'संस्कृतम्',
+  'SRD': 'sardu',
+  'SND': 'सिन्धी, سنڌي، سندھی‎',
+  'SME': 'Davvisámegiella',
+  'SMO': 'gagana fa' 'a Samoa',
+  'SAG': 'yângâ tî sängö',
+  'SRP': 'српски језик',
+  'GLA': 'Gàidhlig',
+  'SNA': 'chiShona',
+  'SIN': 'සිංහල',
+  'SLK': 'Slovenčina',
+  'SLV': 'Slovenski Jezik',
+  'SOM': 'Soomaaliga',
+  'SOT': 'Sesotho',
+  'SPA': 'Español',
+  'SUN': 'Basa Sunda',
+  'SWA': 'Kiswahili',
+  'SSW': 'SiSwati',
+  'SWE': 'Svenska',
+  'TAM': 'தமிழ்',
+  'TEL': 'తెలుగు',
+  'TGK': 'тоҷикӣ, toçikī, تاجیکی‎',
+  'THA': 'ไทย',
+  'TIR': 'ትግርኛ',
+  'BOD': 'བོད་ཡིག',
+  'TUK': 'Türkmen, Түркмен',
+  'TGL': 'Wikang Tagalog',
+  'TSN': 'Setswana',
+  'TON': 'Faka Tonga',
+  'TUR': 'Türkçe',
+  'TSO': 'Xitsonga',
+  'TAT': 'татар теле, tatar tele',
+  'TWI': 'Twi',
+  'TAH': 'Reo Tahiti',
+  'UIG': 'Uyghurche',
+  'UKR': 'Українська',
+  'URD': 'اردو',
+  'UZB': 'Oʻzbek, Ўзбек, أۇزبېك‎',
+  'VEN': 'Tshivenḓa',
+  'VIE': 'Tiếng Việt',
+  'VOL': 'Volapük',
+  'WLN': 'Walon',
+  'CYM': 'Cymraeg',
+  'WOL': 'Wollof',
+  'FRY': 'Frysk',
+  'XHO': 'isiXhosa',
+  'YID': 'ייִדיש',
+  'YOR': 'Yorùbá',
+  'ZHA': 'Saɯ cueŋƅ',
+  'ZUL': 'isiZulu',
+};
+
 class Book extends Equatable {
   final String id;
   final String isbn;
@@ -123,6 +310,56 @@ class Book extends Equatable {
   List<Object> get props => [id];
 }
 
+class Place extends Equatable {
+  final String id;
+  final String name;
+  final String email;
+  final String phone;
+  final LatLng location;
+  final String privacy; // public, contacts, private
+  final String type; // personal, company
+  final String geohash;
+  // Users of this bookplace (contacts for person, contributors for orgs)
+  final List<String> users;
+  // Books count
+  final int count;
+  // Books counts per language
+  final Map<String, int> languages;
+  // Books counts per genre
+  final Map<String, int> genres;
+
+  const Place(
+      {this.id,
+      this.name,
+      this.email,
+      this.phone,
+      this.privacy = 'contacts',
+      this.type,
+      this.location,
+      this.geohash,
+      this.users,
+      this.count,
+      this.languages,
+      this.genres});
+
+  Place.fromJson(this.id, Map json)
+      : name = json['name'],
+        email = json['email'],
+        phone = json['phone'],
+        privacy = json['privacy'],
+        type = json['type'],
+        location = LatLng((json['location']['geopoint'] as GeoPoint).latitude,
+            (json['location']['geopoint'] as GeoPoint).longitude),
+        geohash = json['location']['geohash'],
+        users = List<String>.from(json['users'] ?? []),
+        count = json['count'],
+        languages = Map<String, int>.from(json['languages'] ?? {}),
+        genres = Map<String, int>.from(json['genres'] ?? {});
+
+  @override
+  List<Object> get props => [id];
+}
+
 Widget coverImage(String url) {
   if (url != null && url.isNotEmpty)
     try {
@@ -148,10 +385,7 @@ class BookCard extends StatelessWidget {
         // buildWhen: (previous, current) => previous.center != current.center,
         builder: (context, filters) {
       print('!!!DEBUG rebuild BookCard ${filters.center}');
-      double d = distanceBetween(filters.center, book.location);
-      String distance = d < 1000
-          ? d.toStringAsFixed(0) + " m"
-          : (d / 1000).toStringAsFixed(0) + " km";
+      String distance = distanceString(filters.center, book.location);
       if (!details) {
         return GestureDetector(
             onTap: () {

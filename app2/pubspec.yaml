@@ -70,6 +70,12 @@ dependencies:
   # Geo location
   geolocator: ^6.1.4
 
+  # Access to contacts
+  contacts_service: ^0.4.6
+
+  # Permission handler
+  permission_handler: ^5.0.1+1
+
   flutter_svg: ^0.19.1
 
 dev_dependencies:
