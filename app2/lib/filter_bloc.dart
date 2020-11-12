@@ -377,6 +377,15 @@ class FilterCubit extends Cubit<FilterState> {
         1000;
   }
 
+  List<Filter> toggle(List<Filter> filters, FilterType type, bool selected) {
+    return filters.map((f) {
+      if (f.type == type)
+        return f.copyWith(selected: selected);
+      else
+        return f;
+    }).toList();
+  }
+
   Future<void> scanContacts() async {
     // Get all contacts on device
     Iterable<Contact> addressBook = await ContactsService.getContacts();
@@ -463,12 +472,46 @@ class FilterCubit extends Cubit<FilterState> {
     if (data.length > filters.length) {
       List<Filter> toAdd = data.where((f) => !filters.contains(f)).toList();
       print('!!!DEBUG new fileters length ${toAdd.length} data ${data.length}');
-      assert(toAdd.length == 1, 'Only one filter can be added at a time');
+
+      // !!!DEBUG
+      if (toAdd.length > 1) {
+        print('DOUBLE FILTER ***********************************************');
+        toAdd.forEach((f) {
+          print(f.value);
+        });
+        print('*************************************************************');
+      }
+      //assert(toAdd.length == 1, 'Only one filter can be added at a time');
 
       print('!!!DEBUG ADD filters: ${toAdd.first.type}');
 
+      filters = state.filters;
+
+      if (toAdd.first.type == FilterType.title) {
+        // If title filter add unselect wish filter
+        filters = toggle(filters, FilterType.wish, false);
+        // If title filter add drop genres filters
+        filters = filters.where((f) => f.type != FilterType.genre).toList();
+      } else if (toAdd.first.type == FilterType.place) {
+        // If place filter add unselect contacts filter
+        filters = toggle(filters, FilterType.contacts, false);
+      } else if (toAdd.first.type == FilterType.genre) {
+        // If genre filter add drop title filters
+        filters = filters.where((f) => f.type != FilterType.title).toList();
+      } else if (toAdd.first.type == FilterType.author &&
+          filters.any((f) => f.type == FilterType.author)) {
+        // If more than 1 author drop genres filters if more than 1 value
+        if (filters.where((f) => f.type == FilterType.genre).length > 1)
+          filters = filters.where((f) => f.type != FilterType.genre).toList();
+
+        // If more than 1 author drop language filters if more than 1 value
+        if (filters.where((f) => f.type == FilterType.language).length > 1)
+          filters =
+              filters.where((f) => f.type != FilterType.language).toList();
+      }
+
       emit(state.copyWith(
-        filters: [...state.filters, toAdd.first],
+        filters: [...filters, toAdd.first],
       ));
     } else {
       print('!!!DEBUG filters length ${filters.length} data ${data.length}');
@@ -478,8 +521,14 @@ class FilterCubit extends Cubit<FilterState> {
       assert(toRemove.length == 1, 'Only one filter can be removed at a time');
       print('!!!DEBUG REMOVE filters: ${toRemove.first.type}');
 
+      // Block removing wish filter and contacts filter
+      toRemove = toRemove
+          .where(
+              (f) => f.type != FilterType.wish && f.type != FilterType.contacts)
+          .toList();
+
       emit(state.copyWith(
-        filters: state.filters.where((f) => f != toRemove.first).toList(),
+        filters: state.filters.where((f) => !toRemove.contains(f)).toList(),
       ));
     }
   }
@@ -491,6 +540,10 @@ class FilterCubit extends Cubit<FilterState> {
   // - Genre filter changed => FILTER
   void toggleFilter(FilterType type, Filter filter) async {
     print('!!!DEBUG Toggle filter ${filter.type}');
+
+    // Only toggle wish and contacts filter
+    if (filter.type != FilterType.contacts && filter.type != FilterType.wish)
+      return;
 
     // If contacts filter selected we have to check/request contacts permission
     if (filter.type == FilterType.contacts && !filter.selected) {
@@ -509,12 +562,17 @@ class FilterCubit extends Cubit<FilterState> {
       print('!!!DEBUG CONTACTS permission checked');
     }
 
-    List<Filter> filters = state.filters.map((f) {
-      if (f.type == filter.type && f.value == filter.value)
-        return f.copyWith(selected: !filter.selected);
-      else
-        return f;
-    }).toList();
+    List<Filter> filters = state.filters;
+
+    // Drop all places filters if contacts is selected
+    if (filter.type == FilterType.contacts && !filter.selected)
+      filters = filters.where((f) => f.type != FilterType.place).toList();
+
+    // Drop all title filters if wish is selected
+    if (filter.type == FilterType.wish && !filter.selected)
+      filters = filters.where((f) => f.type != FilterType.title).toList();
+
+    filters = toggle(filters, filter.type, !filter.selected);
 
     emit(state.copyWith(
       filters: filters,

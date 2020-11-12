@@ -14,18 +14,28 @@ class ChipsListWidget extends StatefulWidget {
 class _ChipsListState extends State<ChipsListWidget> {
   final FilterGroup group;
   LatLng location;
+  bool queryInProgress = false;
 
-  static Future<List<Filter>> findTitleSugestions(String query) async {
+  Future<List<Filter>> findTitleSugestions(String query) async {
     if (query.length < 4) return const <Filter>[];
 
     var lowercase = query.toLowerCase();
 
+    // If one query in progress already skipp the new one
+    if (queryInProgress) return const <Filter>[];
+
     // Query in database catalog
+    queryInProgress = true;
     List<Book> books = await searchByText(lowercase);
+    queryInProgress = false;
+
+    // Check it for long query in case widget are not mounted already
+    if (!this.mounted) return const <Filter>[];
+
+    // If no books returned return empty list
+    if (books == null) return const <Filter>[];
 
     print('!!!DEBUG: Catalog query return ${books?.length} records');
-
-    if (books == null) return const <Filter>[];
 
     // If author match use FilterType.author, otherwise FilterType.title
     return books
@@ -190,6 +200,12 @@ class _ChipsListState extends State<ChipsListWidget> {
   _ChipsListState({this.group, this.location});
 
   @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+  }
+
+  @override
   void didUpdateWidget(ChipsListWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
@@ -240,6 +256,13 @@ class _ChipsListState extends State<ChipsListWidget> {
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return ChipsInput(
+        // Add key to have a refresh of the ChipsInput if filter are changed (only for Genres)
+        key: Key(filters.getFilters(group).hashCode.toString()),
+        /*
+        key: group == FilterGroup.genre
+            ? Key(filters.getFilters(group).hashCode.toString())
+            : null,
+        */
         initialValue: filters.getFilters(group),
         decoration: decoration(),
         maxChips: 5,
@@ -280,36 +303,43 @@ Widget chipBuilder(
   return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
     Filter filter = filters.filters.firstWhere(
         (f) => f.type == filterInput.type && f.value == filterInput.value,
-        orElse: null);
+        orElse: () => null);
     if (filter == null) {
-      print('!!!DEBUG Could not find filter on build ${filter.type}');
-      return Container();
+      print('!!!DEBUG Could not find filter on build ${filterInput.type}');
+      return Container(height: 0.0, width: 0.0);
     }
 
-    return InputChip(
-      key: ObjectKey(filter),
-      //avatar: avatar,
-      selected: filter.selected ?? false,
-      label: label,
-      // TODO: Put book icon here
-      // avatar: CircleAvatar(),
-      onDeleted:
-          filter.type == FilterType.contacts || filter.type == FilterType.wish
-              ? null
-              : () {
-                  state.deleteChip(filter);
-                },
-      onPressed: () {
-        print('!!!DEBUG Trigger onPressed for filter ${filter.type}');
-        state.setState(() {
-          print(
-              '!!!DEBUG Trigger setState/onPressed for filter ${filter.type}');
+    if (filter.type == FilterType.wish || filter.type == FilterType.contacts)
+      return InputChip(
+        key: ObjectKey(filter),
+        //avatar: avatar,
+        selected: filter.selected,
+        label: label,
+        // TODO: Put book icon here
+        // avatar: CircleAvatar(),
+        onPressed: () {
+          print('!!!DEBUG Trigger onPressed for filter ${filter.type}');
+          state.setState(() {
+            print(
+                '!!!DEBUG Trigger setState/onPressed for filter ${filter.type}');
 
-          context.bloc<FilterCubit>().toggleFilter(filter.type, filter);
-        });
-      },
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
+            context.bloc<FilterCubit>().toggleFilter(filter.type, filter);
+          });
+        },
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      );
+    else
+      return InputChip(
+        key: ObjectKey(filter),
+        //avatar: avatar,
+        label: label,
+        // TODO: Put book icon here
+        // avatar: CircleAvatar(),
+        onDeleted: () {
+          state.deleteChip(filter);
+        },
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      );
   });
 }
 
@@ -368,7 +398,18 @@ class _SearchPanelState extends State<SearchPanel> {
                     // TODO: Put book icon here
                     // avatar: CircleAvatar(),
                     onDeleted: () {
-                      context.bloc<FilterCubit>().toggleFilter(f.type, f);
+                      // Toggle wish/contact filters and remove others
+                      if (f.type == FilterType.wish ||
+                          f.type == FilterType.contacts)
+                        context.bloc<FilterCubit>().toggleFilter(f.type, f);
+                      else
+                        context.bloc<FilterCubit>().changeFilters(
+                            f.group,
+                            filters
+                                .getFilters(f.group)
+                                .where((el) => el != f)
+                                .toList());
+
                       setState(() {});
                     },
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
