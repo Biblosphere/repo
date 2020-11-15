@@ -1,154 +1,12 @@
 part of 'main.dart';
 
-class ChipsListWidget extends StatefulWidget {
-  final FilterGroup group;
-  final LatLng location;
+Widget chipBuilder(BuildContext context, Filter filter) {
+  print('!!!DEBUG chipBuilder ${filter.type}');
 
-  ChipsListWidget({key, this.group, this.location}) : super(key: key);
+  IconData icon;
+  Panel position = context.bloc<FilterCubit>().state.panel;
 
-  @override
-  _ChipsListState createState() =>
-      _ChipsListState(group: group, location: location);
-}
-
-class _ChipsListState extends State<ChipsListWidget> {
-  final FilterGroup group;
-  LatLng location;
-  bool queryInProgress = false;
-
-  Future<List<Filter>> findTitleSugestions(String query) async {
-    if (query.length < 4) return const <Filter>[];
-
-    var lowercase = query.toLowerCase();
-
-    // If one query in progress already skipp the new one
-    if (queryInProgress) return const <Filter>[];
-
-    // Query in database catalog
-    queryInProgress = true;
-    List<Book> books = await searchByText(lowercase);
-    queryInProgress = false;
-
-    // Check it for long query in case widget are not mounted already
-    if (!this.mounted) return const <Filter>[];
-
-    // If no books returned return empty list
-    if (books == null) return const <Filter>[];
-
-    print('!!!DEBUG: Catalog query return ${books?.length} records');
-
-    // If author match use FilterType.author, otherwise FilterType.title
-    return books
-        //  .where((b) =>
-        //      b.title.toLowerCase().contains(lowercase) ||
-        //      b.authors.join().toLowerCase().contains(lowercase))
-        .map((b) {
-          String matchAuthor = b.authors.firstWhere(
-              (a) => lowercase
-                  .split(' ')
-                  .every((word) => a.toLowerCase().contains(word)),
-              orElse: () => null);
-
-          if (matchAuthor != null)
-            return Filter(
-                type: FilterType.author, selected: true, value: matchAuthor);
-          else
-            return Filter(
-                type: FilterType.title,
-                selected: true,
-                value: b.title,
-                book: b);
-        })
-        .toSet()
-        .toList();
-  }
-
-  static Widget titleSugestionBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
-    if (filter.type == FilterType.title)
-      return ListTile(
-        key: ObjectKey(filter),
-        leading: Icon(Icons.book),
-        title: Text(filter.value),
-        subtitle: filter.book != null ? Text(filter.book.authors.first) : null,
-        onTap: () => state.selectSuggestion(filter),
-      );
-    else
-      return ListTile(
-        key: ObjectKey(filter),
-        leading: Icon(Icons.person),
-        title: Text(filter.value),
-        subtitle: null,
-        onTap: () => state.selectSuggestion(filter),
-      );
-  }
-
-  static List<Filter> findGenreSugestions(String query) {
-    if (query.length != 0) {
-      var lowercaseQuery = query.toLowerCase();
-      return genres.keys
-          .where((key) {
-            return genres[key].toLowerCase().contains(query.toLowerCase());
-          })
-          .map((key) =>
-              Filter(type: FilterType.genre, selected: true, value: key))
-          .toList(growable: false)
-            ..sort((a, b) => genres[a.value]
-                .toLowerCase()
-                .indexOf(lowercaseQuery)
-                .compareTo(
-                    genres[b.value].toLowerCase().indexOf(lowercaseQuery)));
-    } else {
-      return const <Filter>[];
-    }
-  }
-
-  static Widget genreSugestionBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
-    return ListTile(
-      key: ObjectKey(filter),
-      // TODO: Add leading avatar with book
-      // leading: CircleAvatar(),
-      title: Text(genres[filter.value]),
-      subtitle: null,
-      onTap: () => state.selectSuggestion(filter),
-    );
-  }
-
-  List<Filter> findPlaceSugestions(String query) {
-    // TODO: If access to address book is allowed (contacts is not null)
-    //       add all contacts to the list with it's distance.
-
-    // Query bookplaces in a radius of 5 km (same hash length 5) to current
-    // location. Sort it by distance ascending (closest places first).
-
-    // TODO: Take care about locations near equator and 0/180 longitude.
-    List<Place> places = context.bloc<FilterCubit>().state.places;
-
-    if (places != null) {
-      if (query.length == 0) {
-        print('!!!DEBUG length 0');
-        places = places.sublist(0, min(5, places.length));
-      } else if (query.length > 0) {
-        places = places.where((p) {
-          return p.name.toLowerCase().contains(query.toLowerCase());
-        }).toList();
-      }
-
-      // No need to sort as places already sorted by distance
-      return places
-          .map((p) => Filter(
-              type: FilterType.place, value: p.name, selected: true, place: p))
-          .toList(growable: false);
-    } else {
-      return const <Filter>[];
-    }
-  }
-
-  Widget placeSugestionBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
-    IconData icon;
-
+  if (filter.type == FilterType.place) {
     // TODO: Add leading avatar for people from the contact list
     //       with icon Icons.contact_phone
     if (filter.place.type == 'personal')
@@ -157,62 +15,174 @@ class _ChipsListState extends State<ChipsListWidget> {
       icon = Icons.store;
     else
       icon = Icons.location_pin;
+  } else if (filter.group == FilterGroup.book) {
+    if (filter.type == FilterType.title)
+      icon = Icons.book;
+    else if (filter.type == FilterType.author) icon = Icons.person;
+  } else if (filter.type == FilterType.genre && position == Panel.minimized) {
+    icon = Icons.account_tree;
+  }
 
-    return ListTile(
-      key: ObjectKey(filter),
-      leading: Icon(icon),
-      title: Text(filter.value),
-      subtitle: location != null
-          ? Text(distanceString(location, filter.place.location))
-          : null,
-      onTap: () => state.selectSuggestion(filter),
+  // Permanent filters
+  if (filter.type == FilterType.wish || filter.type == FilterType.contacts) {
+    if (filter.type == FilterType.wish)
+      icon = Icons.favorite;
+    else if (filter.type == FilterType.contacts) icon = Icons.contact_phone;
+
+    return InputChip(
+      selected: filter.selected,
+      // !!!DEBUG
+      label: Icon(icon),
+      // TODO: Put book icon here
+      // avatar: CircleAvatar(),
+      onPressed: () {
+        print('!!!DEBUG Trigger onPressed for filter ${filter.type}');
+        context.bloc<FilterCubit>().toggleFilter(filter.type, filter);
+      },
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
-  }
+    // Removable filters
+  } else {
+    Widget label;
 
-  static List<Filter> findLanguageSugestions(String query) {
-    if (query.length != 0) {
-      return languages.keys
-          .where((key) {
-            return key.toLowerCase().contains(query.toLowerCase()) ||
-                languages[key].toLowerCase().contains(query.toLowerCase());
-          })
-          .map((key) =>
-              Filter(type: FilterType.language, selected: true, value: key))
-          .toList(growable: false);
-    } else {
-      return const <Filter>[];
-    }
-  }
+    if (filter.type == FilterType.genre)
+      label = Text(genres[filter.value]);
+    else if (filter.type == FilterType.language && position == Panel.full)
+      // Present full name of the language instead of code in FULL view
+      label = Text(languages[filter.value]);
+    else if (filter.type == FilterType.place && position == Panel.full) {
+      // Add distance to location in FULL view
+      LatLng location = context.bloc<FilterCubit>().state.center;
+      label = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(filter.value),
+        Text(distanceString(location, filter.place.location),
+            style:
+                Theme.of(context).textTheme.subtitle2.copyWith(fontSize: 10.0))
+      ]);
+    } else
+      label = Text(filter.value, overflow: TextOverflow.fade);
 
-  static Widget languageSugestionBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
-    return ListTile(
-      key: ObjectKey(filter),
-      // TODO: Add leading avatar with book
-      // leading: CircleAvatar(),
-      title: Text(languages[filter.value]),
-      subtitle: Text(filter.value),
-      onTap: () => state.selectSuggestion(filter),
-    );
-  }
+    label = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [if (icon != null) Icon(icon), Flexible(child: label)]);
 
-  // List of genre filters
-  _ChipsListState({this.group, this.location});
+    if (position != Panel.full)
+      label = ConstrainedBox(
+          constraints: new BoxConstraints(
+            maxWidth: 100.0,
+          ),
+          child: label);
+
+    // Only show selection for full level (for suggestions)
+    if (position == Panel.full)
+      return InputChip(
+        selected: filter.selected,
+        label: label,
+        // TODO: Put book icon here
+        // avatar: CircleAvatar(),
+        onDeleted: () {
+          context.bloc<FilterCubit>().deleteFilter(filter);
+        },
+        onPressed: () {
+          if (!filter.selected)
+            print('!!!DEBUG Trigger Adding filter ${filter.type}');
+          context
+              .bloc<FilterCubit>()
+              .addFilter(filter.copyWith(selected: true));
+        },
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      );
+    else
+      return InputChip(
+        label: label,
+        // TODO: Put book icon here
+        // avatar: CircleAvatar(),
+        onDeleted: () {
+          context.bloc<FilterCubit>().deleteFilter(filter);
+        },
+        onPressed: () {
+          if (!filter.selected)
+            print('!!!DEBUG Trigger Adding filter ${filter.type}');
+          context
+              .bloc<FilterCubit>()
+              .addFilter(filter.copyWith(selected: true));
+        },
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      );
+  }
+}
+
+class SearchPanel extends StatefulWidget {
+  SearchPanel({Key key}) : super(key: key);
 
   @override
-  void dispose() {
-    // TODO: implement dispose
-    super.dispose();
+  _SearchPanelState createState() => _SearchPanelState();
+}
+
+class _SearchPanelState extends State<SearchPanel> {
+  TextEditingController _controller = TextEditingController();
+
+  _SearchPanelState();
+
+  Widget groupIcon(FilterGroup group) {
+    IconData icon;
+    if (group == FilterGroup.book)
+      icon = Icons.menu_book;
+    else if (group == FilterGroup.genre)
+      icon = Icons.account_tree;
+    else if (group == FilterGroup.place)
+      icon = Icons.location_pin;
+    else if (group == FilterGroup.language) icon = Icons.language;
+
+    return Icon(icon);
   }
 
-  @override
-  void didUpdateWidget(ChipsListWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (widget.location != oldWidget.location) location = widget.location;
+  Widget groupChips(
+      BuildContext context, FilterState state, FilterGroup group) {
+    double width = MediaQuery.of(context).size.width;
+    return Container(
+        width: width,
+        height: 45.0,
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          IconButton(
+            onPressed: () {
+              context.bloc<FilterCubit>().groupSelectedForSearch(group);
+            },
+            icon: groupIcon(group),
+          ),
+          Flexible(
+              child: Container(
+                  margin: EdgeInsets.only(right: 10.0),
+                  child: ShaderMask(
+                      shaderCallback: (Rect rect) {
+                        return LinearGradient(
+                          begin: Alignment.centerRight,
+                          end: Alignment.centerLeft,
+                          colors: [
+                            Colors.purple,
+                            Colors.transparent,
+                            Colors.transparent,
+                            Colors.purple
+                          ],
+                          stops: [
+                            0.0,
+                            0.1,
+                            0.985,
+                            1.0
+                          ], // 10% purple, 80% transparent, 10% purple
+                        ).createShader(rect);
+                      },
+                      blendMode: BlendMode.dstOut,
+                      child: ListView(
+                          clipBehavior: Clip.antiAlias,
+                          scrollDirection: Axis.horizontal,
+                          children: state.getFilters(group).map((f) {
+                            return chipBuilder(context, f);
+                          }).toList()))))
+        ]));
   }
 
-  InputDecoration decoration() {
+  InputDecoration groupInputDecoration(FilterGroup group) {
     String label = '';
     if (group == FilterGroup.book)
       label = "Title / Author";
@@ -225,208 +195,100 @@ class _ChipsListState extends State<ChipsListWidget> {
     return InputDecoration(labelText: label);
   }
 
-  Future<List<Filter>> findSugestions(String query) async {
-    if (group == FilterGroup.book)
-      return findTitleSugestions(query);
-    else if (group == FilterGroup.genre)
-      return findGenreSugestions(query);
-    else if (group == FilterGroup.place)
-      return findPlaceSugestions(query);
-    else if (group == FilterGroup.language)
-      return findLanguageSugestions(query);
-    else
-      return [];
-  }
-
-  Widget sugestionBuilder(
-      BuildContext context, ChipsInputState<Filter> state, Filter filter) {
-    if (group == FilterGroup.book)
-      return titleSugestionBuilder(context, state, filter);
-    else if (group == FilterGroup.genre)
-      return genreSugestionBuilder(context, state, filter);
-    else if (group == FilterGroup.place)
-      return placeSugestionBuilder(context, state, filter);
-    else if (group == FilterGroup.language)
-      return languageSugestionBuilder(context, state, filter);
-    else
-      return Container();
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
-      return ChipsInput(
-        // Add key to have a refresh of the ChipsInput if filter are changed (only for Genres)
-        key: Key(filters.getFilters(group).hashCode.toString()),
-        /*
-        key: group == FilterGroup.genre
-            ? Key(filters.getFilters(group).hashCode.toString())
-            : null,
-        */
-        initialValue: filters.getFilters(group),
-        decoration: decoration(),
-        maxChips: 5,
-        findSuggestions: findSugestions,
-        suggestionBuilder: sugestionBuilder,
-        onChanged: (data) {
-          context.bloc<FilterCubit>().changeFilters(group, data);
-        },
-        chipBuilder: chipBuilder,
-      );
-    });
+  void didChangeDependencies() {
+    // TODO: Make a code to do it only once at first call afer initState
+    context.bloc<FilterCubit>().setSearchController(_controller);
+
+    super.didChangeDependencies();
   }
-}
-
-Widget chipBuilder(
-    BuildContext context, ChipsInputState<Filter> state, Filter filterInput) {
-  print('!!!DEBUG chipBuilder ${filterInput.type}');
-
-  Widget label;
-
-  if (filterInput.type == FilterType.wish)
-    label = Icon(Icons.favorite);
-  else if (filterInput.type == FilterType.contacts)
-    label = Icon(Icons.contact_phone);
-  else if (filterInput.type == FilterType.genre)
-    label = ConstrainedBox(
-        constraints: new BoxConstraints(
-          maxWidth: 100.0,
-        ),
-        child: Text(genres[filterInput.value]));
-  else
-    label = ConstrainedBox(
-        constraints: new BoxConstraints(
-          maxWidth: 100.0,
-        ),
-        child: Text(filterInput.value));
-
-  return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
-    Filter filter = filters.filters.firstWhere(
-        (f) => f.type == filterInput.type && f.value == filterInput.value,
-        orElse: () => null);
-    if (filter == null) {
-      print('!!!DEBUG Could not find filter on build ${filterInput.type}');
-      return Container(height: 0.0, width: 0.0);
-    }
-
-    if (filter.type == FilterType.wish || filter.type == FilterType.contacts)
-      return InputChip(
-        key: ObjectKey(filter),
-        //avatar: avatar,
-        selected: filter.selected,
-        label: label,
-        // TODO: Put book icon here
-        // avatar: CircleAvatar(),
-        onPressed: () {
-          print('!!!DEBUG Trigger onPressed for filter ${filter.type}');
-          state.setState(() {
-            print(
-                '!!!DEBUG Trigger setState/onPressed for filter ${filter.type}');
-
-            context.bloc<FilterCubit>().toggleFilter(filter.type, filter);
-          });
-        },
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      );
-    else
-      return InputChip(
-        key: ObjectKey(filter),
-        //avatar: avatar,
-        label: label,
-        // TODO: Put book icon here
-        // avatar: CircleAvatar(),
-        onDeleted: () {
-          state.deleteChip(filter);
-        },
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      );
-  });
-}
-
-class SearchPanel extends StatefulWidget {
-  SearchPanel({Key key, this.collapsed}) : super(key: key);
-
-  @override
-  _SearchPanelState createState() => _SearchPanelState(collapsed);
-
-  final bool collapsed;
-}
-
-class _SearchPanelState extends State<SearchPanel> {
-  bool collapsed;
-
-  _SearchPanelState(this.collapsed);
 
   @override
   void didUpdateWidget(covariant SearchPanel oldWidget) {
     // TODO: implement didUpdateWidget
     super.didUpdateWidget(oldWidget);
+  }
 
-    if (oldWidget.collapsed != widget.collapsed) collapsed = widget.collapsed;
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (collapsed) {
-      return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
-        return Container(
-            margin: EdgeInsets.all(10.0),
-            color: Colors.white,
-            child: Wrap(
-                spacing: 5.0,
-                runSpacing: 5.0,
-                children: filters.getSelected().map((f) {
-                  Widget label;
-                  if (f.type == FilterType.wish)
-                    label = Icon(Icons.favorite);
-                  else if (f.type == FilterType.contacts)
-                    label = Icon(Icons.contact_phone);
-                  else if (f.type == FilterType.genre)
-                    label = ConstrainedBox(
-                        constraints: new BoxConstraints(
-                          maxWidth: 100.0,
-                        ),
-                        child: Text(genres[f.value]));
-                  else
-                    label = ConstrainedBox(
-                        constraints: new BoxConstraints(
-                          maxWidth: 100.0,
-                        ),
-                        child: Text(f.value));
-                  return InputChip(
-                    label: label,
-                    // TODO: Put book icon here
-                    // avatar: CircleAvatar(),
-                    onDeleted: () {
-                      // Toggle wish/contact filters and remove others
-                      if (f.type == FilterType.wish ||
-                          f.type == FilterType.contacts)
-                        context.bloc<FilterCubit>().toggleFilter(f.type, f);
-                      else
-                        context.bloc<FilterCubit>().changeFilters(
-                            f.group,
-                            filters
-                                .getFilters(f.group)
-                                .where((el) => el != f)
-                                .toList());
+    return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
+      Panel position = state.panel;
+      double width = MediaQuery.of(context).size.width;
 
-                      setState(() {});
-                    },
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  );
-                }).toList()));
-      });
-    } else {
-      return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
-        return Column(children: [
-          ChipsListWidget(
-            group: FilterGroup.book,
-          ),
-          ChipsListWidget(group: FilterGroup.genre),
-          ChipsListWidget(group: FilterGroup.place, location: filters.center),
-          ChipsListWidget(group: FilterGroup.language),
-        ]);
-      });
-    }
+      if (position == Panel.minimized) {
+        // View with single wrap
+        return OverflowBox(
+            maxHeight: 400.0,
+            alignment: Alignment.topLeft,
+            child: Container(
+                height: 45.0,
+                alignment: Alignment.topLeft,
+                margin: EdgeInsets.fromLTRB(10.0, 5.0, 10.0, 5.0),
+                color: Colors.white,
+                child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: state.compact.map((f) {
+                      return chipBuilder(context, f);
+                    }).toList())));
+      } else if (position == Panel.open) {
+        // View with four wraps
+        return OverflowBox(
+            maxHeight: 400.0,
+            alignment: Alignment.topLeft,
+            child: Container(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+              groupChips(context, state, FilterGroup.book),
+              groupChips(context, state, FilterGroup.genre),
+              groupChips(context, state, FilterGroup.place),
+              groupChips(context, state, FilterGroup.language)
+            ])));
+      } else if (position == Panel.full) {
+        // Full view with wrap of values and edit field
+        FilterGroup group = state.group;
+        List<Filter> suggestions = state.suggestions;
+
+        print('!!!DEBUG build suggestions for $group');
+        return Wrap(
+            alignment: WrapAlignment.start,
+            runAlignment: WrapAlignment.start,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 5.0,
+            runSpacing: 5.0,
+            children: [
+              // Icon
+              groupIcon(group),
+              // Input field
+              Container(
+                width: width * 0.9,
+                child: TextField(
+                  autofocus: true,
+                  maxLines: 1,
+                  decoration: groupInputDecoration(group),
+                  controller: _controller,
+                  onEditingComplete: () {
+                    FocusScope.of(context).unfocus();
+                    context.bloc<FilterCubit>().searchEditComplete();
+                  },
+                ),
+              ),
+              // Selected filters
+              ...state.getFilters(group).map((f) {
+                return chipBuilder(context, f);
+              }).toList(),
+              if (suggestions != null)
+                ...suggestions.take(15).map((f) {
+                  return chipBuilder(context, f);
+                }).toList()
+            ]);
+      } else {
+        return Container();
+      }
+    });
   }
 }

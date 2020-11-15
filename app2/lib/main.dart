@@ -290,7 +290,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   List<Filter> filters = [];
   bool collapsed = true;
-  var _controller = SnappingSheetController();
+  SnappingSheetController _controller = SnappingSheetController();
   double _snapPosition = 0.0;
 
   CameraController cameraCtrl;
@@ -310,6 +310,14 @@ class _MainPageState extends State<MainPage> {
         setState(() {});
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    // TODO: Make a code to do it only once at first call afer initState
+    context.bloc<FilterCubit>().setSnappingController(_controller);
+
+    super.didChangeDependencies();
   }
 
   @override
@@ -337,10 +345,12 @@ class _MainPageState extends State<MainPage> {
                                       child: CameraPreview(cameraCtrl)))
                               : Container()),
                   onSnapEnd: () {
-                    if (_snapPosition > 100.0)
-                      context.bloc<FilterCubit>().panelOpened();
-                    else
+                    if (_snapPosition < 10.0)
                       context.bloc<FilterCubit>().panelHiden();
+                    else if (_snapPosition < 100.0)
+                      context.bloc<FilterCubit>().panelMinimized();
+                    else if (_snapPosition < 210.0)
+                      context.bloc<FilterCubit>().panelOpened();
 
                     setState(() {});
                   },
@@ -352,15 +362,29 @@ class _MainPageState extends State<MainPage> {
                   snappingSheetController: _controller,
                   snapPositions: [
                     SnapPosition(
-                        positionPixel:
-                            filters.view == ViewType.camera ? 0.0 : 60.0,
+                        positionPixel: 0.0,
                         snappingCurve: Curves.elasticOut,
                         snappingDuration: Duration(milliseconds: 750)),
-                    SnapPosition(
-                      positionPixel:
-                          filters.view == ViewType.camera ? 150.0 : 290.0,
-                    ),
-                    //SnapPosition(positionFactor: 0.4),
+                    if (filters.view != ViewType.camera)
+                      SnapPosition(
+                          positionPixel: 55.0,
+                          snappingCurve: Curves.elasticOut,
+                          snappingDuration: Duration(milliseconds: 750)),
+                    if (filters.view == ViewType.camera)
+                      SnapPosition(
+                          positionPixel: 150.0,
+                          snappingCurve: Curves.elasticOut,
+                          snappingDuration: Duration(milliseconds: 750)),
+                    if (filters.view != ViewType.camera)
+                      SnapPosition(
+                          positionPixel: 205.0,
+                          snappingCurve: Curves.elasticOut,
+                          snappingDuration: Duration(milliseconds: 750)),
+                    if (filters.view != ViewType.camera)
+                      SnapPosition(
+                          positionPixel: 205.0,
+                          snappingCurve: Curves.elasticOut,
+                          snappingDuration: Duration(milliseconds: 750)),
                   ],
                   child: MapWidget(),
                   grabbingHeight: MediaQuery.of(context).padding.bottom + 40,
@@ -370,7 +394,7 @@ class _MainPageState extends State<MainPage> {
                           color: Colors.white,
                           child: filters.view == ViewType.camera
                               ? CameraPanel(collapsed: _snapPosition < 150.0)
-                              : SearchPanel(collapsed: _snapPosition < 290.0))),
+                              : SearchPanel())),
                 ),
                 Positioned(
                     bottom: max(_snapPosition - 35.0, 10.0),

@@ -35,7 +35,7 @@ FILTER => Book filter changed
 
 */
 
-enum FilterType { author, title, genre, language, place, wish, contacts }
+enum FilterType { wish, title, author, contacts, place, genre, language }
 
 enum FilterGroup { book, genre, language, place }
 
@@ -111,7 +111,7 @@ class MarkerData extends Equatable {
   List<Object> get props => [geohash, position];
 }
 
-enum PanelPosition { hiden, minimized, open }
+enum Panel { hiden, minimized, open, full }
 
 enum ViewType { map, camera, list, details }
 
@@ -128,7 +128,10 @@ class FilterState extends Equatable {
 
   // Current view (map, list, details, camera) and panel open/close position
   final ViewType view;
-  final PanelPosition position;
+  // Position of search/camera panel
+  final Panel panel;
+  // Current filter froup for detailed filter (panel.full)
+  final FilterGroup group;
   // Coordinates and zoom of the map camera
   final LatLng center;
   final double zoom;
@@ -141,6 +144,8 @@ class FilterState extends Equatable {
   final Book selected;
   // Corrent markers for map view
   final Map<String, Set<MarkerData>> markers;
+  // Corrent markers for map view
+  final List<Filter> suggestions;
 
   // Places near the current location
   final List<Place> places;
@@ -152,7 +157,8 @@ class FilterState extends Equatable {
         genreInput,
         languageInput,
         favorite,
-        position,
+        panel,
+        group,
         center,
         zoom,
         geohashes,
@@ -160,6 +166,7 @@ class FilterState extends Equatable {
         books,
         selected,
         markers,
+        suggestions,
         places
       ];
 
@@ -172,7 +179,8 @@ class FilterState extends Equatable {
       this.languageInput = true,
       this.favorite,
       this.isbns = const [],
-      this.position = PanelPosition.minimized,
+      this.panel = Panel.minimized,
+      this.group,
       this.center = const LatLng(49.8397, 24.0297),
       this.zoom = 5.0,
       this.geohashes = const {'u8c5d'},
@@ -180,6 +188,7 @@ class FilterState extends Equatable {
       this.books,
       this.selected,
       this.markers,
+      this.suggestions = const [],
       this.places});
 
   FilterState copyWith(
@@ -188,7 +197,8 @@ class FilterState extends Equatable {
       bool languageInput,
       List<String> favorite,
       List<String> isbns,
-      PanelPosition position,
+      Panel panel,
+      FilterGroup group,
       LatLng center,
       double zoom,
       ViewType view,
@@ -196,6 +206,7 @@ class FilterState extends Equatable {
       List<Book> books,
       Book selected,
       Map<String, Set<MarkerData>> markers,
+      List<Filter> suggestions,
       List<Place> places}) {
     return FilterState(
       filters: filters ?? this.filters,
@@ -203,7 +214,8 @@ class FilterState extends Equatable {
       languageInput: languageInput ?? this.languageInput,
       favorite: favorite ?? this.favorite,
       isbns: isbns ?? this.isbns,
-      position: position ?? this.position,
+      panel: panel ?? this.panel,
+      group: group ?? this.group,
       center: center ?? this.center,
       zoom: zoom ?? this.zoom,
       view: view ?? this.view,
@@ -211,6 +223,7 @@ class FilterState extends Equatable {
       books: books ?? this.books,
       selected: selected ?? this.selected,
       markers: markers ?? this.markers,
+      suggestions: suggestions ?? this.suggestions,
       places: places ?? this.places,
     );
   }
@@ -219,13 +232,11 @@ class FilterState extends Equatable {
     return filters.where((f) => f.group == group).toList();
   }
 
-  List<Filter> getSelected() {
+  List<Filter> get compact {
+    // Return all filters 3 or below
+    if (filters.length <= 3) return filters;
+
     List<Filter> selected = filters.where((f) => f.selected).toList();
-    if (filters.length == 0)
-      selected = filters
-          .where((f) =>
-              (f.type == FilterType.wish || f.type == FilterType.contacts))
-          .toList();
     return selected;
   }
 
@@ -259,10 +270,12 @@ class FilterState extends Equatable {
     return books;
   }
 
-  Future<List<Place>> placesFor(LatLng here, int hashLevel) async {
+  Future<List<Place>> placesFor(String geohash) async {
+    /*
     String geohash = GeoHasher()
         .encode(here.longitude, here.latitude)
         .substring(0, hashLevel);
+    */
 
     String low = (geohash + '000000000').substring(0, 9);
     String high = (geohash + 'zzzzzzzzz').substring(0, 9);
@@ -352,21 +365,32 @@ String distanceString(LatLng p1, LatLng p2) {
 }
 
 class FilterCubit extends Cubit<FilterState> {
-  GoogleMapController _controller;
+  GoogleMapController _mapController;
+  SnappingSheetController _snappingControler;
+  TextEditingController _searchController;
 
   FilterCubit() : super(FilterState()) {
-    List<Book> books;
+    List<Book> books = [];
+    List<Place> places = [];
     Map<String, Set<MarkerData>> markers = {};
     Future.forEach(state.geohashes, (hash) async {
-      books = await state.booksFor(hash);
+      books.addAll(await state.booksFor(hash));
+      places.addAll(await state.placesFor(hash));
       markers[hash] = await state.markersFor(hash, books);
     }).then((value) {
       emit(state.copyWith(
         books: books,
+        places: places,
         markers: markers,
         view: ViewType.map,
       ));
     });
+  }
+
+  @override
+  Future<void> close() async {
+    _searchController.removeListener(_onSearchChanged);
+    super.close();
   }
 
   double screenInKm() {
@@ -384,6 +408,137 @@ class FilterCubit extends Cubit<FilterState> {
       else
         return f;
     }).toList();
+  }
+
+  Future<List<Filter>> findTitleSugestions(String query) async {
+    if (query.length < 4) return const <Filter>[];
+
+    var lowercase = query.toLowerCase();
+
+    List<Book> books = await searchByText(lowercase);
+
+    // TODO: Check it for long query in case widget are not mounted already
+
+    // If no books returned return empty list
+    if (books == null) return const <Filter>[];
+
+    print('!!!DEBUG: Catalog query return ${books?.length} records');
+
+    // If author match use FilterType.author, otherwise FilterType.title
+    return books
+        //  .where((b) =>
+        //      b.title.toLowerCase().contains(lowercase) ||
+        //      b.authors.join().toLowerCase().contains(lowercase))
+        .map((b) {
+          String matchAuthor = b.authors.firstWhere(
+              (a) => lowercase
+                  .split(' ')
+                  .every((word) => a.toLowerCase().contains(word)),
+              orElse: () => null);
+
+          if (matchAuthor != null)
+            return Filter(
+                type: FilterType.author, selected: false, value: matchAuthor);
+          else
+            return Filter(
+                type: FilterType.title,
+                selected: false,
+                value: b.title,
+                book: b);
+        })
+        .toSet()
+        .toList();
+  }
+
+  static List<Filter> findGenreSugestions(String query) {
+    List<String> keys;
+
+    if (query.length == 0) {
+      keys = genres.keys.take(15).toList();
+    } else {
+      keys = genres.keys
+          .where(
+              (key) => genres[key].toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    }
+
+    return keys
+        .map((key) =>
+            Filter(type: FilterType.genre, selected: false, value: key))
+        .toList(growable: false);
+  }
+
+  Future<List<Filter>> findPlaceSugestions(String query) async {
+    // TODO: If access to address book is allowed (contacts is not null)
+    //       add all contacts to the list with it's distance.
+
+    // Query bookplaces in a radius of 5 km (same hash length 5) to current
+    // location. Sort it by distance ascending (closest places first).
+
+    // TODO: Take care about locations near equator and 0/180 longitude.
+    List<Place> places = state.places;
+
+    // Query places if it's empty
+    // TODO: Make a procedure for that
+    if (places == null || places.length == 0) {
+      places = [];
+      await Future.forEach(state.geohashes, (hash) async {
+        places.addAll(await state.placesFor(hash));
+      });
+
+      places.sort((a, b) => (distanceBetween(a.location, state.center) -
+              distanceBetween(b.location, state.center))
+          .round());
+
+      emit(state.copyWith(places: places));
+    }
+
+    if (query.length == 0) {
+      print('!!!DEBUG length 0');
+      places = places.take(15).toList();
+    } else if (query.length > 0) {
+      places = places.where((p) {
+        return p.name.toLowerCase().contains(query.toLowerCase());
+      }).toList();
+    }
+
+    // No need to sort as places already sorted by distance
+    return places
+        .map((p) => Filter(
+            type: FilterType.place, value: p.name, selected: false, place: p))
+        .toList(growable: false);
+  }
+
+  static List<Filter> findLanguageSugestions(String query) {
+    List<String> keys;
+
+    if (query.length == 0) {
+      keys = mainLanguages.toList();
+    } else {
+      keys = languages.keys
+          .where((key) =>
+              key.toLowerCase().contains(query.toLowerCase()) ||
+              languages[key].toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    }
+
+    return keys
+        .map((key) =>
+            Filter(type: FilterType.language, selected: false, value: key))
+        .toList(growable: false);
+  }
+
+  Future<List<Filter>> findSugestions(String query, FilterGroup group) async {
+    if (group == FilterGroup.book)
+      return findTitleSugestions(query);
+    else if (group == FilterGroup.genre)
+      return findGenreSugestions(query);
+    else if (group == FilterGroup.place)
+      return findPlaceSugestions(query);
+    else if (group == FilterGroup.language)
+      return findLanguageSugestions(query);
+    else
+      return [];
   }
 
   Future<void> scanContacts() async {
@@ -463,74 +618,62 @@ class FilterCubit extends Cubit<FilterState> {
   // - Places filter changed => FILTER (permission for Address Book if My Places)
   // - Language filter changed => FILTER
   // - Genre filter changed => FILTER
-  void changeFilters(FilterGroup group, List<Filter> data) async {
-    // TODO: Set filter for given conditions, so only requested books are
-    //        displayed. Probably zoom out to contains more copies of this book.
+  void deleteFilter(Filter filter) async {
+    // Block removing wish filter and contacts filter
+    List<Filter> filters = state.filters;
 
-    List<Filter> filters = state.getFilters(group);
-
-    if (data.length > filters.length) {
-      List<Filter> toAdd = data.where((f) => !filters.contains(f)).toList();
-      print('!!!DEBUG new fileters length ${toAdd.length} data ${data.length}');
-
-      // !!!DEBUG
-      if (toAdd.length > 1) {
-        print('DOUBLE FILTER ***********************************************');
-        toAdd.forEach((f) {
-          print(f.value);
-        });
-        print('*************************************************************');
-      }
-      //assert(toAdd.length == 1, 'Only one filter can be added at a time');
-
-      print('!!!DEBUG ADD filters: ${toAdd.first.type}');
-
-      filters = state.filters;
-
-      if (toAdd.first.type == FilterType.title) {
-        // If title filter add unselect wish filter
-        filters = toggle(filters, FilterType.wish, false);
-        // If title filter add drop genres filters
-        filters = filters.where((f) => f.type != FilterType.genre).toList();
-      } else if (toAdd.first.type == FilterType.place) {
-        // If place filter add unselect contacts filter
-        filters = toggle(filters, FilterType.contacts, false);
-      } else if (toAdd.first.type == FilterType.genre) {
-        // If genre filter add drop title filters
-        filters = filters.where((f) => f.type != FilterType.title).toList();
-      } else if (toAdd.first.type == FilterType.author &&
-          filters.any((f) => f.type == FilterType.author)) {
-        // If more than 1 author drop genres filters if more than 1 value
-        if (filters.where((f) => f.type == FilterType.genre).length > 1)
-          filters = filters.where((f) => f.type != FilterType.genre).toList();
-
-        // If more than 1 author drop language filters if more than 1 value
-        if (filters.where((f) => f.type == FilterType.language).length > 1)
-          filters =
-              filters.where((f) => f.type != FilterType.language).toList();
-      }
-
-      emit(state.copyWith(
-        filters: [...filters, toAdd.first],
-      ));
+    // Do not remove WISH and CONTACT. Just unselect.
+    if (filter.type == FilterType.wish || filter.type == FilterType.contacts) {
+      filters = toggle(filters, FilterType.wish, false);
     } else {
-      print('!!!DEBUG filters length ${filters.length} data ${data.length}');
-      List<Filter> toRemove = filters.where((f) => !data.contains(f)).toList();
-
-      print('!!!DEBUG to remove length ${toRemove.length}');
-      assert(toRemove.length == 1, 'Only one filter can be removed at a time');
-      print('!!!DEBUG REMOVE filters: ${toRemove.first.type}');
-
-      // Block removing wish filter and contacts filter
-      toRemove = toRemove
-          .where(
-              (f) => f.type != FilterType.wish && f.type != FilterType.contacts)
-          .toList();
-
-      emit(state.copyWith(
-        filters: state.filters.where((f) => !toRemove.contains(f)).toList(),
-      ));
+      filters = filters.where((f) => f != filter).toList();
     }
+
+    emit(state.copyWith(filters: filters));
+  }
+
+  // FILTER PANEL:
+  // - Author/title filter changed => FILTER
+  // - Places filter changed => FILTER (permission for Address Book if My Places)
+  // - Language filter changed => FILTER
+  // - Genre filter changed => FILTER
+  void addFilter(Filter filter) async {
+    List<Filter> filters = state.filters;
+
+    // Do nothing if filter already there
+    if (filters.contains(filter)) return;
+
+    if (filter.type == FilterType.title) {
+      // If title filter add unselect wish filter
+      filters = toggle(filters, FilterType.wish, false);
+      // If title filter add drop genres filters
+      filters = filters.where((f) => f.type != FilterType.genre).toList();
+    } else if (filter.type == FilterType.place) {
+      // If place filter add unselect contacts filter
+      filters = toggle(filters, FilterType.contacts, false);
+    } else if (filter.type == FilterType.genre) {
+      // If genre filter add drop title filters
+      filters = filters.where((f) => f.type != FilterType.title).toList();
+    } else if (filter.type == FilterType.author &&
+        filters.any((f) => f.type == FilterType.author)) {
+      // If more than 1 author drop genres filters if more than 1 value
+      if (filters.where((f) => f.type == FilterType.genre).length > 1)
+        filters = filters.where((f) => f.type != FilterType.genre).toList();
+
+      // If more than 1 author drop language filters if more than 1 value
+      if (filters.where((f) => f.type == FilterType.language).length > 1)
+        filters = filters.where((f) => f.type != FilterType.language).toList();
+    }
+
+    // Remove this filter from suggestions
+    List<Filter> suggestions = state.suggestions
+        .where((f) => f.type != filter.type || f.value != filter.value)
+        .toList();
+
+    filters = [...filters, filter]
+      ..sort((a, b) => a.type.index.compareTo(b.type.index));
+
+    emit(state.copyWith(filters: filters, suggestions: suggestions));
   }
 
   // FILTER PANEL:
@@ -580,46 +723,54 @@ class FilterCubit extends Cubit<FilterState> {
   }
 
   // FILTER PANEL:
+  // - Button with group icon or tap on group line to edit details
+  void searchEditComplete() async {
+    _searchController.text = '';
+    _snappingControler.snapToPosition(_snappingControler.snapPositions.last);
+  }
+
+  // FILTER PANEL:
+  // - Button with group icon or tap on group line to edit details
+  void groupSelectedForSearch(FilterGroup group) async {
+    _searchController.text = '';
+    _snappingControler.snapToPosition(
+      SnapPosition(
+          positionPixel: 280.0,
+          snappingCurve: Curves.elasticOut,
+          snappingDuration: Duration(milliseconds: 750)),
+    );
+    emit(state.copyWith(group: group, panel: Panel.full));
+
+    List<Filter> suggestions = await findSugestions('', group);
+    emit(state.copyWith(suggestions: suggestions));
+  }
+
+  // FILTER PANEL:
   // - Filter panel opened => FILTER
   void panelOpened() async {
     print('!!!DEBUG PANEL OPEN');
 
     // TODO: Load near by book places and keep it in the state object
     emit(state.copyWith(
-      position: PanelPosition.open,
-    ));
-
-    print('!!!DEBUG load near by book places');
-
-    //Position loc = await Geolocator.getCurrentPosition();
-    //LatLng here = LatLng(loc.latitude, loc.longitude);
-
-    // Get places around center of the map with hesh level 5 (4.9 km)
-    LatLng here = state.center;
-    List<Place> places = await state.placesFor(state.center, 5);
-
-    places.sort((a, b) =>
-        (distanceBetween(a.location, here) - distanceBetween(b.location, here))
-            .round());
-
-    emit(state.copyWith(
-      places: places,
+      panel: Panel.open,
     ));
   }
 
   // FILTER PANEL:
   // - Filter panel minimized => FILTER
   void panelMinimized() {
+    print('!!!DEBUG PANEL MINIMIZED');
     emit(state.copyWith(
-      position: PanelPosition.minimized,
+      panel: Panel.minimized,
     ));
   }
 
   // FILTER PANEL:
   // - Filter panel closed => FILTER
   void panelHiden() {
+    print('!!!DEBUG PANEL HIDDEN');
     emit(state.copyWith(
-      position: PanelPosition.hiden,
+      panel: Panel.hiden,
     ));
   }
 
@@ -632,11 +783,11 @@ class FilterCubit extends Cubit<FilterState> {
 
     // TODO: Calculate zoom based on the book availability at a location
 
-    if (_controller != null)
+    if (_mapController != null)
 //      _controller.moveCamera(CameraUpdate.newCameraPosition(CameraPosition(
 //          target: LatLng(loc.latitude, loc.longitude), zoom: 10.0)));
 
-      _controller.moveCamera(
+      _mapController.moveCamera(
           CameraUpdate.newLatLng(LatLng(loc.latitude, loc.longitude)));
 
     // TODO: Check if zoom reset is a good thing. Do we need to
@@ -681,9 +832,43 @@ class FilterCubit extends Cubit<FilterState> {
   }
 
   // MAP VIEW
-  // - Map move => FILTER
-  void setController(GoogleMapController controller) {
-    _controller = controller;
+  // - Set controller
+  void setMapController(GoogleMapController controller) {
+    _mapController = controller;
+  }
+
+  // MAP VIEW
+  // - Set controller
+  void setSnappingController(SnappingSheetController controller) {
+    _snappingControler = controller;
+  }
+
+  // Function to identify that typing is other. To minimize number
+  // of queries to DB
+  Timer _debounce;
+  int _debouncetime = 500;
+
+  _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce.cancel();
+    _debounce = Timer(Duration(milliseconds: _debouncetime), () async {
+      if (_searchController.text != "") {
+        // Perform your search only if typing is over
+        print('!!!DEBUG text from search field: ${_searchController.text}');
+        List<Filter> suggestions =
+            await findSugestions(_searchController.text, state.group);
+
+        emit(state.copyWith(suggestions: suggestions));
+      }
+    });
+  }
+
+  // MAP VIEW
+  // - Set controller
+  void setSearchController(TextEditingController controller) {
+    if (_searchController == null) {
+      _searchController = controller;
+      _searchController.addListener(_onSearchChanged);
+    }
   }
 
   // MAP VIEW
@@ -726,6 +911,7 @@ class FilterCubit extends Cubit<FilterState> {
     if (oldLevel == level && state.geohashes.containsAll(hashes)) return;
 
     List<Book> books = state.books;
+    List<Place> places = state.places;
 
     // Only list hashes which are of higher level or not included in current
     // set of hashes and not a sub-hashes.
@@ -743,13 +929,25 @@ class FilterCubit extends Cubit<FilterState> {
       books = [];
     }
 
+    if (places != null) {
+      places
+          .removeWhere((p) => !hashes.contains(p.geohash.substring(0, level)));
+    } else {
+      print('!!!DEBUG books is NULL');
+      places = [];
+    }
+
     // Add books only for missing areas
     await Future.forEach(toAddBooks, (hash) async {
       books.addAll(await state.booksFor(hash));
+      places.addAll(await state.placesFor(hash));
     });
 
     // Remove duplicates (Duplicates appeared on zoom-out)
     books = books.toSet().toList();
+
+    // Remove duplicates (Duplicates appeared on zoom-out)
+    places = places.toSet().toList();
 
     Map<String, Set<MarkerData>> markers = state.markers;
     // Remove markers clusters. If same level remove hiden, otherwise all.
@@ -770,17 +968,36 @@ class FilterCubit extends Cubit<FilterState> {
       print('!!!DEBUG $key: ${value.length} markers');
     });
 
+    // Sort books
     books.sort((a, b) => (distanceBetween(a.location, state.center) -
             distanceBetween(b.location, state.center))
         .round());
     // Emit state with updated markers
 
-    emit(state.copyWith(
-        center: position != null ? position.target : state.center,
-        zoom: position != null ? position.zoom : state.zoom,
-        geohashes: hashes,
-        books: books,
-        markers: markers));
+    places.sort((a, b) => (distanceBetween(a.location, state.center) -
+            distanceBetween(b.location, state.center))
+        .round());
+
+    // Refresh suggestions if map moved once detailed place filters are open
+    if (state.panel == Panel.full && state.group == FilterGroup.place) {
+      List<Filter> suggestions = await findSugestions('', state.group);
+      emit(state.copyWith(
+          center: position != null ? position.target : state.center,
+          zoom: position != null ? position.zoom : state.zoom,
+          geohashes: hashes,
+          books: books,
+          places: places,
+          suggestions: suggestions,
+          markers: markers));
+    } else {
+      emit(state.copyWith(
+          center: position != null ? position.target : state.center,
+          zoom: position != null ? position.zoom : state.zoom,
+          geohashes: hashes,
+          books: books,
+          places: places,
+          markers: markers));
+    }
   }
 
   // MAP VIEW
@@ -814,13 +1031,16 @@ class FilterCubit extends Cubit<FilterState> {
   // DETAILS
   // - Search button pressed => FILTER
   void searchBookPressed(Book book) async {
+    // NOT WORKING NOW!!!!!!!!!!!!!!!
+
     // TODO: Set filter for given book, so only this book is displayed
     //       probably zoom out to contains more copies of this book.
 
     List<Book> books;
     Map<String, Set<MarkerData>> markers;
     await Future.forEach(state.geohashes, (hash) async {
-      books = await state.booksFor(hash);
+      books.addAll(await state.booksFor(hash));
+      // TODO: Add places as well???
       markers[hash] = await state.markersFor(hash, books);
     });
 

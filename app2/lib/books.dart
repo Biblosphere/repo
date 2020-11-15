@@ -60,6 +60,23 @@ const Map<String, String> genres = {
   'young_adult': 'Young adult',
 };
 
+const List<String> mainLanguages = [
+  'ENG',
+  'SPA',
+  'RUS',
+  'ARA',
+  'ZHO',
+  'HIN',
+  'KOR',
+  'JPN',
+  'POR',
+  'FRA',
+  'DEU',
+  'ITA',
+  'NLD',
+  'TUR'
+];
+
 const Map<String, String> languages = {
   'ABK': 'аҧсуа бызшәа',
   'AAR': 'Afaraf',

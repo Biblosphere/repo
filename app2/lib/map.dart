@@ -176,7 +176,7 @@ class _MapWidgetState extends State<MapWidget> {
                 onMapCreated: (GoogleMapController controller) {
                   //TODO: Keep controller to retrieve visible region
                   _controller = controller;
-                  context.bloc<FilterCubit>().setController(controller);
+                  context.bloc<FilterCubit>().setMapController(controller);
                 },
                 markers: markers);
           });
