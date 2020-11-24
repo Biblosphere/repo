@@ -1,7 +1,7 @@
 part of 'main.dart';
 
 Widget chipBuilder(BuildContext context, Filter filter) {
-  print('!!!DEBUG chipBuilder ${filter.type}');
+  //print('!!!DEBUG chipBuilder ${filter.type}');
 
   IconData icon;
   Panel position = context.bloc<FilterCubit>().state.panel;
@@ -176,7 +176,7 @@ class _SearchPanelState extends State<SearchPanel> {
                       child: ListView(
                           clipBehavior: Clip.antiAlias,
                           scrollDirection: Axis.horizontal,
-                          children: state.getFilters(group).map((f) {
+                          children: state.getFilters(group: group).map((f) {
                             return chipBuilder(context, f);
                           }).toList()))))
         ]));
@@ -278,7 +278,7 @@ class _SearchPanelState extends State<SearchPanel> {
                 ),
               ),
               // Selected filters
-              ...state.getFilters(group).map((f) {
+              ...state.getFilters(group: group).map((f) {
                 return chipBuilder(context, f);
               }).toList(),
               if (suggestions != null)

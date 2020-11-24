@@ -264,7 +264,17 @@ const Map<String, String> languages = {
   'ZUL': 'isiZulu',
 };
 
-class Book extends Equatable {
+class Point extends Equatable {
+  final LatLng location;
+  final String geohash;
+
+  const Point({this.location, this.geohash});
+
+  @override
+  List<Object> get props => [location, geohash];
+}
+
+class Book extends Point {
   final String id;
   final String isbn;
   final String title;
@@ -276,13 +286,10 @@ class Book extends Equatable {
   final String cover;
   final String photo;
   final String photoId;
-  final String photoUrl;
   final String ownerId;
   // Book outline on the bookshelf image
-  final List<Offset> outline;
+  final List<ui.Offset> outline;
   // Book location
-  final LatLng location;
-  final String geohash;
   final String bookplace;
 
   const Book(
@@ -297,12 +304,12 @@ class Book extends Equatable {
       this.cover,
       this.photo,
       this.photoId,
-      this.photoUrl,
       this.ownerId,
       this.outline,
-      this.location,
-      this.geohash,
-      this.bookplace});
+      location,
+      geohash,
+      this.bookplace})
+      : super(location: location, geohash: geohash);
 
   Book.fromJson(this.id, Map json)
       : isbn = json['isbn'],
@@ -310,9 +317,6 @@ class Book extends Equatable {
         authors = List<String>.from(json['authors'] ?? []),
         genre = json['genre'],
         language = json['language'],
-        location = LatLng((json['location']['geopoint'] as GeoPoint).latitude,
-            (json['location']['geopoint'] as GeoPoint).longitude),
-        geohash = json['location']['geohash'],
         cover = json['cover'],
         description = json['description'],
         tags = List<String>.from(json['tags'] ?? []),
@@ -320,22 +324,27 @@ class Book extends Equatable {
         photoId = json['photo_id'],
         ownerId = json['owner_id'],
         bookplace = json['bookplace'],
-        outline = [],
-        photoUrl = '';
+        outline = json['outline'] == null
+            ? []
+            : List<ui.Offset>.from((json['outline'] as List)
+                .map((e) => ui.Offset(e['x'].toDouble(), e['y'].toDouble()))),
+        super(
+            location: LatLng(
+                (json['location']['geopoint'] as GeoPoint).latitude,
+                (json['location']['geopoint'] as GeoPoint).longitude),
+            geohash: json['location']['geohash']);
 
   @override
   List<Object> get props => [id];
 }
 
-class Place extends Equatable {
+class Place extends Point {
   final String id;
   final String name;
   final String email;
   final String phone;
-  final LatLng location;
   final String privacy; // public, contacts, private
   final String type; // personal, company
-  final String geohash;
   // Users of this bookplace (contacts for person, contributors for orgs)
   final List<String> users;
   // Books count
@@ -352,12 +361,13 @@ class Place extends Equatable {
       this.phone,
       this.privacy = 'contacts',
       this.type,
-      this.location,
-      this.geohash,
+      location,
+      geohash,
       this.users,
       this.count,
       this.languages,
-      this.genres});
+      this.genres})
+      : super(location: location, geohash: geohash);
 
   Place.fromJson(this.id, Map json)
       : name = json['name'],
@@ -365,13 +375,15 @@ class Place extends Equatable {
         phone = json['phone'],
         privacy = json['privacy'],
         type = json['type'],
-        location = LatLng((json['location']['geopoint'] as GeoPoint).latitude,
-            (json['location']['geopoint'] as GeoPoint).longitude),
-        geohash = json['location']['geohash'],
         users = List<String>.from(json['users'] ?? []),
         count = json['count'],
         languages = Map<String, int>.from(json['languages'] ?? {}),
-        genres = Map<String, int>.from(json['genres'] ?? {});
+        genres = Map<String, int>.from(json['genres'] ?? {}),
+        super(
+            location: LatLng(
+                (json['location']['geopoint'] as GeoPoint).latitude,
+                (json['location']['geopoint'] as GeoPoint).longitude),
+            geohash: json['location']['geohash']);
 
   @override
   List<Object> get props => [id];
@@ -392,9 +404,8 @@ Widget coverImage(String url) {
 
 class BookCard extends StatelessWidget {
   final Book book;
-  final bool details;
 
-  BookCard({Key key, this.book, this.details = false}) : super(key: key);
+  BookCard({Key key, this.book}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -403,128 +414,237 @@ class BookCard extends StatelessWidget {
         builder: (context, filters) {
       print('!!!DEBUG rebuild BookCard ${filters.center}');
       String distance = distanceString(filters.center, book.location);
-      if (!details) {
-        return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => DetailsPage(book: book)),
-              );
-            },
-            child: Card(
-                child: Container(
-                    margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
-                    child: Row(children: [
-                      ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minWidth: 100,
-                            minHeight: 100,
-                            maxWidth: 120,
-                            maxHeight: 100,
-                          ),
+      return GestureDetector(
+          onTap: () {
+            context.bloc<FilterCubit>().selectBook(book: book);
+          },
+          child: Card(
+              child: Container(
+                  margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
+                  child: Row(children: [
+                    ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth: 100,
+                          minHeight: 100,
+                          maxWidth: 120,
+                          maxHeight: 100,
+                        ),
 //                  child: CachedNetworkImage(imageUrl: book.cover)),
 //                  child: Image(image: CachedNetworkImageProvider(book.cover))),
-                          child: coverImage(book.cover)),
-                      Expanded(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        child: coverImage(book.cover)),
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          Text(book.authors.join(', ')),
+                          Text(book.title ?? ''),
+                          Text(book.genre ?? ''),
+                          Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
                               children: [
-                            Text(book.authors.join(', ')),
-                            Text(book.title ?? ''),
-                            Text(book.genre ?? ''),
-                            Row(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: [
-                                  Expanded(flex: 1, child: Text(distance)),
-                                  Icon(Icons.location_pin),
-                                  Expanded(flex: 4, child: Text(book.bookplace))
-                                ])
-                          ]))
-                    ]))));
-      } else {
-        return Card(
-            child: Container(
-                margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minWidth: 100,
-                              minHeight: 100,
-                              maxWidth: 120,
-                              maxHeight: 100,
-                            ),
+                                Expanded(flex: 1, child: Text(distance)),
+                                Icon(Icons.location_pin),
+                                Expanded(flex: 4, child: Text(book.bookplace))
+                              ])
+                        ]))
+                  ]))));
+    });
+  }
+}
+
+class ImagePainter extends CustomPainter {
+  ImagePainter({
+    this.image,
+  });
+
+  ui.Image image;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawImage(image, new Offset(0.0, 0.0), new Paint());
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return false;
+  }
+}
+
+class BookDetails extends StatefulWidget {
+  final Book book;
+
+  BookDetails({Key key, this.book}) : super(key: key);
+
+  @override
+  _BookDetailsState createState() => _BookDetailsState(book: book);
+}
+
+class _BookDetailsState extends State<BookDetails> {
+  Book book;
+  ImageProvider _imageProvider;
+
+  _BookDetailsState({this.book});
+
+  Future<void> loadShelfImage() async {
+    // Return if no shelf image
+    if (book.photo == null) {
+      _imageProvider = null;
+      return null;
+    }
+
+    // Get image data and decode it
+    _imageProvider = NetworkImage(book.photo);
+
+    Completer<ImageInfo> completer = Completer();
+    _imageProvider
+        .resolve(ImageConfiguration())
+        .addListener(ImageStreamListener((ImageInfo info, bool _) {
+      completer.complete(info);
+    }));
+
+    ImageInfo imageInfo = await completer.future;
+    ui.Image image = imageInfo.image;
+
+    if (book.outline == null) {
+      print('!!!DEBUG outline missing');
+      return;
+    }
+
+    print('!!!DEBUG drawing outline');
+    final pictureRecorder = ui.PictureRecorder();
+    final canvas = Canvas(pictureRecorder);
+
+    canvas.drawImage(image, Offset.zero, Paint());
+
+    Paint paint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = image.width / 200;
+
+    Path path = Path();
+
+    path.addPolygon(book.outline, true);
+    canvas.drawPath(path, paint);
+
+    final picture = pictureRecorder.endRecording();
+
+    // TODO: Try to make it smaller and see if it's scaled
+    image = await picture.toImage(image.width, image.height);
+    ByteData bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    _imageProvider = MemoryImage(bytes.buffer.asUint8List());
+    return;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    loadShelfImage().then((value) => setState(() {}));
+  }
+
+  @override
+  void didUpdateWidget(covariant BookDetails oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.book != widget.book) {
+      book = widget.book;
+      _imageProvider = null;
+      loadShelfImage().then((value) => setState(() {}));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<FilterCubit, FilterState>(
+        // buildWhen: (previous, current) => previous.center != current.center,
+        builder: (context, filters) {
+      print('!!!DEBUG rebuild BookCard ${filters.center}');
+      String distance = distanceString(filters.center, book.location);
+      return Card(
+          child: Stack(children: [
+        Container(
+            margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: 100,
+                      minHeight: 100,
+                      maxWidth: 120,
+                      maxHeight: 100,
+                    ),
 //                  child: CachedNetworkImage(imageUrl: book.cover)),
 //                  child: Image(image: CachedNetworkImageProvider(book.cover))),
-                            child: coverImage(book.cover)),
-                        Expanded(
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                              Text(book.authors.join(', ')),
-                              Text(book.title ?? ''),
-                              Text(book.genre ?? ''),
-                              Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    Expanded(flex: 1, child: Text(distance)),
-                                    Icon(Icons.location_pin),
-                                    Expanded(
-                                        flex: 4, child: Text(book.bookplace))
-                                  ])
-                            ]))
-                      ]),
-                      // Figma: buttons
-                      Row(children: [
-                        MaterialButton(
-                          onPressed: () {},
-                          color: Colors.orange,
-                          textColor: Colors.white,
-                          child: Icon(
-                            Icons.search,
-                            size: 16,
-                          ),
-                          padding: EdgeInsets.all(3),
-                          shape: CircleBorder(),
-                        ),
-                        MaterialButton(
-                          onPressed: () {},
-                          color: Colors.orange,
-                          textColor: Colors.white,
-                          child: Icon(
-                            Icons.favorite,
-                            size: 16,
-                          ),
-                          padding: EdgeInsets.all(3),
-                          shape: CircleBorder(),
-                        ),
-                        MaterialButton(
-                          onPressed: () {},
-                          color: Colors.orange,
-                          textColor: Colors.white,
-                          child: Icon(
-                            Icons.message,
-                            size: 16,
-                          ),
-                          padding: EdgeInsets.all(3),
-                          shape: CircleBorder(),
-                        ),
-                        MaterialButton(
-                          onPressed: () {},
-                          color: Colors.orange,
-                          textColor: Colors.white,
-                          child: Icon(
-                            Icons.share,
-                            size: 16,
-                          ),
-                          padding: EdgeInsets.all(3),
-                          shape: CircleBorder(),
-                        ),
-                      ]),
-                      // Figma: Description
+                    child: coverImage(book.cover)),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(book.authors.join(', ')),
+                      Text(book.title ?? ''),
+                      Text(book.genre ?? ''),
+                      Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 1, child: Text(distance)),
+                            Icon(Icons.location_pin),
+                            Expanded(flex: 4, child: Text(book.bookplace))
+                          ])
+                    ]))
+              ]),
+              // Figma: buttons
+              Container(
+                  margin: EdgeInsets.only(top: 10.0),
+                  child: Row(children: [
+                    MaterialButton(
+                      onPressed: () {},
+                      color: Colors.orange,
+                      textColor: Colors.white,
+                      child: Icon(
+                        Icons.search,
+                        size: 16,
+                      ),
+                      padding: EdgeInsets.all(3),
+                      shape: CircleBorder(),
+                    ),
+                    MaterialButton(
+                      onPressed: () {},
+                      color: Colors.orange,
+                      textColor: Colors.white,
+                      child: Icon(
+                        Icons.favorite,
+                        size: 16,
+                      ),
+                      padding: EdgeInsets.all(3),
+                      shape: CircleBorder(),
+                    ),
+                    MaterialButton(
+                      onPressed: () {},
+                      color: Colors.orange,
+                      textColor: Colors.white,
+                      child: Icon(
+                        Icons.message,
+                        size: 16,
+                      ),
+                      padding: EdgeInsets.all(3),
+                      shape: CircleBorder(),
+                    ),
+                    MaterialButton(
+                      onPressed: () {},
+                      color: Colors.orange,
+                      textColor: Colors.white,
+                      child: Icon(
+                        Icons.share,
+                        size: 16,
+                      ),
+                      padding: EdgeInsets.all(3),
+                      shape: CircleBorder(),
+                    ),
+                  ])),
+              // Figma: Description
+/*
                       Container(
                           margin: EdgeInsets.only(top: 15.0),
                           child: Text('DESCRIPTION')),
@@ -536,10 +656,34 @@ class BookCard extends StatelessWidget {
                           children: book.tags.map((tag) {
                         return Chip(label: Text(tag));
                       }).toList()),
-                      Image.network(book.photoUrl),
-                      Text('Last scan 21.01.2020')
-                    ])));
-      }
+*/
+              if (_imageProvider != null)
+                Container(
+                    margin: EdgeInsets.all(10.0),
+                    child: Image(image: _imageProvider)),
+              // TODO: Add last scan date
+              //Text('Last scan 21.01.2020')
+            ])),
+        Positioned(
+          right: 0.0,
+          child: GestureDetector(
+            onTap: () {
+              context.bloc<FilterCubit>().detailsClosed();
+            },
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Container(
+                margin: EdgeInsets.only(right: 3.0, top: 3.0),
+                child: CircleAvatar(
+                  radius: 14.0,
+                  backgroundColor: Colors.red,
+                  child: Icon(Icons.close, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]));
     });
   }
 }
@@ -598,32 +742,19 @@ class _ListWidgetState extends State<ListWidget> {
 }
 
 class DetailsPage extends StatefulWidget {
-  DetailsPage({Key key, this.book}) : super(key: key);
-
-  final Book book;
+  DetailsPage({Key key}) : super(key: key);
 
   @override
-  _DetailsPageState createState() => _DetailsPageState(book: book);
+  _DetailsPageState createState() => _DetailsPageState();
 }
 
 class _DetailsPageState extends State<DetailsPage> {
-  Book book;
-
-  _DetailsPageState({this.book});
-
-  @override
-  void didUpdateWidget(covariant DetailsPage oldWidget) {
-    // TODO: implement didUpdateWidget
-    super.didUpdateWidget(oldWidget);
-
-    if (oldWidget.book != widget.book) book = widget.book;
-  }
+  _DetailsPageState();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(backgroundColor: Colors.grey),
-        body:
-            SingleChildScrollView(child: BookCard(book: book, details: true)));
+    return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
+      return ListView(children: [BookDetails(book: state.selected)]);
+    });
   }
 }

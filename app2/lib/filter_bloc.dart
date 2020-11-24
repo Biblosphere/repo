@@ -35,6 +35,8 @@ FILTER => Book filter changed
 
 */
 
+enum QueryType { books, places }
+
 enum FilterType { wish, title, author, contacts, place, genre, language }
 
 enum FilterGroup { book, genre, language, place }
@@ -103,12 +105,13 @@ String up(String geohash) {
 class MarkerData extends Equatable {
   final String geohash;
   final LatLng position;
-  final List<Book> books;
+  final List<Point> points;
+  final int size;
 
-  MarkerData({this.geohash, this.position, this.books});
+  MarkerData({this.geohash, this.position, this.size, this.points});
 
   @override
-  List<Object> get props => [geohash, position];
+  List<Object> get props => [geohash, position, size];
 }
 
 enum Panel { hiden, minimized, open, full }
@@ -132,9 +135,9 @@ class FilterState extends Equatable {
   final Panel panel;
   // Current filter froup for detailed filter (panel.full)
   final FilterGroup group;
-  // Coordinates and zoom of the map camera
+  // Coordinates and bounds of the map camera
   final LatLng center;
-  final double zoom;
+  final LatLngBounds bounds;
   // Current geohashes on the map
   final Set<String> geohashes;
 
@@ -143,7 +146,7 @@ class FilterState extends Equatable {
   // Currently selected book for details view
   final Book selected;
   // Corrent markers for map view
-  final Map<String, Set<MarkerData>> markers;
+  final Set<MarkerData> markers;
   // Corrent markers for map view
   final List<Filter> suggestions;
 
@@ -160,7 +163,7 @@ class FilterState extends Equatable {
         panel,
         group,
         center,
-        zoom,
+        bounds,
         geohashes,
         view,
         books,
@@ -182,7 +185,7 @@ class FilterState extends Equatable {
       this.panel = Panel.minimized,
       this.group,
       this.center = const LatLng(49.8397, 24.0297),
-      this.zoom = 5.0,
+      this.bounds,
       this.geohashes = const {'u8c5d'},
       this.view = ViewType.map,
       this.books,
@@ -200,12 +203,12 @@ class FilterState extends Equatable {
       Panel panel,
       FilterGroup group,
       LatLng center,
-      double zoom,
+      LatLngBounds bounds,
       ViewType view,
       Set<String> geohashes,
       List<Book> books,
       Book selected,
-      Map<String, Set<MarkerData>> markers,
+      Set<MarkerData> markers,
       List<Filter> suggestions,
       List<Place> places}) {
     return FilterState(
@@ -217,7 +220,7 @@ class FilterState extends Equatable {
       panel: panel ?? this.panel,
       group: group ?? this.group,
       center: center ?? this.center,
-      zoom: zoom ?? this.zoom,
+      bounds: bounds ?? this.bounds,
       view: view ?? this.view,
       geohashes: geohashes ?? this.geohashes,
       books: books ?? this.books,
@@ -228,8 +231,13 @@ class FilterState extends Equatable {
     );
   }
 
-  List<Filter> getFilters(FilterGroup group) {
-    return filters.where((f) => f.group == group).toList();
+  List<Filter> getFilters({FilterGroup group, FilterType type}) {
+    assert(group != null || type != null,
+        'Filter type or group has to be defined');
+    if (group != null)
+      return filters.where((f) => f.group == group).toList();
+    else if (type != null) return filters.where((f) => f.type == type).toList();
+    return [];
   }
 
   List<Filter> get compact {
@@ -240,26 +248,178 @@ class FilterState extends Equatable {
     return selected;
   }
 
+  QueryType get select {
+    // For list view always select books
+    if (view == ViewType.list)
+      return QueryType.books;
+
+    // For map view with precise query select books
+    else if (view == ViewType.map &&
+        (filters.any((f) =>
+                f.type == FilterType.title || f.type == FilterType.author) ||
+            // TODO: Change || to && once statistics are available in places and clusters
+            filters.any((f) => f.type == FilterType.genre) ||
+            filters.any((f) => f.type == FilterType.language) ||
+            filters.any((f) => f.type == FilterType.wish && f.selected)))
+      return QueryType.books;
+
+    // Else select places
+    else
+      return QueryType.places;
+  }
+
+  // Return set of hashes for the current map view
+  Set<String> hashesFor(LatLng position, LatLngBounds bounds) {
+    GeoHasher gc = GeoHasher();
+    String ne =
+        gc.encode(bounds.northeast.longitude, bounds.northeast.latitude);
+    String sw =
+        gc.encode(bounds.southwest.longitude, bounds.southwest.latitude);
+    String nw =
+        gc.encode(bounds.southwest.longitude, bounds.northeast.latitude);
+    String se =
+        gc.encode(bounds.northeast.longitude, bounds.southwest.latitude);
+    String center = gc.encode(position.longitude, position.latitude);
+
+    // Find longest common starting substring for center and corners
+    int level = max(max(lcp(center, ne), lcp(center, sw)),
+        max(lcp(center, nw), lcp(center, se)));
+
+    return [
+      ne.substring(0, level),
+      sw.substring(0, level),
+      nw.substring(0, level),
+      se.substring(0, level)
+    ].toSet();
+  }
+
   Future<List<Book>> booksFor(String geohash) async {
     String low = (geohash + '000000000').substring(0, 9);
     String high = (geohash + 'zzzzzzzzz').substring(0, 9);
 
     QuerySnapshot bookSnap;
 
+    Query query;
+
     if (isbns == null || isbns.length == 0) {
-      bookSnap = await FirebaseFirestore.instance
+      // Query by conditions
+      query = FirebaseFirestore.instance
           .collection('books')
           .where('location.geohash', isGreaterThanOrEqualTo: low)
-          .where('location.geohash', isLessThan: high)
-          .limit(2000)
-          .get();
+          .where('location.geohash', isLessThan: high);
+
+      bool multiple = false;
+
+      // Add author(s) to the query if present
+      List<String> authors = filters
+          .where((f) => f.type == FilterType.author)
+          .map((a) => a.value)
+          .toList();
+
+      // Firestore only support up to 10 values in the list for the query
+      if (authors.length > 10) {
+        authors = authors.take(10).toList();
+        print('EXCEPTION: more than 10 authors in a query');
+        // TODO: Report an exception to analyse why it happens
+      }
+
+      if (authors.length > 1) {
+        query = query.where('author', whereIn: authors);
+        multiple = true;
+      } else if (authors.length == 1) {
+        query = query.where('author', isEqualTo: authors.first);
+      }
+
+      // Add place(s) to the query if present
+      List<String> places = filters
+          .where((f) => f.type == FilterType.place)
+          .map((p) => p.place.id)
+          .toList();
+
+      // Firestore only support up to 10 values in the list for the query
+      if (places.length > 10) {
+        places = places.take(10).toList();
+        print('EXCEPTION: more than 10 places in a query');
+        // TODO: Report an exception to analyse why it happens
+      }
+
+      if (places.length > 1) {
+        if (multiple) {
+          print('EXCEPTION: Already multiple query. Places filters ignored.');
+          // TODO: Report an exception
+        } else {
+          query = query.where('bookplace', whereIn: places);
+          multiple = true;
+        }
+      } else if (places.length == 1) {
+        query = query.where('bookplace', isEqualTo: places.first);
+      }
+
+      // Add genre(s) to the query if present
+      List<String> genres = filters
+          .where((f) => f.type == FilterType.genre)
+          .map((g) => g.value)
+          .toList();
+
+      // Firestore only support up to 10 values in the list for the query
+      if (genres.length > 10) {
+        genres = genres.take(10).toList();
+        print('EXCEPTION: more than 10 genres in a query');
+        // TODO: Report an exception to analyse why it happens
+      }
+
+      if (genres.length > 1) {
+        if (multiple) {
+          print('EXCEPTION: Already multiple query. Genres filters ignored.');
+          // TODO: Report an exception
+        } else {
+          query = query.where('genre', whereIn: genres);
+          multiple = true;
+        }
+      } else if (genres.length == 1) {
+        query = query.where('bookplace', isEqualTo: genres.first);
+      }
+
+      // Add genre(s) to the query if present
+      List<String> langs = filters
+          .where((f) => f.type == FilterType.language)
+          .map((l) => l.value)
+          .toList();
+
+      // Firestore only support up to 10 values in the list for the query
+      if (langs.length > 10) {
+        langs = langs.take(10).toList();
+        print('EXCEPTION: more than 10 languages in a query');
+        // TODO: Report an exception to analyse why it happens
+      }
+
+      if (langs.length > 1) {
+        if (multiple) {
+          print(
+              'EXCEPTION: Already multiple query. Languages filters ignored.');
+          // TODO: Report an exception
+        } else {
+          query = query.where('language', whereIn: langs);
+          multiple = true;
+        }
+      } else if (langs.length == 1) {
+        query = query.where('language', isEqualTo: langs.first);
+      }
     } else {
-      bookSnap = await FirebaseFirestore.instance
+      if (isbns.length > 10) {
+        print('EXCEPTION: number of ISBNs in query more than 10.');
+        // TODO: Report exception in analytic
+      }
+
+      // Query by list of books (ISBN)
+      query = FirebaseFirestore.instance
           .collection('books')
-          .where('isbn', whereIn: isbns)
-          .limit(2000)
-          .get();
+          .where('isbn', whereIn: isbns.take(10).toList());
     }
+
+    query = query.limit(2000);
+
+    bookSnap = await query.get();
 
     // Group all books for geohash areas one level down
     List<Book> books =
@@ -271,12 +431,6 @@ class FilterState extends Equatable {
   }
 
   Future<List<Place>> placesFor(String geohash) async {
-    /*
-    String geohash = GeoHasher()
-        .encode(here.longitude, here.latitude)
-        .substring(0, hashLevel);
-    */
-
     String low = (geohash + '000000000').substring(0, 9);
     String high = (geohash + 'zzzzzzzzz').substring(0, 9);
 
@@ -292,40 +446,59 @@ class FilterState extends Equatable {
         .map((doc) => Place.fromJson(doc.id, doc.data()))
         .toList();
 
-    print('!!!DEBUG: placesFor reads ${places.length} books');
+    print('!!!DEBUG: placesFor reads ${places.length} places');
 
     return places;
   }
 
-  Future<Set<MarkerData>> markersFor(String geohash, List<Book> books) async {
-    int level = min(geohash.length + 2, 9);
+  // Group points (Books or Places) into clusters based on the geo-hash
+  Future<Set<MarkerData>> markersFor(
+      {List<Point> points, LatLngBounds bounds, Set<String> hashes}) async {
+    // Two levels down compare to hashes of the state
+    int level = min(hashes.first.length + 2, 9);
 
     Set<MarkerData> markers = Set();
 
-    if (books != null && books.length > 0) {
-      // Group all books for geohash areas one level down
-      Map<String, List<Book>> booktree =
-          groupBy(books, (book) => book.geohash.substring(0, level));
+    if (points != null && points.length > 0) {
+      // Group points which are visible on the screen based on geohashes
+      // 2 level down
+      Map<String, List<Point>> clusters = groupBy(
+          points.where((p) => bounds.contains(p.location)),
+          (p) => p.geohash.substring(0, level));
 
-      await Future.forEach(booktree.keys, (key) async {
-        List<Book> value = booktree[key];
+      await Future.forEach(clusters.keys, (key) async {
+        List<Point> value = clusters[key];
         // Calculate position for the marker via average geo-hash code
         // for positions of individual books
         double lat = 0.0, lng = 0.0;
-        value.forEach((b) {
-          lat += b.location.latitude;
-          lng += b.location.longitude;
+        value.forEach((p) {
+          lat += p.location.latitude;
+          lng += p.location.longitude;
         });
 
         lat /= value.length;
         lng /= value.length;
 
-        markers.add(
-            MarkerData(geohash: key, position: LatLng(lat, lng), books: value));
+        print('!!!DEBUG Value for hash $key = ${value.length}');
+
+        int count = 0;
+        if (value.first is Book)
+          count = value.length;
+        else
+          value.forEach((p) {
+            count += (p is Place) ? p.count ?? 1 : 1;
+          });
+
+        markers.add(MarkerData(
+            geohash: key,
+            position: LatLng(lat, lng),
+            size: count,
+            points: value));
       });
     }
 
-    print('!!!DEBUG markersFor: ${markers.length}');
+    print(
+        '!!!DEBUG markersFor: ${markers.length} SIZES: ${markers.map((m) => m.size).join(', ')}');
 
     return markers;
   }
@@ -372,14 +545,20 @@ class FilterCubit extends Cubit<FilterState> {
   FilterCubit() : super(FilterState()) {
     List<Book> books = [];
     List<Place> places = [];
-    Map<String, Set<MarkerData>> markers = {};
-    Future.forEach(state.geohashes, (hash) async {
-      books.addAll(await state.booksFor(hash));
+    Set<MarkerData> markers = {};
+    LatLng center = const LatLng(49.8397, 24.0297);
+    LatLngBounds bounds = LatLngBounds(
+        southwest: const LatLng(49.7397, 23.9297),
+        northeast: const LatLng(49.9397, 24.1297));
+    Set<String> geohashes = const {'u8c5d'};
+    Future.forEach(geohashes, (hash) async {
       places.addAll(await state.placesFor(hash));
-      markers[hash] = await state.markersFor(hash, books);
+      markers.addAll(await state.markersFor(points: places, hashes: geohashes));
     }).then((value) {
       emit(state.copyWith(
-        books: books,
+        geohashes: geohashes,
+        center: center,
+        bounds: bounds,
         places: places,
         markers: markers,
         view: ViewType.map,
@@ -393,6 +572,7 @@ class FilterCubit extends Cubit<FilterState> {
     super.close();
   }
 
+/*
   double screenInKm() {
     return 156543.03392 *
         cos(state.center.latitude * pi / 180) /
@@ -400,6 +580,7 @@ class FilterCubit extends Cubit<FilterState> {
         600.0 /
         1000;
   }
+*/
 
   List<Filter> toggle(List<Filter> filters, FilterType type, bool selected) {
     return filters.map((f) {
@@ -509,7 +690,7 @@ class FilterCubit extends Cubit<FilterState> {
         .toList(growable: false);
   }
 
-  static List<Filter> findLanguageSugestions(String query) {
+  List<Filter> findLanguageSugestions(String query) {
     List<String> keys;
 
     if (query.length == 0) {
@@ -521,6 +702,15 @@ class FilterCubit extends Cubit<FilterState> {
               languages[key].toLowerCase().contains(query.toLowerCase()))
           .toList();
     }
+
+    List<String> selectedLaguages = state
+        .getFilters(type: FilterType.language)
+        .map((f) => f.value)
+        .toList();
+
+    // Remove languages which are already selected
+    if (selectedLaguages.length > 0)
+      keys = keys.where((k) => !selectedLaguages.contains(k)).toList();
 
     return keys
         .map((key) =>
@@ -727,6 +917,48 @@ class FilterCubit extends Cubit<FilterState> {
   void searchEditComplete() async {
     _searchController.text = '';
     _snappingControler.snapToPosition(_snappingControler.snapPositions.last);
+
+    List<Book> books = [];
+    List<Place> places = [];
+    Set<MarkerData> markers = Set();
+
+    // Make markers based on BOOKS
+    if (state.select == QueryType.books) {
+      print('!!!DEBUG Filtered markers based on BOOKS');
+      // Add books only for missing areas
+      await Future.forEach(state.geohashes, (hash) async {
+        books.addAll(await state.booksFor(hash));
+      });
+
+      // Sort books based on distance to center of screen
+      books.sort((a, b) => (distanceBetween(a.location, state.center) -
+              distanceBetween(b.location, state.center))
+          .round());
+
+      // Calculate markers based on the books
+      markers = await state.markersFor(
+          points: books, bounds: state.bounds, hashes: state.geohashes);
+
+      // Make markers based on PLACES
+    } else if (state.select == QueryType.places) {
+      print('!!!DEBUG Filtered markers based on PLACES');
+      // Add places only for missing areas
+      await Future.forEach(state.geohashes, (hash) async {
+        places.addAll(await state.placesFor(hash));
+      });
+
+      // Sort places based on distance to center of screen
+      places.sort((a, b) => (distanceBetween(a.location, state.center) -
+              distanceBetween(b.location, state.center))
+          .round());
+
+      // Calculate markers based on the places
+      markers = await state.markersFor(
+          points: places, bounds: state.bounds, hashes: state.geohashes);
+    }
+
+    // Emit state with updated markers
+    emit(state.copyWith(books: books, places: places, markers: markers));
   }
 
   // FILTER PANEL:
@@ -804,19 +1036,21 @@ class FilterCubit extends Cubit<FilterState> {
 
   // TRIPLE BUTTON
   // - Set view => FILTER
-  void setView(ViewType view) {
+  void setView(ViewType view) async {
     if (view == ViewType.list) {
-      // Sort books based on a distance to the center of the Map screen
-      // List<Book> books = state.books;
+      List<Book> books = [];
+      if (state.select == QueryType.books)
+        // Use preselected books
+        books = state.books;
+      else if (state.select == QueryType.places) {
+        await Future.forEach(state.geohashes, (hash) async {
+          books.addAll(await state.booksFor(hash));
+        });
 
-      // Restore books from visible markers (otherwise cut by clicking on marker)
-      List<Book> books = state.markers.values
-          .expand((e1) => e1.expand((e2) => e2.books))
-          .toList();
-
-      books.sort((a, b) => (distanceBetween(a.location, state.center) -
-              distanceBetween(b.location, state.center))
-          .round());
+        books.sort((a, b) => (distanceBetween(a.location, state.center) -
+                distanceBetween(b.location, state.center))
+            .round());
+      }
 
       print('!!!DEBUG books sorted around ${state.center}');
 
@@ -877,142 +1111,149 @@ class FilterCubit extends Cubit<FilterState> {
     print('!!!DEBUG mapMoved: starting hashes ${state.geohashes.join(',')}');
 
     // Recalculate geo-hashes from camera position and bounds
-    GeoHasher gc = GeoHasher();
-    String ne =
-        gc.encode(bounds.northeast.longitude, bounds.northeast.latitude);
-    String sw =
-        gc.encode(bounds.southwest.longitude, bounds.southwest.latitude);
-    String nw =
-        gc.encode(bounds.southwest.longitude, bounds.northeast.latitude);
-    String se =
-        gc.encode(bounds.northeast.longitude, bounds.southwest.latitude);
-    String center = position != null
-        ? gc.encode(position.target.longitude, position.target.latitude)
-        : gc.encode(state.center.longitude, state.center.latitude);
 
-    // Find longest common starting substring for center and corners
-    int level = max(max(lcp(center, ne), lcp(center, sw)),
-        max(lcp(center, nw), lcp(center, se)));
-
-    Set<String> hashes = [
-      ne.substring(0, level),
-      sw.substring(0, level),
-      nw.substring(0, level),
-      se.substring(0, level)
-    ].toSet();
+    Set<String> hashes = state.hashesFor(
+        position != null ? position.target : state.center, bounds);
 
     print('!!!DEBUG mapMoved: new hashes ${hashes.join(',')}');
 
-    // Old level of geo hashes
+    // Old and new levels of geo hashes
     int oldLevel = state.geohashes.first.length;
+    int newLevel = hashes.first.length;
 
-    // Do nothing if all new geo-hashes already present in the state
-    // Reset target if it's not null
-    if (oldLevel == level && state.geohashes.containsAll(hashes)) return;
+    // Find which goe-hashes are apeared and which one are gone
+    Set<String> extraHashes;
+    Set<String> oddHashes;
 
-    List<Book> books = state.books;
-    List<Place> places = state.places;
-
-    // Only list hashes which are of higher level or not included in current
-    // set of hashes and not a sub-hashes.
-    Set<String> toAddBooks = hashes
-        .where((hash) =>
-            hash.length < oldLevel ||
-            !state.geohashes.contains(hash.substring(0, oldLevel)))
-        .toSet();
-
-    // Remove books which are out of the hash areas
-    if (books != null) {
-      books.removeWhere((b) => !hashes.contains(b.geohash.substring(0, level)));
+    if (oldLevel == newLevel) {
+      extraHashes = hashes.difference(state.geohashes);
+      oddHashes = state.geohashes.difference(hashes);
     } else {
-      print('!!!DEBUG books is NULL');
-      books = [];
+      extraHashes = hashes;
+      // Do not remove the old hash if one of new hashes are inside
+      oddHashes = state.geohashes
+          .where((h1) =>
+              h1.length > newLevel || hashes.every((h2) => !h2.startsWith(h1)))
+          .toSet();
     }
 
-    if (places != null) {
-      places
-          .removeWhere((p) => !hashes.contains(p.geohash.substring(0, level)));
-    } else {
-      print('!!!DEBUG books is NULL');
-      places = [];
+    print('!!!DEBUG new hashes: ${extraHashes.join(', ')}');
+    print('!!!DEBUG odd hashes: ${oddHashes.join(', ')}');
+
+    List<Book> books = state.books ?? [];
+    List<Place> places = state.places ?? [];
+    Set<MarkerData> markers = state.markers ?? Set();
+
+    // Make markers based on BOOKS
+    if (state.select == QueryType.books) {
+      // Add books only for missing areas
+      await Future.forEach(extraHashes, (hash) async {
+        books.addAll(await state.booksFor(hash));
+      });
+
+      // Remove books from odd hashes and duplicates
+      books = books
+          .where((b) => !oddHashes.contains(b.geohash.substring(0, oldLevel)))
+          .toSet()
+          .toList();
+
+      // Sort books based on distance to center of screen
+      books.sort((a, b) => (distanceBetween(a.location, state.center) -
+              distanceBetween(b.location, state.center))
+          .round());
+
+      // Calculate markers based on the books
+      markers =
+          await state.markersFor(points: books, bounds: bounds, hashes: hashes);
+
+      // Make markers based on PLACES
+    } else if (state.select == QueryType.places) {
+      print('!!!DEBUG Markers based on PLACES');
+      // Add places only for missing areas
+      await Future.forEach(extraHashes, (hash) async {
+        places.addAll(await state.placesFor(hash));
+      });
+
+      // Remove places from odd hashes and duplicates
+      places = places
+          .where((p) =>
+              extraHashes.contains(p.geohash.substring(0, newLevel)) ||
+              !oddHashes.contains(p.geohash.substring(0, oldLevel)))
+          .toSet()
+          .toList();
+
+      // Sort places based on distance to center of screen
+      places.sort((a, b) => (distanceBetween(a.location, state.center) -
+              distanceBetween(b.location, state.center))
+          .round());
+
+      // Calculate markers based on the places
+      markers = await state.markersFor(
+          points: places, bounds: bounds, hashes: hashes);
     }
 
-    // Add books only for missing areas
-    await Future.forEach(toAddBooks, (hash) async {
-      books.addAll(await state.booksFor(hash));
-      places.addAll(await state.placesFor(hash));
-    });
-
-    // Remove duplicates (Duplicates appeared on zoom-out)
-    books = books.toSet().toList();
-
-    // Remove duplicates (Duplicates appeared on zoom-out)
-    places = places.toSet().toList();
-
-    Map<String, Set<MarkerData>> markers = state.markers;
-    // Remove markers clusters. If same level remove hiden, otherwise all.
-    if (level == oldLevel)
-      markers.removeWhere((key, value) => !hashes.contains(key));
-    else
-      markers.clear();
-
-    Set<String> toAddMarkers = hashes.difference(state.geohashes);
-
-    // Add markers for extra geo-hashes
-    await Future.forEach(toAddMarkers, (hash) async {
-      markers[hash] = await state.markersFor(hash, books);
-    });
-
-    // !!!DEBUG
-    markers.forEach((key, value) {
-      print('!!!DEBUG $key: ${value.length} markers');
-    });
-
-    // Sort books
-    books.sort((a, b) => (distanceBetween(a.location, state.center) -
-            distanceBetween(b.location, state.center))
-        .round());
     // Emit state with updated markers
-
-    places.sort((a, b) => (distanceBetween(a.location, state.center) -
-            distanceBetween(b.location, state.center))
-        .round());
-
     // Refresh suggestions if map moved once detailed place filters are open
-    if (state.panel == Panel.full && state.group == FilterGroup.place) {
-      List<Filter> suggestions = await findSugestions('', state.group);
-      emit(state.copyWith(
-          center: position != null ? position.target : state.center,
-          zoom: position != null ? position.zoom : state.zoom,
-          geohashes: hashes,
-          books: books,
-          places: places,
-          suggestions: suggestions,
-          markers: markers));
-    } else {
-      emit(state.copyWith(
-          center: position != null ? position.target : state.center,
-          zoom: position != null ? position.zoom : state.zoom,
-          geohashes: hashes,
-          books: books,
-          places: places,
-          markers: markers));
+    emit(state.copyWith(
+        center: position != null ? position.target : state.center,
+        bounds: bounds != null ? bounds : state.bounds,
+        geohashes: hashes,
+        books: books,
+        places: places,
+        suggestions:
+            (state.panel == Panel.full && state.group == FilterGroup.place)
+                ? await findSugestions('', state.group)
+                : null,
+        markers: markers));
+  }
+
+  LatLngBounds boundsFromPoints(List<Point> points) {
+    assert(points.isNotEmpty);
+
+    double north = points.first.location.latitude;
+    double south = points.first.location.latitude;
+
+    for (var i = 0; i < points.length; i++) {
+      if (points[i].location.latitude > north)
+        north = points[i].location.latitude;
+      else if (points[i].location.latitude < south)
+        south = points[i].location.latitude;
     }
+
+    List<double> lng = points.map((p) => p.location.longitude).toList();
+    lng.sort();
+
+    double gap = lng.first - lng.last + 360.0;
+    double west = lng.first, east = lng.last;
+
+    for (var i = 1; i < lng.length - 1; i++) {
+      if (lng[i] - lng[i - 1] > gap) {
+        gap = lng[i] - lng[i - 1];
+        east = lng[i - 1];
+        west = lng[i];
+      }
+    }
+
+    return LatLngBounds(
+        northeast: LatLng(north, east), southwest: LatLng(south, west));
   }
 
   // MAP VIEW
   // - Tap on Marker => FILTER
   void markerPressed(MarkerData marker) {
-    print('!!!DEBUG Marker pressed ${marker.position}');
-    if (marker.books.length == 1) {
+    print('!!!DEBUG Marker pressed ${marker.position} size: ${marker.size} ');
+    print('!!!DEBUG Marker points ${marker.points.first.runtimeType}');
+    if (marker.points.length == 1 && marker.points.first is Book) {
       // Open detailes screen if marker is for one book
+      // Hide panel
+      _snappingControler.snapToPosition(_snappingControler.snapPositions.first);
       emit(state.copyWith(
-        selected: marker.books.first,
+        selected: (marker.points.first as Book),
         view: ViewType.details,
         center: marker.position,
       ));
-    } else if (marker.books.length > 1) {
-      List<Book> books = marker.books;
+    } else if (marker.points.length > 1 && marker.points.first is Book) {
+      List<Book> books = List<Book>.from(marker.points);
       books.sort((a, b) => (distanceBetween(a.location, marker.position) -
               distanceBetween(b.location, marker.position))
           .round());
@@ -1022,10 +1263,28 @@ class FilterCubit extends Cubit<FilterState> {
         view: ViewType.list,
         center: marker.position,
       ));
+    } else if (marker.points.length == 1 && marker.points.first is Place) {
+      // Set filter by place id
+      // Get books for this place (filters)
+      // Change view to LIST
+    } else if (marker.points.length >= 1 && marker.points.first is Place) {
+      // Zoom to the places
+      LatLngBounds bounds = boundsFromPoints(marker.points);
+      _mapController.moveCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
     }
+  }
 
-    // TODO: If group marker contains too many books zoom-in map
-    //       instead of opening list view.
+  // LIST VIEW
+  // - Select book from the list
+  void selectBook({Book book}) async {
+    print('!!!DEBUG Book selected ${book.title}');
+    // Hide panel
+    _snappingControler.snapToPosition(_snappingControler.snapPositions.first);
+
+    emit(state.copyWith(
+      selected: book,
+      view: ViewType.details,
+    ));
   }
 
   // DETAILS
@@ -1037,17 +1296,29 @@ class FilterCubit extends Cubit<FilterState> {
     //       probably zoom out to contains more copies of this book.
 
     List<Book> books;
-    Map<String, Set<MarkerData>> markers;
+    Set<MarkerData> markers;
     await Future.forEach(state.geohashes, (hash) async {
       books.addAll(await state.booksFor(hash));
       // TODO: Add places as well???
-      markers[hash] = await state.markersFor(hash, books);
     });
+
+    markers = await state.markersFor(
+        points: books, hashes: state.geohashes, bounds: state.bounds);
 
     emit(state.copyWith(
       books: books,
       markers: markers,
       view: ViewType.map,
+    ));
+  }
+
+  // DETAILS
+  // - Close button pressed => FILTER
+  void detailsClosed() async {
+    // TODO: Restore previous view MAP or LIST
+
+    emit(state.copyWith(
+      view: ViewType.list,
     ));
   }
 }

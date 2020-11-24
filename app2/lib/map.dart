@@ -4,7 +4,7 @@ Future<BitmapDescriptor> getGroupIcon(
   int clusterSize,
   double width,
 ) async {
-  final PictureRecorder pictureRecorder = PictureRecorder();
+  final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
   final Canvas canvas = Canvas(pictureRecorder);
   final Paint paint = Paint()..color = Colors.blue.withOpacity(0.55);
   final TextPainter textPainter = TextPainter(
@@ -36,10 +36,11 @@ Future<BitmapDescriptor> getGroupIcon(
         radius.toInt() * 2,
         radius.toInt() * 2,
       );
-  final data = await image.toByteData(format: ImageByteFormat.png);
+  final data = await image.toByteData(format: ui.ImageByteFormat.png);
   return BitmapDescriptor.fromBytes(data.buffer.asUint8List());
 }
 
+/*
 Future<BitmapDescriptor> getBookIcon(double size) async {
   final pictureRecorder = PictureRecorder();
   final canvas = Canvas(pictureRecorder);
@@ -73,60 +74,56 @@ Future<BitmapDescriptor> getBookIcon(double size) async {
   final bytes = await image.toByteData(format: ImageByteFormat.png);
   return BitmapDescriptor.fromBytes(bytes.buffer.asUint8List());
 }
-
+*/
 Future<Set<Marker>> markersFor(
-    BuildContext context, Map<String, Set<MarkerData>> map) async {
-  if (map == null || map.length == 0) return Set();
-
-  // Flat map with hashes into single list of marker data
-  List<MarkerData> data = map.values.expand((e) => e).toList();
+    BuildContext context, Set<MarkerData> data) async {
+  if (data == null || data.length == 0) return Set();
 
   // Calculate sizes for cluster icons
-  List<int> lengths = data.map((value) => value.books.length).toList();
-  int maxGroup = lengths.reduce(max);
-  int minGroup = lengths.reduce(min);
+  List<int> sizes = data.map((d) => d.size).toList();
+  int maxGroup = sizes.reduce(max);
+  int minGroup = sizes.reduce(min);
   double minR = 30.0, maxR = 45.0;
 
   // Icon for single book
-  BitmapDescriptor bookBitmap =
-      await getBookIcon(40.0 * MediaQuery.of(context).devicePixelRatio);
+  // BitmapDescriptor bookBitmap =
+  //    await getBookIcon(40.0 * MediaQuery.of(context).devicePixelRatio);
 
   // Create icons of different sizes
   Set<Marker> markers = Set();
 
-  await Future.forEach(data, (d) async {
-    if (d.books.length > 1) {
-      double radius =
-          ((d.books.length - minGroup) / (maxGroup - minGroup) * (maxR - minR) +
-                  minR) *
-              MediaQuery.of(context).devicePixelRatio;
+  //print('!!!DEBUG Marker data length ${data.length}');
 
-      markers.add(Marker(
-          markerId: MarkerId(d.geohash),
-          position: d.position,
-          icon: await getGroupIcon(
-            d.books.length,
-            radius,
-          ),
-          infoWindow:
-              // TODO: retrieve actual list of languages
-              InfoWindow(title: '${d.books.length} books', snippet: 'RUS, ENG'),
-          onTap: () {
-            context.bloc<FilterCubit>().markerPressed(d);
-          }));
-    } else {
-      markers.add(Marker(
-          markerId: MarkerId(d.geohash),
-          position: d.position,
-          icon: bookBitmap,
-          infoWindow: InfoWindow(
-              title: d.books.first.title,
-              snippet: d.books.first.authors.join(', ')),
-          onTap: () {
-            context.bloc<FilterCubit>().markerPressed(d);
-          }));
-    }
-  });
+  var m = data.iterator;
+
+  //iterate over the list
+  while (m.moveNext()) {
+    MarkerData d = m.current;
+    //print('!!!DEBUG Marker size ${d.size}');
+    double radius;
+    if (maxGroup != minGroup)
+      radius =
+          ((d.size - minGroup) / (maxGroup - minGroup) * (maxR - minR) + minR) *
+              MediaQuery.of(context).devicePixelRatio;
+    else
+      radius = ((maxR + minR) / 2.0) * MediaQuery.of(context).devicePixelRatio;
+
+    //print('!!!DEBUG Add marker size ${d.size} Radius: $radius');
+
+    markers.add(Marker(
+        markerId: MarkerId(d.geohash),
+        position: d.position,
+        icon: await getGroupIcon(
+          d.size,
+          radius,
+        ),
+        infoWindow:
+            // TODO: retrieve actual list of languages
+            InfoWindow(title: '${d.size} books', snippet: 'RUS, ENG'),
+        onTap: () {
+          context.bloc<FilterCubit>().markerPressed(d);
+        }));
+  }
 
   return markers;
 }
@@ -153,7 +150,8 @@ class _MapWidgetState extends State<MapWidget> {
             Set<Marker> markers = {};
             if (snapshot.hasData) markers = snapshot.data;
 
-            print('!!!DEBUG Total markers: ${markers.length}');
+            //print(
+            //    '!!!DEBUG Total markers: ${markers.length}. Has data ${snapshot.hasData}');
 
             return GoogleMap(
                 myLocationButtonEnabled: false,
@@ -162,7 +160,7 @@ class _MapWidgetState extends State<MapWidget> {
                 mapType: MapType.normal,
                 initialCameraPosition: CameraPosition(
                   target: filters.center,
-                  zoom: filters.zoom,
+                  zoom: 5.0,
                 ),
                 onCameraIdle: () async {
                   print('!!!DEBUG: Map move completed');

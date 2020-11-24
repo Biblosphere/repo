@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
+import 'dart:typed_data';
+//import 'dart:ui';
+import 'dart:ui' as ui;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import "package:collection/collection.dart";
@@ -14,8 +16,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 // Google map
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-// Input chips
-import 'package:flutter_chips_input/flutter_chips_input.dart';
 // Import slidable actions for book card
 import 'package:flutter_slidable/flutter_slidable.dart';
 // Cached network images
@@ -34,6 +34,7 @@ import 'package:equatable/equatable.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 // Geo hashes
 import 'package:dart_geohash/dart_geohash.dart';
 // Geo location
@@ -334,16 +335,21 @@ class _MainPageState extends State<MainPage> {
             builder: (context, filters) {
               return Stack(children: [
                 SnappingSheet(
-                  sheetAbove: SnappingSheetContent(
-                      child: filters.view == ViewType.list
-                          ? ListWidget()
-                          : (filters.view == ViewType.camera &&
-                                  cameraCtrl.value.isInitialized)
-                              ? SingleChildScrollView(
-                                  child: AspectRatio(
-                                      aspectRatio: cameraCtrl.value.aspectRatio,
-                                      child: CameraPreview(cameraCtrl)))
-                              : Container()),
+                  sheetAbove: SnappingSheetContent(child: (() {
+                    // Usinf function to make a selection
+                    if (filters.view == ViewType.list)
+                      return ListWidget();
+                    else if (filters.view == ViewType.camera &&
+                        cameraCtrl.value.isInitialized)
+                      return SingleChildScrollView(
+                          child: AspectRatio(
+                              aspectRatio: cameraCtrl.value.aspectRatio,
+                              child: CameraPreview(cameraCtrl)));
+                    else if (filters.view == ViewType.details)
+                      return DetailsPage();
+                    else
+                      return Container();
+                  })()),
                   onSnapEnd: () {
                     if (_snapPosition < 10.0)
                       context.bloc<FilterCubit>().panelHiden();
@@ -387,70 +393,86 @@ class _MainPageState extends State<MainPage> {
                           snappingDuration: Duration(milliseconds: 750)),
                   ],
                   child: MapWidget(),
-                  grabbingHeight: MediaQuery.of(context).padding.bottom + 40,
-                  grabbing: GrabSection(), //Container(color: Colors.grey),
+                  grabbingHeight: filters.view != ViewType.details
+                      ? MediaQuery.of(context).padding.bottom + 40
+                      : 0.0,
+                  grabbing: filters.view != ViewType.details
+                      ? GrabSection()
+                      : Container(
+                          width: 0.0,
+                          height: 0.0), //Container(color: Colors.grey),
                   sheetBelow: SnappingSheetContent(
-                      child: Container(
-                          color: Colors.white,
-                          child: filters.view == ViewType.camera
-                              ? CameraPanel(collapsed: _snapPosition < 150.0)
-                              : SearchPanel())),
+                      child: filters.view != ViewType.details
+                          ? Container(
+                              color: Colors.white,
+                              child: filters.view == ViewType.camera
+                                  ? CameraPanel(
+                                      collapsed: _snapPosition < 150.0)
+                                  : SearchPanel())
+                          : Container(width: 0.0, height: 0.0)),
                 ),
                 Positioned(
                     bottom: max(_snapPosition - 35.0, 10.0),
                     right: 5.0,
-                    child: TripleButton(
-                      selected: filters.view.index,
-                      onPressed: [
-                        //onPressed for MAP
-                        () {
-                          // TODO: remember a position and restore it
-                          _controller.snapToPosition(SnapPosition(
-                            positionPixel: 60.0,
-                          ));
-                          setState(() {
-                            context.bloc<FilterCubit>().setView(ViewType.map);
-                          });
-                        },
-                        //onPressed for CAMERA
-                        () {
-                          // TODO: Make it 0.0 position if place is already confirmed
-                          _controller.snapToPosition(SnapPosition(
-                            positionPixel: 150.0,
-                          ));
-                          setState(() {
-                            context
-                                .bloc<FilterCubit>()
-                                .setView(ViewType.camera);
-                          });
-                        },
-                        //onPressed for LIST
-                        () {
-                          // TODO: remember a position and restore it
-                          _controller.snapToPosition(SnapPosition(
-                            positionPixel: 60.0,
-                          ));
-                          context.bloc<FilterCubit>().setView(ViewType.list);
-                        }
-                      ],
-                      onPressedSelected: [
-                        // onPressedSelected for MAP
-                        () {
-                          context.bloc<FilterCubit>().mapButtonPressed();
-                        },
-                        // onPressedSelected for CAMERA
-                        () {
-                          print('!!!DEBUG Selected button pressed for CAMERA');
-                          takePicture(cameraCtrl);
-                        },
-                        () {}
-                      ],
-                      icons: [
-                        Icons.location_pin,
-                        Icons.camera_alt,
-                        Icons.list_alt
-                      ],
-                    ))
+                    child: filters.view != ViewType.details
+                        ? TripleButton(
+                            selected: filters.view.index,
+                            onPressed: [
+                              //onPressed for MAP
+                              () {
+                                // TODO: remember a position and restore it
+                                _controller.snapToPosition(SnapPosition(
+                                  positionPixel: 60.0,
+                                ));
+                                setState(() {
+                                  context
+                                      .bloc<FilterCubit>()
+                                      .setView(ViewType.map);
+                                });
+                              },
+                              //onPressed for CAMERA
+                              () {
+                                // TODO: Make it 0.0 position if place is already confirmed
+                                _controller.snapToPosition(SnapPosition(
+                                  positionPixel: 150.0,
+                                ));
+                                setState(() {
+                                  context
+                                      .bloc<FilterCubit>()
+                                      .setView(ViewType.camera);
+                                });
+                              },
+                              //onPressed for LIST
+                              () {
+                                // TODO: remember a position and restore it
+                                _controller.snapToPosition(SnapPosition(
+                                  positionPixel: 60.0,
+                                ));
+                                context
+                                    .bloc<FilterCubit>()
+                                    .setView(ViewType.list);
+                              }
+                            ],
+                            onPressedSelected: [
+                              // onPressedSelected for MAP
+                              () {
+                                context.bloc<FilterCubit>().mapButtonPressed();
+                              },
+                              // onPressedSelected for CAMERA
+                              () {
+                                print(
+                                    '!!!DEBUG Selected button pressed for CAMERA');
+                                takePicture(cameraCtrl);
+                              },
+                              () {}
+                            ],
+                            icons: [
+                              Icons.location_pin,
+                              Icons.camera_alt,
+                              Icons.list_alt
+                            ],
+                          )
+                        : Container(width: 0.0, height: 0.0))
               ]);
             }));
   }
