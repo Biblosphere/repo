@@ -84,60 +84,86 @@ class _CameraPanelState extends State<CameraPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('Owner of the books:'),
-                TextField(
-                  controller: _controller,
-                  onTap: () async {
-                    // placeholder for our places search later
-                  },
-                  // with some styling
-                  decoration: InputDecoration(
-                    icon: Container(
-                      margin: EdgeInsets.only(left: 20),
-                      width: 10,
-                      height: 10,
-                      child: Icon(
-                        Icons.place,
-                        color: Colors.black,
-                      ),
-                    ),
-                    hintText: "Enter your contact or place around you",
-                    contentPadding: EdgeInsets.only(left: 8.0, top: 16.0),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 3),
+                  child: Text('Owner of the books or reference:'),
                 ),
                 Container(
-                    margin: EdgeInsets.only(top: 5.0),
-                    child: ToggleButtons(
-                      children: [
-                        Container(
-                            margin: EdgeInsets.only(right: 3.0, left: 3.0),
-                            child: Row(
-                                children: [Icon(Icons.lock), Text('Only me')])),
-                        Container(
-                            margin: EdgeInsets.only(right: 3.0, left: 3.0),
-                            child: Row(children: [
-                              Icon(Icons.people),
-                              Text('Contacts')
-                            ])),
-                        Container(
-                            margin: EdgeInsets.only(right: 3.0, left: 3.0),
-                            child: Row(
-                                children: [Icon(Icons.language), Text('All')])),
-                      ],
-                      isSelected: [
-                        place.privacy == Privacy.onlyMe,
-                        place.privacy == Privacy.myContacts,
-                        place.privacy == Privacy.all
-                      ],
-                      onPressed: (index) {
-                        setState(() {
-                          place.privacy = Privacy.values[index];
-                          context.bloc<CameraCubit>().setPlace(place);
-                        });
-                      },
-                      selectedColor: Colors.black,
-                      color: Colors.grey,
-                    ))
+                  width: MediaQuery.of(context).size.width * .9,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(
+                        color: Colors.black, // set border color
+                        width: 1.0), // set border width
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(30.0),
+                    ), // set rounded corner radius
+                    // make rounded corner of border
+                  ),
+                  child: TextField(
+                    // controller: _controller,
+                    onTap: () async {
+                      // placeholder for our places search later
+                    },
+                    // with some styling
+                    decoration: InputDecoration(
+                      icon: Container(
+                        margin: EdgeInsets.only(left: 20, bottom: 10),
+                        width: 10,
+                        height: 10,
+                        child: Icon(
+                          Icons.place,
+                          color: Colors.black,
+                        ),
+                      ),
+                      border: InputBorder.none,
+                      hintText: "Enter your contact or a place around you",
+                      contentPadding: EdgeInsets.only(left: 8.0, top: 10),
+                    ),
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                        margin: EdgeInsets.only(top: 5.0),
+                        child: ToggleButtons(
+                          children: [
+                            Container(
+                                margin: EdgeInsets.only(right: 3.0, left: 3.0),
+                                child: Row(children: [
+                                  Icon(Icons.lock),
+                                  Text('Only me')
+                                ])),
+                            Container(
+                                margin: EdgeInsets.only(right: 3.0, left: 3.0),
+                                child: Row(children: [
+                                  Icon(Icons.people),
+                                  Text('Contacts')
+                                ])),
+                            Container(
+                                margin: EdgeInsets.only(right: 3.0, left: 3.0),
+                                child: Row(children: [
+                                  Icon(Icons.language),
+                                  Text('All')
+                                ])),
+                          ],
+                          isSelected: [
+                            place.privacy == Privacy.onlyMe,
+                            place.privacy == Privacy.myContacts,
+                            place.privacy == Privacy.all
+                          ],
+                          onPressed: (index) {
+                            setState(() {
+                              place.privacy = Privacy.values[index];
+                              context.bloc<CameraCubit>().setPlace(place);
+                            });
+                          },
+                          selectedColor: Colors.black,
+                          color: Colors.grey,
+                        )),
+                  ],
+                )
               ],
             ));
       });
