@@ -7,3 +7,4 @@ key.jks filter=git-crypt diff=git-crypt
 key.properties filter=git-crypt diff=git-crypt
 AndroidManifest.xml filter=git-crypt diff=git-crypt
 AppDelegate.swift filter=git-crypt diff=git-crypt
+secret.dart filter=git-crypt diff=git-crypt

@@ -118,17 +118,21 @@ enum Panel { hiden, minimized, open, full }
 
 enum ViewType { map, camera, list, details }
 
+enum Privacy { onlyMe, myContacts, all }
+
 class FilterState extends Equatable {
+  // USER STATE
+  final LatLng location;
+
+  // FILTERS
   // Current filters
   final List<Filter> filters;
   // List of the ISBNs to filter the books
   final List<String> isbns;
-  // If input of genres and language allowed
-  final bool genreInput;
-  final bool languageInput;
   // Ids of places from my address book
   final List<String> favorite;
 
+  // VIEW AND MAP
   // Current view (map, list, details, camera) and panel open/close position
   final ViewType view;
   // Position of search/camera panel
@@ -141,24 +145,31 @@ class FilterState extends Equatable {
   // Current geohashes on the map
   final Set<String> geohashes;
 
+  // FILTERS SUGGESTIONS
   // List of books for the list view
   final List<Book> books;
   // Currently selected book for details view
   final Book selected;
   // Corrent markers for map view
   final Set<MarkerData> markers;
-  // Corrent markers for map view
-  final List<Filter> suggestions;
-
+  // Suggestions for the filter edit for filters (MAP/VIEW) and places (CAMERA)
+  final List<dynamic> suggestions;
   // Places near the current location
   final List<Place> places;
 
+  // CAMERA STATE
+  // Currently selected place (name, contact, privacy)
+  final Place place;
+  // Privacy for the photo
+  final Privacy privacy;
+  // List of nearby places or address book contacts to add books to
+  final List<Place> candidates;
+
   @override
   List<Object> get props => [
+        location,
         filters,
         isbns,
-        genreInput,
-        languageInput,
         favorite,
         panel,
         group,
@@ -170,51 +181,60 @@ class FilterState extends Equatable {
         selected,
         markers,
         suggestions,
-        places
+        places,
+        place,
+        privacy,
+        candidates
       ];
 
-  const FilterState(
-      {this.filters = const [
-        Filter(type: FilterType.wish, selected: false),
-        Filter(type: FilterType.contacts, selected: false),
-      ],
-      this.genreInput = true,
-      this.languageInput = true,
-      this.favorite,
-      this.isbns = const [],
-      this.panel = Panel.minimized,
-      this.group,
-      this.center = const LatLng(49.8397, 24.0297),
-      this.bounds,
-      this.geohashes = const {'u8c5d'},
-      this.view = ViewType.map,
-      this.books,
-      this.selected,
-      this.markers,
-      this.suggestions = const [],
-      this.places});
+  const FilterState({
+    this.filters = const [
+      Filter(type: FilterType.wish, selected: false),
+      Filter(type: FilterType.contacts, selected: false),
+    ],
+    this.favorite,
+    this.isbns = const [],
+    this.panel = Panel.minimized,
+    this.group,
+    this.center = const LatLng(49.8397, 24.0297),
+    this.bounds,
+    this.geohashes = const {'u8c5d'},
+    this.view = ViewType.map,
+    this.books,
+    this.selected,
+    this.markers,
+    this.suggestions = const [],
+    this.places,
+    this.place = const Place(name: 'My own', privacy: 'contacts', type: 'own'),
+    this.privacy = Privacy.all,
+    this.candidates = const [],
+    this.location,
+  });
 
-  FilterState copyWith(
-      {List<Filter> filters,
-      bool genreInput,
-      bool languageInput,
-      List<String> favorite,
-      List<String> isbns,
-      Panel panel,
-      FilterGroup group,
-      LatLng center,
-      LatLngBounds bounds,
-      ViewType view,
-      Set<String> geohashes,
-      List<Book> books,
-      Book selected,
-      Set<MarkerData> markers,
-      List<Filter> suggestions,
-      List<Place> places}) {
+  FilterState copyWith({
+    List<Filter> filters,
+    bool genreInput,
+    bool languageInput,
+    List<String> favorite,
+    List<String> isbns,
+    Panel panel,
+    FilterGroup group,
+    LatLng center,
+    LatLngBounds bounds,
+    ViewType view,
+    Set<String> geohashes,
+    List<Book> books,
+    Book selected,
+    Set<MarkerData> markers,
+    List<dynamic> suggestions,
+    List<Place> places,
+    Place place,
+    Privacy privacy,
+    List<Place> candidates,
+    LatLng location,
+  }) {
     return FilterState(
       filters: filters ?? this.filters,
-      genreInput: genreInput ?? this.genreInput,
-      languageInput: languageInput ?? this.languageInput,
       favorite: favorite ?? this.favorite,
       isbns: isbns ?? this.isbns,
       panel: panel ?? this.panel,
@@ -228,6 +248,10 @@ class FilterState extends Equatable {
       markers: markers ?? this.markers,
       suggestions: suggestions ?? this.suggestions,
       places: places ?? this.places,
+      place: place ?? this.place,
+      privacy: privacy ?? this.privacy,
+      candidates: candidates ?? this.candidates,
+      location: location ?? this.location,
     );
   }
 
@@ -377,7 +401,7 @@ class FilterState extends Equatable {
           multiple = true;
         }
       } else if (genres.length == 1) {
-        query = query.where('bookplace', isEqualTo: genres.first);
+        query = query.where('genre', isEqualTo: genres.first);
       }
 
       // Add genre(s) to the query if present
@@ -541,6 +565,7 @@ class FilterCubit extends Cubit<FilterState> {
   GoogleMapController _mapController;
   SnappingSheetController _snappingControler;
   TextEditingController _searchController;
+  GooglePlace googlePlace = GooglePlace(GooglePlaceKey);
 
   FilterCubit() : super(FilterState()) {
     List<Book> books = [];
@@ -572,15 +597,10 @@ class FilterCubit extends Cubit<FilterState> {
     super.close();
   }
 
-/*
-  double screenInKm() {
-    return 156543.03392 *
-        cos(state.center.latitude * pi / 180) /
-        pow(2, state.zoom) *
-        600.0 /
-        1000;
+  Future<LatLng> currentLatLng() async {
+    Position pos = await Geolocator.getCurrentPosition();
+    return LatLng(pos.latitude, pos.longitude);
   }
-*/
 
   List<Filter> toggle(List<Filter> filters, FilterType type, bool selected) {
     return filters.map((f) {
@@ -1009,18 +1029,19 @@ class FilterCubit extends Cubit<FilterState> {
   // TRIPLE BUTTON
   // - Map button pressed (selected) => FILTER
   void mapButtonPressed() async {
-    Position loc = await Geolocator.getCurrentPosition();
+    LatLng location = await currentLatLng();
+    print(
+        '!!!DEBUG New location ${LatLng(location.latitude, location.longitude)}');
 
-    print('!!!DEBUG New location ${LatLng(loc.latitude, loc.longitude)}');
+    // Inform about new position if distance more than 50 meters
+    // And drop place candidates for the camera
+    if (distanceBetween(location, state.location) > 50.0)
+      emit(state.copyWith(location: location, candidates: []));
 
     // TODO: Calculate zoom based on the book availability at a location
 
     if (_mapController != null)
-//      _controller.moveCamera(CameraUpdate.newCameraPosition(CameraPosition(
-//          target: LatLng(loc.latitude, loc.longitude), zoom: 10.0)));
-
-      _mapController.moveCamera(
-          CameraUpdate.newLatLng(LatLng(loc.latitude, loc.longitude)));
+      _mapController.moveCamera(CameraUpdate.newLatLng(location));
 
     // TODO: Check if zoom reset is a good thing. Do we need to
     //       auto-calculate zoom to always contain some book search results.
@@ -1320,5 +1341,113 @@ class FilterCubit extends Cubit<FilterState> {
     emit(state.copyWith(
       view: ViewType.list,
     ));
+  }
+
+  // CAMERA PANEL
+  // - Place choosen for the current photo => FILTER
+  void setPlace(Place place) {
+    emit(state.copyWith(place: place));
+  }
+
+  // CAMERA PANEL
+  // - Privacy choosen for the current photo => FILTER
+  void setPrivacy(Privacy privacy) {
+    emit(state.copyWith(privacy: privacy));
+  }
+
+  // CAMERA PANEL:
+  // - Find candidates for camera photo location
+  Future<List<Place>> findCandidateSugestions(String query) async {
+    // Get current location of the user
+    LatLng location = await currentLatLng();
+    print(
+        '!!!DEBUG New location ${LatLng(location.latitude, location.longitude)}');
+
+    List<Place> candidates = state.candidates;
+
+    // Refresh candidates if current location is changed compare to
+    // the previous more than 50 meters
+    // Or if candidate places are empty at all
+    if (candidates == null ||
+        candidates.isEmpty ||
+        distanceBetween(location, state.location) > 50.0) {
+      // Get all places from Google places in a radius of 50 meters
+      NearBySearchResponse result = await googlePlace.search.getNearBySearch(
+          Location(lat: location.latitude, lng: location.longitude), 50);
+
+      // TODO: Place contacts is not available at this search details required
+      candidates = result.results
+          .map((r) => Place(
+              name: r.name,
+              location: r.geometry.location,
+              privacy: 'all',
+              type: 'google'))
+          .toList();
+
+      // Sort places by distance
+      candidates.sort((a, b) => (distanceBetween(a.location, state.center) -
+              distanceBetween(b.location, state.center))
+          .round());
+
+      // If address book access is granted add all contacts
+      if (!await Permission.contacts.isGranted) {
+        Iterable<Contact> addressBook = await ContactsService.getContacts();
+        print('!!!DEBUG ${addressBook.length} contacts found');
+
+        candidates.addAll(addressBook.map((c) => Place(
+            name: c.displayName,
+            // TODO: Take only phones with "mobile" label
+            phone: c.phones != null && c.phones.isNotEmpty
+                ? c.phones.first.value
+                : null,
+            email: c.emails != null && c.emails.isNotEmpty
+                ? c.emails.first.value
+                : null,
+            privacy: 'contacts',
+            type: 'contact')));
+      }
+
+      // Update state with newly retrieved candidates
+      emit(state.copyWith(candidates: candidates));
+    }
+
+    List<Place> suggestions;
+
+    // If query is empty return 10 closest places
+    if (query == null || query.length == 0)
+      suggestions = candidates.take(10);
+
+    // If query is not empty filter by query
+    else if (query.length > 0)
+      suggestions = candidates
+          .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+
+    // No need to sort as places already sorted by distance
+    return suggestions;
+  }
+
+  // CAMERA PANEL:
+  // - Click on location icon or current place chip to eddit current location
+  //   for the photo
+  void selectPlaceForPhoto() async {
+    _searchController.text = '';
+    _snappingControler.snapToPosition(
+      SnapPosition(
+          positionPixel: 280.0,
+          snappingCurve: Curves.elasticOut,
+          snappingDuration: Duration(milliseconds: 750)),
+    );
+    emit(state.copyWith(panel: Panel.full));
+
+    List<Place> suggestions = await findCandidateSugestions('');
+    emit(state.copyWith(suggestions: suggestions));
+  }
+
+  // CAMERA PANEL:
+  // - Complete button on a keyboard for place selection
+  void placeEditComplete() async {
+    _searchController.text = '';
+    _snappingControler.snapToPosition(_snappingControler.snapPositions.last);
   }
 }

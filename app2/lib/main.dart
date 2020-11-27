@@ -39,6 +39,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:dart_geohash/dart_geohash.dart';
 // Geo location
 import 'package:geolocator/geolocator.dart';
+// Google places
+import 'package:google_place/google_place.dart';
 // Contacts plugin
 import 'package:contacts_service/contacts_service.dart';
 // Permission handler
@@ -52,6 +54,7 @@ part 'map.dart';
 part 'filter.dart';
 part 'filter_bloc.dart';
 part 'catalog.dart';
+part 'secret.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -109,7 +112,6 @@ class _MyAppState extends State<MyApp> {
           return MultiBlocProvider(
               providers: [
                 BlocProvider(create: (BuildContext context) => FilterCubit()),
-                BlocProvider(create: (BuildContext context) => CameraCubit()),
                 BlocProvider(create: (BuildContext context) => LoginCubit())
               ],
               child: BlocBuilder<LoginCubit, LoginState>(

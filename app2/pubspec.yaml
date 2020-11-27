@@ -71,6 +71,9 @@ dependencies:
   # Geo location
   geolocator: ^6.1.4
 
+  # Google places
+  google_place: ^0.3.3
+
   # Access to contacts
   contacts_service: ^0.4.6
 

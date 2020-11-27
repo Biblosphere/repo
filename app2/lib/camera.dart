@@ -2,38 +2,6 @@ part of "main.dart";
 
 List<CameraDescription> cameras;
 
-enum Privacy { onlyMe, myContacts, all }
-
-class PlaceInfo {
-  LatLng position;
-  Privacy privacy;
-  // Name of the contact or place
-  String name;
-  // Link to google place for the places
-  Uri uri;
-  // Contact phone for the contacts from address book
-  String phone;
-
-  PlaceInfo({this.position, this.name, this.uri, this.phone, this.privacy});
-
-  copyFrom(PlaceInfo place) {
-    position = place.position;
-    name = place.name;
-    uri = place.uri;
-    phone = place.phone;
-    privacy = place.privacy;
-  }
-}
-
-class CameraCubit extends Cubit<PlaceInfo> {
-  CameraCubit() : super(PlaceInfo());
-
-  void setPlace(PlaceInfo place) {
-    state.copyFrom(place);
-    emit(state);
-  }
-}
-
 class CameraPanel extends StatefulWidget {
   CameraPanel({Key key, this.collapsed}) : super(key: key);
 
@@ -76,8 +44,8 @@ class _CameraPanelState extends State<CameraPanel> {
     if (collapsed) {
       return Container();
     } else {
-      return BlocBuilder<CameraCubit, PlaceInfo>(builder: (context, place) {
-        _controller.text = place.name;
+      return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
+        _controller.text = state.place.name;
         return Container(
             margin: EdgeInsets.all(10.0),
             color: Colors.white,
@@ -125,14 +93,15 @@ class _CameraPanelState extends State<CameraPanel> {
                                 children: [Icon(Icons.language), Text('All')])),
                       ],
                       isSelected: [
-                        place.privacy == Privacy.onlyMe,
-                        place.privacy == Privacy.myContacts,
-                        place.privacy == Privacy.all
+                        state.privacy == Privacy.onlyMe,
+                        state.privacy == Privacy.myContacts,
+                        state.privacy == Privacy.all
                       ],
                       onPressed: (index) {
                         setState(() {
-                          place.privacy = Privacy.values[index];
-                          context.bloc<CameraCubit>().setPlace(place);
+                          context
+                              .bloc<FilterCubit>()
+                              .setPrivacy(Privacy.values[index]);
                         });
                       },
                       selectedColor: Colors.black,
