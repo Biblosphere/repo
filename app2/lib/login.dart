@@ -170,6 +170,8 @@ class _LoginPageState extends State<LoginPage> {
                                                       MainAxisAlignment.start,
                                                   children: <Widget>[
                                                     Checkbox(
+                                                        activeColor:
+                                                            Colors.black,
                                                         value: _agreeToPP,
                                                         onChanged: (value) {
                                                           setState(() {
@@ -186,6 +188,8 @@ class _LoginPageState extends State<LoginPage> {
                                                       MainAxisAlignment.start,
                                                   children: <Widget>[
                                                     Checkbox(
+                                                      activeColor:
+                                                            Colors.black,
                                                         value: _agreeToTS,
                                                         onChanged: (value) {
                                                           setState(() {
