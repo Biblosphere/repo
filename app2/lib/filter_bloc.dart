@@ -152,8 +152,10 @@ class FilterState extends Equatable {
   final Book selected;
   // Corrent markers for map view
   final Set<MarkerData> markers;
-  // Suggestions for the filter edit for filters (MAP/VIEW) and places (CAMERA)
-  final List<dynamic> suggestions;
+  // Suggestions for the filter edit for filters (MAP/VIEW)
+  final List<Filter> filterSuggestions;
+  // Suggestions for the filter edit for places (CAMERA)
+  final List<Place> placeSuggestions;
   // Places near the current location
   final List<Place> places;
 
@@ -180,7 +182,8 @@ class FilterState extends Equatable {
         books,
         selected,
         markers,
-        suggestions,
+        filterSuggestions,
+        placeSuggestions,
         places,
         place,
         privacy,
@@ -203,9 +206,11 @@ class FilterState extends Equatable {
     this.books,
     this.selected,
     this.markers,
-    this.suggestions = const [],
+    this.filterSuggestions = const [],
+    this.placeSuggestions = const [],
     this.places,
-    this.place = const Place(name: 'My own', privacy: 'contacts', type: 'own'),
+    this.place = const Place(
+        name: 'My own', privacy: Privacy.myContacts, type: PlaceType.me),
     this.privacy = Privacy.all,
     this.candidates = const [],
     this.location,
@@ -226,7 +231,8 @@ class FilterState extends Equatable {
     List<Book> books,
     Book selected,
     Set<MarkerData> markers,
-    List<dynamic> suggestions,
+    List<Filter> filterSuggestions,
+    List<Place> placeSuggestions,
     List<Place> places,
     Place place,
     Privacy privacy,
@@ -246,7 +252,8 @@ class FilterState extends Equatable {
       books: books ?? this.books,
       selected: selected ?? this.selected,
       markers: markers ?? this.markers,
-      suggestions: suggestions ?? this.suggestions,
+      filterSuggestions: filterSuggestions ?? this.filterSuggestions,
+      placeSuggestions: placeSuggestions ?? this.placeSuggestions,
       places: places ?? this.places,
       place: place ?? this.place,
       privacy: privacy ?? this.privacy,
@@ -876,14 +883,14 @@ class FilterCubit extends Cubit<FilterState> {
     }
 
     // Remove this filter from suggestions
-    List<Filter> suggestions = state.suggestions
+    List<Filter> suggestions = state.filterSuggestions
         .where((f) => f.type != filter.type || f.value != filter.value)
         .toList();
 
     filters = [...filters, filter]
       ..sort((a, b) => a.type.index.compareTo(b.type.index));
 
-    emit(state.copyWith(filters: filters, suggestions: suggestions));
+    emit(state.copyWith(filters: filters, filterSuggestions: suggestions));
   }
 
   // FILTER PANEL:
@@ -994,7 +1001,7 @@ class FilterCubit extends Cubit<FilterState> {
     emit(state.copyWith(group: group, panel: Panel.full));
 
     List<Filter> suggestions = await findSugestions('', group);
-    emit(state.copyWith(suggestions: suggestions));
+    emit(state.copyWith(filterSuggestions: suggestions));
   }
 
   // FILTER PANEL:
@@ -1109,10 +1116,18 @@ class FilterCubit extends Cubit<FilterState> {
       if (_searchController.text != "") {
         // Perform your search only if typing is over
         print('!!!DEBUG text from search field: ${_searchController.text}');
-        List<Filter> suggestions =
-            await findSugestions(_searchController.text, state.group);
 
-        emit(state.copyWith(suggestions: suggestions));
+        if (state.view == ViewType.camera) {
+          List<Place> suggestions =
+              await findCandidateSugestions(_searchController.text);
+
+          emit(state.copyWith(placeSuggestions: suggestions));
+        } else {
+          List<Filter> suggestions =
+              await findSugestions(_searchController.text, state.group);
+
+          emit(state.copyWith(filterSuggestions: suggestions));
+        }
       }
     });
   }
@@ -1120,6 +1135,12 @@ class FilterCubit extends Cubit<FilterState> {
   // MAP VIEW
   // - Set controller
   void setSearchController(TextEditingController controller) {
+    // Dispose listener if controller switched
+    if (_searchController != null && _searchController != controller) {
+      _searchController.removeListener(_onSearchChanged);
+      _searchController = null;
+    }
+
     if (_searchController == null) {
       _searchController = controller;
       _searchController.addListener(_onSearchChanged);
@@ -1221,7 +1242,7 @@ class FilterCubit extends Cubit<FilterState> {
         geohashes: hashes,
         books: books,
         places: places,
-        suggestions:
+        filterSuggestions:
             (state.panel == Panel.full && state.group == FilterGroup.place)
                 ? await findSugestions('', state.group)
                 : null,
@@ -1346,7 +1367,35 @@ class FilterCubit extends Cubit<FilterState> {
   // CAMERA PANEL
   // - Place choosen for the current photo => FILTER
   void setPlace(Place place) {
-    emit(state.copyWith(place: place));
+    print('!!!DEBUG current place changed: ${place.name}');
+
+    if (place != state.place) {
+      List<Place> suggestions =
+          state.placeSuggestions.where((p) => p.name != place.name).toList();
+
+      // TODO: Old places appeared even if not match the filter query. Filter it!
+      suggestions.add(state.place);
+
+      // Sort places by distance
+      suggestions.sort((a, b) {
+        if (a.type == PlaceType.me)
+          return 0;
+        else if (b.type == PlaceType.me)
+          return 100000000;
+        else if (a.type == PlaceType.place && b.type == PlaceType.place)
+          return (distanceBetween(a.location, state.center) -
+                  distanceBetween(b.location, state.center))
+              .round();
+        else if (a.type == PlaceType.contact && b.type == PlaceType.contact)
+          return a.name.compareTo(b.name);
+        else if (a.type == PlaceType.contact && b.type == PlaceType.place)
+          return 50000000;
+        else if (a.type == PlaceType.place && b.type == PlaceType.contact)
+          return 0;
+      });
+
+      emit(state.copyWith(place: place, placeSuggestions: suggestions));
+    }
   }
 
   // CAMERA PANEL
@@ -1373,15 +1422,19 @@ class FilterCubit extends Cubit<FilterState> {
         distanceBetween(location, state.location) > 50.0) {
       // Get all places from Google places in a radius of 50 meters
       NearBySearchResponse result = await googlePlace.search.getNearBySearch(
-          Location(lat: location.latitude, lng: location.longitude), 50);
+          Location(lat: location.latitude, lng: location.longitude), 100);
+
+      print(
+          '!!!DEBUG places query result: ${result.status}, number ${result.results.length}');
 
       // TODO: Place contacts is not available at this search details required
       candidates = result.results
           .map((r) => Place(
               name: r.name,
-              location: r.geometry.location,
-              privacy: 'all',
-              type: 'google'))
+              location:
+                  LatLng(r.geometry.location.lat, r.geometry.location.lng),
+              privacy: Privacy.all,
+              type: PlaceType.place))
           .toList();
 
       // Sort places by distance
@@ -1390,7 +1443,7 @@ class FilterCubit extends Cubit<FilterState> {
           .round());
 
       // If address book access is granted add all contacts
-      if (!await Permission.contacts.isGranted) {
+      if (await Permission.contacts.isGranted) {
         Iterable<Contact> addressBook = await ContactsService.getContacts();
         print('!!!DEBUG ${addressBook.length} contacts found');
 
@@ -1403,19 +1456,19 @@ class FilterCubit extends Cubit<FilterState> {
             email: c.emails != null && c.emails.isNotEmpty
                 ? c.emails.first.value
                 : null,
-            privacy: 'contacts',
-            type: 'contact')));
+            privacy: Privacy.myContacts,
+            type: PlaceType.contact)));
       }
 
       // Update state with newly retrieved candidates
-      emit(state.copyWith(candidates: candidates));
+      emit(state.copyWith(candidates: candidates, location: location));
     }
 
     List<Place> suggestions;
 
     // If query is empty return 10 closest places
     if (query == null || query.length == 0)
-      suggestions = candidates.take(10);
+      suggestions = candidates.take(10).toList();
 
     // If query is not empty filter by query
     else if (query.length > 0)
@@ -1423,8 +1476,11 @@ class FilterCubit extends Cubit<FilterState> {
           .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
           .toList();
 
+    print('!!!DEBUG number of suggestions: ${suggestions.length}');
+
     // No need to sort as places already sorted by distance
-    return suggestions;
+    // Exclude selected place
+    return suggestions.where((p) => p.name != state.place.name).toList();
   }
 
   // CAMERA PANEL:
@@ -1441,7 +1497,7 @@ class FilterCubit extends Cubit<FilterState> {
     emit(state.copyWith(panel: Panel.full));
 
     List<Place> suggestions = await findCandidateSugestions('');
-    emit(state.copyWith(suggestions: suggestions));
+    emit(state.copyWith(placeSuggestions: suggestions));
   }
 
   // CAMERA PANEL:

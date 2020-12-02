@@ -338,13 +338,15 @@ class Book extends Point {
   List<Object> get props => [id];
 }
 
+enum PlaceType { me, place, contact }
+
 class Place extends Point {
   final String id;
   final String name;
   final String email;
   final String phone;
-  final String privacy; // public, contacts, private
-  final String type; // personal, company
+  final Privacy privacy; // public, contacts, private
+  final PlaceType type; // personal, company
   // Users of this bookplace (contacts for person, contributors for orgs)
   final List<String> users;
   // Books count
@@ -359,7 +361,7 @@ class Place extends Point {
       this.name,
       this.email,
       this.phone,
-      this.privacy = 'contacts',
+      this.privacy = Privacy.myContacts,
       this.type,
       location,
       geohash,
@@ -373,8 +375,12 @@ class Place extends Point {
       : name = json['name'],
         email = json['email'],
         phone = json['phone'],
-        privacy = json['privacy'],
-        type = json['type'],
+        privacy = json['privacy'] == 'private'
+            ? Privacy.onlyMe
+            : json['privacy'] == 'contacts'
+                ? Privacy.myContacts
+                : Privacy.all,
+        type = json['type'] == 'contact' ? PlaceType.contact : PlaceType.place,
         users = List<String>.from(json['users'] ?? []),
         count = json['count'],
         languages = Map<String, int>.from(json['languages'] ?? {}),
@@ -386,7 +392,20 @@ class Place extends Point {
             geohash: json['location']['geohash']);
 
   @override
-  List<Object> get props => [id];
+  List<Object> get props => [
+        id,
+        name,
+        email,
+        phone,
+        privacy,
+        type,
+        location,
+        geohash,
+        users,
+        count,
+        languages,
+        genres
+      ];
 }
 
 Widget coverImage(String url) {

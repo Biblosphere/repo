@@ -251,7 +251,7 @@ class _SearchPanelState extends State<SearchPanel> {
       } else if (position == Panel.full) {
         // Full view with wrap of values and edit field
         FilterGroup group = state.group;
-        List<Filter> suggestions = state.suggestions;
+        List<Filter> suggestions = state.filterSuggestions;
 
         print('!!!DEBUG build suggestions for $group');
         return Wrap(

@@ -373,19 +373,13 @@ class _MainPageState extends State<MainPage> {
                         positionPixel: 0.0,
                         snappingCurve: Curves.elasticOut,
                         snappingDuration: Duration(milliseconds: 750)),
-                    if (filters.view != ViewType.camera)
-                      SnapPosition(
-                          positionPixel: 55.0,
-                          snappingCurve: Curves.elasticOut,
-                          snappingDuration: Duration(milliseconds: 750)),
+                    SnapPosition(
+                        positionPixel: 55.0,
+                        snappingCurve: Curves.elasticOut,
+                        snappingDuration: Duration(milliseconds: 750)),
                     if (filters.view == ViewType.camera)
                       SnapPosition(
                           positionPixel: 150.0,
-                          snappingCurve: Curves.elasticOut,
-                          snappingDuration: Duration(milliseconds: 750)),
-                    if (filters.view != ViewType.camera)
-                      SnapPosition(
-                          positionPixel: 205.0,
                           snappingCurve: Curves.elasticOut,
                           snappingDuration: Duration(milliseconds: 750)),
                     if (filters.view != ViewType.camera)
@@ -408,8 +402,7 @@ class _MainPageState extends State<MainPage> {
                           ? Container(
                               color: Colors.white,
                               child: filters.view == ViewType.camera
-                                  ? CameraPanel(
-                                      collapsed: _snapPosition < 150.0)
+                                  ? CameraPanel()
                                   : SearchPanel())
                           : Container(width: 0.0, height: 0.0)),
                 ),
