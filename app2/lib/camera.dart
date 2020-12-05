@@ -33,10 +33,10 @@ Widget chipBuilderPrivacy(
   String label = '';
   IconData icon;
 
-  if (privacy == Privacy.onlyMe) {
+  if (privacy == Privacy.private) {
     label = 'Only me';
     icon = Icons.lock;
-  } else if (privacy == Privacy.myContacts) {
+  } else if (privacy == Privacy.contacts) {
     label = 'Contacts';
     icon = Icons.people;
   } else if (privacy == Privacy.all) {
@@ -194,8 +194,8 @@ class _CameraPanelState extends State<CameraPanel> {
                                         ])),
                               ],
                               isSelected: [
-                                state.privacy == Privacy.onlyMe,
-                                state.privacy == Privacy.myContacts,
+                                state.privacy == Privacy.private,
+                                state.privacy == Privacy.contacts,
                                 state.privacy == Privacy.all
                               ],
                               onPressed: (index) {
@@ -252,35 +252,4 @@ class _CameraPanelState extends State<CameraPanel> {
       }
     });
   }
-}
-
-String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
-
-Future<void> takePicture(CameraController cameraCtrl) async {
-  if (!cameraCtrl.value.isInitialized) {
-    //TODO: do exceptional processing for not initialized camera
-    //showInSnackBar('Error: select a camera first.');
-    return;
-  }
-
-  if (cameraCtrl.value.isTakingPicture) {
-    // A capture is already pending, do nothing.
-    return null;
-  }
-
-  final Directory extDir = await getApplicationDocumentsDirectory();
-  final String dirPath = '${extDir.path}/Pictures/flutter_test';
-  await Directory(dirPath).create(recursive: true);
-  final String filePath = '$dirPath/${timestamp()}.jpg';
-
-  try {
-    await cameraCtrl.takePicture(filePath);
-  } on CameraException catch (e) {
-    //TODO: Do exception processing for the camera;
-    return null;
-  }
-
-  //TODO: Add processing for images
-
-  //TODO: Add animated transition of image to Map
 }

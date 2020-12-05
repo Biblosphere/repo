@@ -118,7 +118,8 @@ enum Panel { hiden, minimized, open, full }
 
 enum ViewType { map, camera, list, details }
 
-enum Privacy { onlyMe, myContacts, all }
+enum Privacy { private, contacts, all }
+const List<String> PrivacyLabels = ['private', 'contacts', 'all'];
 
 class FilterState extends Equatable {
   // USER STATE
@@ -209,8 +210,7 @@ class FilterState extends Equatable {
     this.filterSuggestions = const [],
     this.placeSuggestions = const [],
     this.places,
-    this.place = const Place(
-        name: 'My own', privacy: Privacy.myContacts, type: PlaceType.me),
+    this.place,
     this.privacy = Privacy.all,
     this.candidates = const [],
     this.location,
@@ -577,6 +577,11 @@ class FilterCubit extends Cubit<FilterState> {
   FilterCubit() : super(FilterState()) {
     List<Book> books = [];
     List<Place> places = [];
+    Place place = Place(
+        name: FirebaseAuth.instance.currentUser.displayName,
+        phones: [FirebaseAuth.instance.currentUser.phoneNumber],
+        privacy: Privacy.all,
+        type: PlaceType.me);
     Set<MarkerData> markers = {};
     LatLng center = const LatLng(49.8397, 24.0297);
     LatLngBounds bounds = LatLngBounds(
@@ -592,6 +597,7 @@ class FilterCubit extends Cubit<FilterState> {
         center: center,
         bounds: bounds,
         places: places,
+        place: place,
         markers: markers,
         view: ViewType.map,
       ));
@@ -1086,6 +1092,22 @@ class FilterCubit extends Cubit<FilterState> {
         books: books,
         view: ViewType.list,
       ));
+    } else if (view == ViewType.camera) {
+      LatLng pos = await currentLatLng();
+      String hash = GeoHasher().encode(pos.longitude, pos.latitude);
+
+      Place place = state.place.copyWith(location: pos, geohash: hash);
+      print('!!!DEBUG Place geohash ${place.geohash}');
+
+      emit(state.copyWith(
+        location: pos,
+        place: place,
+        view: view,
+      ));
+
+      // Move map to the current user location
+      if (_mapController != null)
+        _mapController.moveCamera(CameraUpdate.newLatLng(pos));
     } else {
       emit(state.copyWith(
         view: view,
@@ -1404,6 +1426,20 @@ class FilterCubit extends Cubit<FilterState> {
     emit(state.copyWith(privacy: privacy));
   }
 
+// Function which try to convert local mobile numbers into international ones
+  String internationalPhone(String phone) {
+    if (phone.startsWith('+'))
+      return phone;
+    else if (phone.startsWith('00'))
+      return '+' + phone.substring(2);
+    else if (phone.startsWith('8') && phone.length == 11)
+      // TODO: Add validation that country code of user is Russia
+      return '+7' + phone.substring(1);
+    else
+      // TODO: Add condition country code of user??
+      return phone;
+  }
+
   // CAMERA PANEL:
   // - Find candidates for camera photo location
   Future<List<Place>> findCandidateSugestions(String query) async {
@@ -1430,6 +1466,7 @@ class FilterCubit extends Cubit<FilterState> {
       // TODO: Place contacts is not available at this search details required
       candidates = result.results
           .map((r) => Place(
+              placeId: r.placeId,
               name: r.name,
               location:
                   LatLng(r.geometry.location.lat, r.geometry.location.lng),
@@ -1447,16 +1484,18 @@ class FilterCubit extends Cubit<FilterState> {
         Iterable<Contact> addressBook = await ContactsService.getContacts();
         print('!!!DEBUG ${addressBook.length} contacts found');
 
+        addressBook.forEach((c) {
+          c.phones.forEach((p) {
+            print('!!!DEBUG: ${c.displayName} ${p.label} ${p.value}');
+          });
+        });
+
         candidates.addAll(addressBook.map((c) => Place(
             name: c.displayName,
             // TODO: Take only phones with "mobile" label
-            phone: c.phones != null && c.phones.isNotEmpty
-                ? c.phones.first.value
-                : null,
-            email: c.emails != null && c.emails.isNotEmpty
-                ? c.emails.first.value
-                : null,
-            privacy: Privacy.myContacts,
+            phones: c.phones.map((p) => internationalPhone(p.value)).toList(),
+            emails: c.emails.map((e) => e.value),
+            privacy: Privacy.contacts,
             type: PlaceType.contact)));
       }
 
@@ -1500,10 +1539,188 @@ class FilterCubit extends Cubit<FilterState> {
     emit(state.copyWith(placeSuggestions: suggestions));
   }
 
+  // Function to find place in Firestore DB or create a new one if not exist
+  Future<Place> getPlaceFromDb(Place place) async {
+    if (place.id != null) {
+      // Place already found in DB
+      return place;
+    } else if (place.type == PlaceType.place) {
+      // If place is a Google map place search by id
+      DocumentReference ref = FirebaseFirestore.instance
+          .collection('places')
+          .doc('P' + place.placeId);
+      DocumentSnapshot doc = await ref.get();
+
+      if (doc.exists) {
+        // If place exist in DB merge it with current one
+        place = place.merge(Place.fromJson(doc.id, doc.data()));
+      } else {
+        // If place is not in DB create it
+        ref.set(place.toJson());
+        place = place.copyWith(id: ref.id);
+      }
+    } else if (place.type == PlaceType.contact) {
+      // If place is a contact search by phones and emails
+      // TODO: Only search in a near geohash:7 to minimize query
+      Query query;
+
+      if (place.phones != null && place.phones.isNotEmpty)
+        query = FirebaseFirestore.instance
+            .collection('places')
+            .where('phones', arrayContainsAny: state.place.phones);
+      else if (place.emails != null && place.emails.isNotEmpty)
+        query = FirebaseFirestore.instance
+            .collection('places')
+            .where('phones', arrayContainsAny: place.phones);
+      else {
+        // TODO: Record an exception: either phone or email should be filled in contact
+        print(
+            'Exception: nither phone nor email available for the contact ${place.name}');
+      }
+
+      // Query places from DB
+      List<Place> places = (await query.get())
+          .docs
+          .map((d) => Place.fromJson(d.id, d.data()))
+          .toList();
+
+      // Sort places based on distance to center of screen
+      places.sort((a, b) => (distanceBetween(a.location, state.location) -
+              distanceBetween(b.location, state.location))
+          .round());
+
+      if (places.length > 0 &&
+          distanceBetween(places.first.location, state.location) < 200) {
+        // If place is found and it does not far away (less than 200 meters)
+        place = place.merge(places.first);
+      } else {
+        // Create a place in DB if not found or too far
+        DocumentReference ref =
+            FirebaseFirestore.instance.collection('places').doc();
+        ref.set(place.toJson());
+        place = place.copyWith(id: ref.id);
+      }
+    } else if (state.place.type == PlaceType.me) {
+      // Check if my own location is already exist near the current location
+      DocumentReference ref = FirebaseFirestore.instance
+          .collection('places')
+          .doc('U' +
+              FirebaseAuth.instance.currentUser.uid +
+              ':' +
+              place.geohash.substring(0, 7));
+      DocumentSnapshot doc = await ref.get();
+
+      if (doc.exists) {
+        // If place exist in DB merge it with current one
+        place = place.merge(Place.fromJson(doc.id, doc.data()));
+      } else {
+        // If place is not in DB create it
+        ref.set(place.toJson());
+        place = place.copyWith(id: ref.id);
+      }
+    }
+
+    return place;
+  }
+
   // CAMERA PANEL:
   // - Complete button on a keyboard for place selection
   void placeEditComplete() async {
     _searchController.text = '';
     _snappingControler.snapToPosition(_snappingControler.snapPositions.last);
+  }
+
+  // Upload image to GCS
+  Future<Reference> uploadPicture(File image, String path) async {
+    final Reference ref = FirebaseStorage.instance.ref().child(path);
+    final UploadTask uploadTask = ref.putFile(
+      image,
+      new SettableMetadata(
+        contentType: 'image/jpeg',
+        // To enable Client-side caching you can set the Cache-Control headers here. Uncomment below.
+        cacheControl: 'public,max-age=3600',
+        customMetadata: <String, String>{'activity': 'test'},
+      ),
+    );
+
+    // Wait upload to finish
+    await uploadTask;
+
+    // Return reference to get url and path
+    return ref;
+  }
+
+  // Trigger image recognition
+  Future recognizeImage(String photoId) async {
+    try {
+      String token = await FirebaseAuth.instance.currentUser.getIdToken();
+
+      String body = json.encode({
+        'photo': photoId,
+      });
+      //print('!!!DEBUG: JSON body = $body');
+
+      // Call Python service to recognize image
+      Response res = await api.client.post(
+          'https://biblosphere-api-ihj6i2l2aq-uc.a.run.app/add_user_books_from_image',
+          body: body,
+          headers: {
+            HttpHeaders.authorizationHeader: "Bearer $token",
+            HttpHeaders.contentTypeHeader: "application/json"
+          });
+
+      if (res.statusCode != 200) {
+        print('Exception: Recognition request failed');
+        // TODO: Add event into analytics
+      }
+      //print('!!!DEBUG: ${res.body}');
+      //print('!!!DEBUG: Request for recognition queued');
+    } catch (e, stack) {
+      print("Exception: Failed to recognize image: " +
+          e.toString() +
+          stack.toString());
+      // TODO: Add event into analytics
+    }
+  }
+
+  // CAMERA PANEL:
+  // - Tripple button with a camera
+  Future<void> cameraButtonPressed(File file, String fileName) async {
+    print('!!!DEBUG Image recognition started');
+
+    // Find place if it exist or create it in Firestore DB
+    Place place = await getPlaceFromDb(state.place);
+
+    print('!!!DEBUG Place found/created');
+
+    // TODO: Validate that place.id is not null and throw exception
+
+    // Upload picture to GCS
+    Reference ref = await uploadPicture(file, 'images/${place.id}/$fileName');
+
+    print('!!!DEBUG Image uploaded');
+
+    // Create a photo record for the given place and uploaded image
+    DocumentReference doc =
+        FirebaseFirestore.instance.collection('photos').doc();
+    doc.set({
+      'id': doc.id,
+      'place': place.id,
+      'location': {
+        'geopoint': GeoPoint(place.location.latitude, place.location.longitude),
+        'geohash': place.geohash
+      },
+      'photo': ref.fullPath,
+      'url': await ref.getDownloadURL(),
+      'reporter': FirebaseAuth.instance.currentUser.uid
+    });
+
+    print('!!!DEBUG photo record created');
+
+    //TODO: Add animated transition of image to Map
+
+    // Trigger image recognition into backend
+    recognizeImage(doc.id);
+    print('!!!DEBUG book recognition triggered');
   }
 }

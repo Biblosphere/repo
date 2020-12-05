@@ -339,14 +339,18 @@ class Book extends Point {
 }
 
 enum PlaceType { me, place, contact }
+const List<String> PlaceTypeLabels = ['contact', 'place', 'contact'];
 
 class Place extends Point {
   final String id;
   final String name;
-  final String email;
-  final String phone;
-  final Privacy privacy; // public, contacts, private
-  final PlaceType type; // personal, company
+  final Privacy privacy;
+  final PlaceType type;
+  // Fields for contacts
+  final List<String> emails;
+  final List<String> phones;
+  // Field for Google Places
+  final String placeId;
   // Users of this bookplace (contacts for person, contributors for orgs)
   final List<String> users;
   // Books count
@@ -359,9 +363,10 @@ class Place extends Point {
   const Place(
       {this.id,
       this.name,
-      this.email,
-      this.phone,
-      this.privacy = Privacy.myContacts,
+      this.emails,
+      this.phones,
+      this.placeId,
+      this.privacy = Privacy.contacts,
       this.type,
       location,
       geohash,
@@ -373,12 +378,13 @@ class Place extends Point {
 
   Place.fromJson(this.id, Map json)
       : name = json['name'],
-        email = json['email'],
-        phone = json['phone'],
+        emails = List<String>.from(json['emails'] ?? []),
+        phones = List<String>.from(json['phones'] ?? []),
+        placeId = json['placeId'],
         privacy = json['privacy'] == 'private'
-            ? Privacy.onlyMe
+            ? Privacy.private
             : json['privacy'] == 'contacts'
-                ? Privacy.myContacts
+                ? Privacy.contacts
                 : Privacy.all,
         type = json['type'] == 'contact' ? PlaceType.contact : PlaceType.place,
         users = List<String>.from(json['users'] ?? []),
@@ -391,12 +397,84 @@ class Place extends Point {
                 (json['location']['geopoint'] as GeoPoint).longitude),
             geohash: json['location']['geohash']);
 
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'emails': emails,
+      'phones': phones,
+      'placeId': placeId,
+      'privacy': PrivacyLabels[privacy.index],
+      'type': PlaceTypeLabels[type.index],
+      'users': users,
+      'count': count,
+      'languages': languages,
+      'genres': genres,
+      'location': {
+        'geopoint': GeoPoint(location.latitude, location.longitude),
+        'geohash': geohash
+      }
+    };
+  }
+
+  Place copyWith(
+      {String id,
+      String name,
+      LatLng location,
+      String geohash,
+      Privacy privacy,
+      PlaceType type,
+      List<String> emails,
+      List<String> phones,
+      String placeId,
+      List<String> users,
+      int count,
+      Map<String, int> languages,
+      Map<String, int> genres}) {
+    return Place(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        privacy: privacy ?? this.privacy,
+        location: location ?? this.location,
+        geohash: geohash ?? this.geohash,
+        type: type ?? this.type,
+        emails: emails ?? this.emails,
+        phones: phones ?? this.phones,
+        placeId: placeId ?? this.placeId,
+        users: users ?? this.users,
+        count: count ?? this.count,
+        languages: languages ?? this.languages,
+        genres: genres ?? this.genres);
+  }
+
+  Place merge(Place other) {
+    if (other == null) return this;
+    return copyWith(
+      id: id ?? other.id,
+      name: name ?? other.name,
+      privacy: privacy ?? other.privacy,
+      type: type ?? other.type,
+      emails:
+          emails?.toSet()?.union(other?.emails?.toSet() ?? Set())?.toList() ??
+              other.emails,
+      phones:
+          phones?.toSet()?.union(other?.phones?.toSet() ?? Set())?.toList() ??
+              other.phones,
+      placeId: placeId ?? other.placeId,
+      users: users?.toSet()?.union(other?.users?.toSet() ?? Set())?.toList() ??
+          other.users,
+      count: count ?? other.count,
+      languages: {...languages ?? {}, ...other.languages ?? {}},
+      genres: {...genres ?? {}, ...other.genres ?? {}},
+    );
+  }
+
   @override
   List<Object> get props => [
         id,
         name,
-        email,
-        phone,
+        emails,
+        phones,
+        placeId,
         privacy,
         type,
         location,

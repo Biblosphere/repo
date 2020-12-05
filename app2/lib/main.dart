@@ -126,6 +126,8 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
+
 class TripleButton extends StatefulWidget {
   final int selected;
   final List<VoidCallback> onPressed;
@@ -290,13 +292,18 @@ class MainPage extends StatefulWidget {
   _MainPageState createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
-  List<Filter> filters = [];
-  bool collapsed = true;
+class _MainPageState extends State<MainPage>
+    with SingleTickerProviderStateMixin {
+  //List<Filter> filters = [];
+  //bool collapsed = true;
   SnappingSheetController _controller = SnappingSheetController();
   double _snapPosition = 0.0;
 
   CameraController cameraCtrl;
+  AnimationController _animationController;
+  Animation _imageWidthTween;
+
+  File _pictureFile;
 
   @override
   void initState() {
@@ -313,6 +320,15 @@ class _MainPageState extends State<MainPage> {
         setState(() {});
       }
     });
+
+    // Animation for camera taken picture
+    _animationController =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 2000))
+          ..stop();
+    final Animation _curve = CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.ease); // Try Curves.ease, Curves.bounceOut
+    _imageWidthTween = Tween<double>(begin: 1.0, end: 0.0).animate(_curve);
   }
 
   @override
@@ -337,21 +353,63 @@ class _MainPageState extends State<MainPage> {
             builder: (context, filters) {
               return Stack(children: [
                 SnappingSheet(
-                  sheetAbove: SnappingSheetContent(child: (() {
-                    // Usinf function to make a selection
-                    if (filters.view == ViewType.list)
-                      return ListWidget();
-                    else if (filters.view == ViewType.camera &&
-                        cameraCtrl.value.isInitialized)
-                      return SingleChildScrollView(
-                          child: AspectRatio(
-                              aspectRatio: cameraCtrl.value.aspectRatio,
-                              child: CameraPreview(cameraCtrl)));
-                    else if (filters.view == ViewType.details)
-                      return DetailsPage();
-                    else
-                      return Container();
-                  })()),
+                  sheetAbove: SnappingSheetContent(
+                      child: AnimatedBuilder(
+                          animation: _animationController,
+                          child: _pictureFile != null
+                              ? Image.file(_pictureFile)
+                              : Container(),
+                          builder: (context, child) {
+                            // Usinf function to make a selection
+                            if (filters.view == ViewType.list)
+                              return ListWidget();
+                            else if (filters.view == ViewType.camera) {
+                              double width = MediaQuery.of(context).size.width *
+                                  _imageWidthTween.value;
+                              double height =
+                                  MediaQuery.of(context).size.height *
+                                      _imageWidthTween.value;
+
+                              // TODO: Stack is needed otherwise map is blinking on the start of the animation
+                              return Stack(children: [
+                                Center(
+                                    child: SingleChildScrollView(
+                                        child: Container(
+                                            //color: Colors.blue,
+                                            width: width,
+                                            height: height,
+                                            child: child))),
+                                if (!_animationController.isAnimating ||
+                                    _animationController.value < 0.05)
+                                  SingleChildScrollView(
+                                      child: AspectRatio(
+                                          aspectRatio:
+                                              cameraCtrl.value.aspectRatio,
+                                          child: CameraPreview(cameraCtrl)))
+                              ]);
+/*
+                              return Center(
+                                  child: Container(
+                                      //color: Colors.blue,
+                                      width: width,
+                                      height: height,
+                                      child: AspectRatio(
+                                          aspectRatio:
+                                              cameraCtrl.value.aspectRatio,
+                                          child: child)));
+*/
+                              // TODO: Add animation here with the image flying to the map
+/*
+                              return Center(
+                                  widthFactor: _imageWidthTween.value,
+                                  heightFactor: _imageWidthTween.value,
+                                  child: Image.file(_pictureFile));
+*/
+                            } else if (filters.view == ViewType.details)
+                              return DetailsPage();
+                            else
+                              return Container();
+                          })),
                   onSnapEnd: () {
                     if (_snapPosition < 10.0)
                       context.bloc<FilterCubit>().panelHiden();
@@ -454,10 +512,62 @@ class _MainPageState extends State<MainPage> {
                                 context.bloc<FilterCubit>().mapButtonPressed();
                               },
                               // onPressedSelected for CAMERA
-                              () {
+                              () async {
                                 print(
                                     '!!!DEBUG Selected button pressed for CAMERA');
-                                takePicture(cameraCtrl);
+
+                                if (!cameraCtrl.value.isInitialized) {
+                                  //TODO: do exceptional processing for not initialized camera
+                                  //showInSnackBar('Error: select a camera first.');
+                                  print(
+                                      '!!!DEBUG Camera controller not initialized');
+                                  return;
+                                }
+
+                                if (cameraCtrl.value.isTakingPicture) {
+                                  // A capture is already pending, do nothing.
+                                  print(
+                                      '!!!DEBUG Camera controller in pogress (taking picture)');
+                                  return null;
+                                }
+
+                                _animationController.reset();
+
+                                setState(() {
+                                  _pictureFile = null;
+                                });
+
+                                final Directory extDir =
+                                    await getApplicationDocumentsDirectory();
+                                final String filePath =
+                                    '${extDir.path}/Pictures/Biblosphere';
+                                await Directory(filePath)
+                                    .create(recursive: true);
+                                final String fileName = '${timestamp()}.jpg';
+                                final File file = File('$filePath/$fileName');
+                                print('!!!DEBUG file path ${file.path}');
+
+                                try {
+                                  await cameraCtrl.takePicture(file.path);
+                                } on CameraException catch (e) {
+                                  //TODO: Do exception processing for the camera;
+                                  print(
+                                      '!!!DEBUG Camera controller exception: $e');
+                                  return null;
+                                }
+
+                                print(
+                                    '!!!DEBUG: Is controller animating: ${_animationController.isAnimating}');
+
+                                setState(() {
+                                  _pictureFile = file;
+                                });
+
+                                _animationController.forward();
+
+                                context
+                                    .bloc<FilterCubit>()
+                                    .cameraButtonPressed(file, fileName);
                               },
                               () {}
                             ],
