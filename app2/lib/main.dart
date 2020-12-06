@@ -63,6 +63,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   cameras = await availableCameras();
   runApp(MyApp());
+
+  // TODO: Switch dedug OFF
+  Purchases.setDebugLogsEnabled(true);
+  // TODO: Keep API Key in security values in Firebase (Security)
+  await Purchases.setup(PurchasesKey);
 }
 
 class MyApp extends StatefulWidget {

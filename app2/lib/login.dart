@@ -28,8 +28,7 @@ class _LoginPageState extends State<LoginPage> {
                     Expanded(
                         flex: 6,
                         child: Center(
-                            child: Image.network(
-                                "https://image.prntscr.com/image/TjtEQkm2QWyQmTxKLjz0QQ.png",
+                            child: Image.asset('lib/assets/biblio.png',
                                 height: 90.0))),
                     // Input fields (Phone or Confirmation Code)
                     Container(
@@ -251,15 +250,14 @@ class _LoginPageState extends State<LoginPage> {
                     Expanded(child: Container())
                   ]);
             }
-            if (login.status == LoginStatus.signinRequested) {
+            if (login.status == LoginStatus.codeRequired) {
               return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     Expanded(
                         flex: 6,
                         child: Center(
-                            child: Image.network(
-                                "https://image.prntscr.com/image/TjtEQkm2QWyQmTxKLjz0QQ.png",
+                            child: Image.asset('lib/assets/biblio.png',
                                 height: 90.0))),
 
                     // Input fields (Phone or Confirmation Code)
@@ -343,31 +341,29 @@ class _LoginPageState extends State<LoginPage> {
                     // Button (Sign-In or Confirm)
                     Expanded(child: Container())
                   ]);
-            } else {
-              // (login.status == LoginStatus.phoneConfirmed) {
+            } else if (login.status == LoginStatus.signedIn) {
               return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     Expanded(
                         flex: 6,
                         child: Center(
-                            child: Image.network(
-                                "https://image.prntscr.com/image/TjtEQkm2QWyQmTxKLjz0QQ.png",
+                            child: Image.asset('lib/assets/biblio.png',
                                 height: 90.0))),
                     // Input fields (Phone or Confirmation Code)
                     Container(
                         alignment: Alignment.centerLeft,
                         width: MediaQuery.of(context).size.width * .95,
-                        child: upgradeWidget()),
+                        child: upgradeWidget(login)),
 
                     // Information about paid plan
                     Container(
                         alignment: Alignment.centerLeft,
                         width: MediaQuery.of(context).size.width * .7,
                         height: 75.0,
-                        padding:
-                            EdgeInsets.only(top: 15.0, left: 8.0, right: 0.0),
-                        child: productDescription(login.plan)),
+                        padding: EdgeInsets.only(
+                            top: 0.0, bottom: 10.0, left: 8.0, right: 0.0),
+                        child: productDescription(login.package)),
 
                     // Button (Subscribe)
                     Container(
@@ -435,12 +431,15 @@ class _LoginPageState extends State<LoginPage> {
                         child: disclaimer()),
                     Expanded(child: Container())
                   ]);
+            } else {
+              // TODO: Add progress indicator here
+              return Container();
             }
           }),
         )));
   }
 
-  Widget upgradeWidget() {
+  Widget upgradeWidget(LoginState state) {
     return BlocBuilder<LoginCubit, LoginState>(builder: (context, login) {
       return Container(
           child: Column(
@@ -453,11 +452,11 @@ class _LoginPageState extends State<LoginPage> {
               //isSelected: planOptions,
               children: <Widget>[
                 // Monthly option
-                productWidget(SubscriptionPlan.anual),
+                productWidget(state.offerings.current.annual),
                 // Annual option
-                productWidget(SubscriptionPlan.monthly),
+                productWidget(state.offerings.current.monthly),
                 // Patron option
-                productWidget(SubscriptionPlan.business),
+                productWidget(state.offerings.current.getPackage('Patron')),
               ],
             ),
           ]));
@@ -478,11 +477,11 @@ class _LoginPageState extends State<LoginPage> {
                 .copyWith(fontSize: 11.0)));
   }
 
-  Widget productDescription(SubscriptionPlan plan) {
-    if (plan != null)
+  Widget productDescription(Package package) {
+    if (package != null)
       return Container(
           margin: EdgeInsets.only(top: 10.0),
-          child: Text(plans[plan]['info'],
+          child: Text(package.product.description,
               style: Theme.of(context).textTheme.subtitle2));
     else
       return Container();
@@ -490,8 +489,8 @@ class _LoginPageState extends State<LoginPage> {
 
   // TODO: Get real data of packages from purchases plugin
 
-  Map<SubscriptionPlan, dynamic> plans = {
-    SubscriptionPlan.monthly: {
+  Map<String, dynamic> plans = {
+    r'$rc_monthly': {
       'title': 'Monthly',
       'info':
           'Enjoy access to books all around you for the price less than a cup of coffee.',
@@ -499,7 +498,7 @@ class _LoginPageState extends State<LoginPage> {
       'price': '\$2.00',
       'period': 'per month'
     },
-    SubscriptionPlan.anual: {
+    r'$rc_annual': {
       'title': 'Annual',
       'info':
           'Save 50% on this plan. Enjoy access to books around you for the whole year.',
@@ -507,7 +506,7 @@ class _LoginPageState extends State<LoginPage> {
       'price': '\$12.00',
       'period': 'per year'
     },
-    SubscriptionPlan.business: {
+    r'Patron': {
       'title': 'Business',
       'info':
           'Attract users to your indipendent bookstore and sell books online.',
@@ -517,16 +516,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   };
 
-/*
-    if (plan == SubscriptionPlan.monthly)
-      title = 'Monthly';
-    else if (plan == SubscriptionPlan.anual)
-      title = 'Annual';
-    else if (plan == SubscriptionPlan.business) title = 'Business';
-*/
-
-  Widget productWidget(SubscriptionPlan plan) {
-/*
+  Widget productWidget(Package package) {
     // Get rid of "(Biblosphere)" in the title of Google Play products
     String title = package.product.title.contains('(')
         ? package.product.title.split('(')[0]
@@ -538,12 +528,12 @@ class _LoginPageState extends State<LoginPage> {
             ' ' +
             (package.product.price / 12.0).toStringAsFixed(2)
         : package.product.priceString;
-*/
+
     return BlocBuilder<LoginCubit, LoginState>(builder: (context, login) {
       return Expanded(
           child: GestureDetector(
               onTap: () {
-                context.bloc<LoginCubit>().planSelected(plan);
+                context.bloc<LoginCubit>().planSelected(package);
               },
               child: Container(
                   child: Column(
@@ -552,7 +542,7 @@ class _LoginPageState extends State<LoginPage> {
                   Container(
                       padding: EdgeInsets.only(top: 10.0, bottom: 10.0),
                       // Highlight user choice
-                      decoration: plan == login.plan
+                      decoration: package == login.package
                           ? BoxDecoration(
                               border: Border.all(
                                 color: Color(0xff598a99),
@@ -564,36 +554,39 @@ class _LoginPageState extends State<LoginPage> {
                       child: Column(children: <Widget>[
                         //Container(child: Text(package.packageType.toString())),
                         Container(
-                            child: Text(plans[plan]['title'],
+                            child: Text(title,
                                 style: Theme.of(context).textTheme.headline6)),
                         // Show per month price uness it's annual plan and it's choosen
-                        login.plan != SubscriptionPlan.anual ||
-                                plan != SubscriptionPlan.anual
+                        login.package.packageType != PackageType.annual ||
+                                package.packageType != PackageType.annual
                             ? Container(
                                 padding: EdgeInsets.only(top: 5.0),
-                                child: Text(plans[plan]['monthly'],
+                                child: Text(monthlyPrice,
                                     style:
                                         Theme.of(context).textTheme.bodyText2))
                             : Container(),
-                        login.plan != SubscriptionPlan.anual ||
-                                plan != SubscriptionPlan.anual
+                        login.package.packageType != PackageType.annual ||
+                                package.packageType != PackageType.annual
                             ? Container(
                                 child: Text('per month',
                                     style:
                                         Theme.of(context).textTheme.bodyText1))
                             : Container(),
-                        plan == SubscriptionPlan.anual &&
-                                login.plan == SubscriptionPlan.anual
+                        package.packageType == PackageType.annual &&
+                                login.package.packageType == PackageType.annual
                             ? Container(
                                 padding: EdgeInsets.only(top: 5.0),
-                                child: Text(plans[plan]['price'],
+                                child: Text(package.product.priceString,
                                     style:
                                         Theme.of(context).textTheme.bodyText2))
                             : Container(),
-                        plan == SubscriptionPlan.anual &&
-                                login.plan == SubscriptionPlan.anual
+                        package.packageType == PackageType.annual &&
+                                login.package.packageType == PackageType.annual
                             ? Container(
-                                child: Text(plans[plan]['period'],
+                                child: Text(
+                                    package.packageType == PackageType.annual
+                                        ? "per year"
+                                        : "per month",
                                     style:
                                         Theme.of(context).textTheme.bodyText1))
                             : Container(),

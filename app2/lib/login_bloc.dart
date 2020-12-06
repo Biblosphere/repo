@@ -24,15 +24,15 @@ LOGIN => Login cubit (unknown, phone entered, phone verified, legal accepted, su
 
 enum LoginStatus {
   unauthorized, // Initial status
-//  phoneEntered, // Enter phone
-  signinRequested, // Button "Signin" pressed
-//  codeEntered, // Confirmation code entered
-  phoneConfirmed, // Phone confirmed
-  legalAccepted, // Legal terms accepted
+  phoneVerifying, // Button "Signin" pressed
+  codeRequired, // Confirmation code required to be entered
+  signInInProgress, // Sign-in with credential requested
+  signedIn, // Confirmation code entered
+  subscriptionInProgress, // Waiting for successful subscription
   subscribed // Subscribed
 }
 
-enum SubscriptionPlan { monthly, anual, business }
+//enum SubscriptionPlan { monthly, anual, business }
 
 class LoginState extends Equatable {
   final LoginStatus status;
@@ -40,22 +40,41 @@ class LoginState extends Equatable {
   final String phone;
   final String name;
   final String code;
-  final SubscriptionPlan plan;
+  final String verification; // VereficationId from Firebase
+  final Package package;
   final bool pp;
   final bool tos;
+  final Offerings offerings;
 
   @override
-  List<Object> get props => [status, phone, name, country, code, plan, pp, tos];
+  List<Object> get props => [
+        status,
+        phone,
+        name,
+        verification,
+        country,
+        code,
+        package,
+        pp,
+        tos,
+        offerings
+      ];
 
   const LoginState(
       {this.status = LoginStatus.unauthorized,
       this.phone = '',
       this.name = '',
       this.country,
+      this.verification,
       this.code = '',
-      this.plan = SubscriptionPlan.monthly,
+      this.package,
       this.pp = false,
-      this.tos = false});
+      this.tos = false,
+      this.offerings});
+
+  String get mobile => country != null && phone != null && phone.isNotEmpty
+      ? country.dialCode + phone
+      : null;
 
   bool get loginAllowed =>
       pp && phone.isNotEmpty && name.isNotEmpty && country != null;
@@ -65,25 +84,29 @@ class LoginState extends Equatable {
   bool get subscriptionAllowed =>
       tos && pp && phone.isNotEmpty && name.isNotEmpty && country != null;
 
-  LoginState copyWith({
-    String phone,
-    String name,
-    CountryCode country,
-    String code,
-    LoginStatus status,
-    SubscriptionPlan plan,
-    bool pp,
-    bool tos,
-  }) {
+  LoginState copyWith(
+      {String phone,
+      String name,
+      CountryCode country,
+      String code,
+      String verification,
+      LoginStatus status,
+      Package package,
+      bool pp,
+      bool tos,
+      Offerings offerings}) {
     return LoginState(
-        status: status ?? this.status,
-        phone: phone ?? this.phone,
-        name: name ?? this.name,
-        country: country ?? this.country,
-        code: code ?? this.code,
-        plan: plan ?? this.plan,
-        pp: pp ?? this.pp,
-        tos: tos ?? this.tos);
+      status: status ?? this.status,
+      phone: phone ?? this.phone,
+      name: name ?? this.name,
+      country: country ?? this.country,
+      code: code ?? this.code,
+      verification: verification ?? this.verification,
+      package: package ?? this.package,
+      pp: pp ?? this.pp,
+      tos: tos ?? this.tos,
+      offerings: offerings ?? this.offerings,
+    );
   }
 }
 
@@ -94,13 +117,60 @@ class LoginCubit extends Cubit<LoginState> {
 
   Future<void> init() async {
     await Firebase.initializeApp();
-    FirebaseAuth.instance.authStateChanges().listen((User user) {
+    FirebaseAuth.instance.authStateChanges().listen((User user) async {
       if (user == null) {
         print('User is currently signed out!');
         emit(state.copyWith(status: LoginStatus.unauthorized));
       } else {
         print('User is signed in!');
-        emit(state.copyWith(status: LoginStatus.subscribed));
+
+        // Update user name in the Firebase profile
+        user.updateProfile(displayName: state.name);
+
+        try {
+          // Register user in Purchases
+          PurchaserInfo purchaser = await Purchases.identify(user.uid);
+
+          // Check if user already subscribed and skip the purchase screen
+          if (purchaser?.entitlements?.all["basic"]?.isActive ?? false) {
+            print('!!!DEBUG plan already purchased');
+            emit(state.copyWith(status: LoginStatus.subscribed));
+            return;
+          }
+
+          // Retrieve offerings
+          Offerings offerings = await Purchases.getOfferings();
+
+          if (offerings == null || offerings.current == null)
+            throw Exception('Offerings are missing');
+
+          // Add listener for the successful purchase
+          Purchases.addPurchaserInfoUpdateListener((info) async {
+            print('!!!DEBUG Purchase listener: ${info.entitlements}');
+
+            if (!purchaser.entitlements.all["basic"].isActive &&
+                info.entitlements.all["basic"].isActive) {
+              // New subscribtion completed
+              emit(state.copyWith(status: LoginStatus.subscribed));
+            } else if (purchaser.entitlements.all["basic"].isActive) {
+              // Was lready subscribed
+              emit(state.copyWith(status: LoginStatus.subscribed));
+            } else {
+              emit(state.copyWith(status: LoginStatus.unauthorized));
+            }
+          });
+
+          // Inform UI to show subscription screen with offerings
+          emit(state.copyWith(
+              status: LoginStatus.signedIn,
+              offerings: offerings,
+              package: offerings.current.monthly));
+        } catch (e, stack) {
+          print('EXCEPTION: Purchases exception: $e');
+          // TODO: Inform about failed sugn-in
+          // TODO: Logg in crashalytic
+          emit(state.copyWith(status: LoginStatus.unauthorized));
+        }
       }
     });
 
@@ -118,7 +188,6 @@ class LoginCubit extends Cubit<LoginState> {
 
   // Enter phone => LOGIN
   void phoneEntered(String value) {
-    print('!!!DEBUG phone entered: $value');
     emit(state.copyWith(
       phone: value,
     ));
@@ -126,7 +195,6 @@ class LoginCubit extends Cubit<LoginState> {
 
   // Enter name => LOGIN
   void nameEntered(String value) {
-    print('!!!DEBUG name entered: $value');
     emit(state.copyWith(
       name: value,
     ));
@@ -139,17 +207,51 @@ class LoginCubit extends Cubit<LoginState> {
     ));
   }
 
-  // Check/Uncheck TOS => LOGIN
-  void termsOfServiceEntered(bool value) {
-    emit(state.copyWith(
-      tos: value,
-    ));
-  }
-
   // Press Login button => LOGIN
   void signinPressed() {
+    FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: state.mobile,
+        timeout: Duration(seconds: 60),
+        verificationCompleted: (AuthCredential authCredential) {
+          FirebaseAuth.instance
+              .signInWithCredential(authCredential)
+              .catchError((e) {
+            print('EXCEPTION on signin: $e');
+            // TODO: Keep in crashalitics
+            emit(state.copyWith(
+              status: LoginStatus.unauthorized,
+            ));
+          });
+
+          // Sign-in in progress
+          emit(state.copyWith(
+            status: LoginStatus.signInInProgress,
+          ));
+        },
+        verificationFailed: (FirebaseAuthException authException) {
+          print('EXCEPTION: Auth exception: ${authException.message}');
+          // TODO: Keep in crashalitics
+          emit(state.copyWith(
+            status: LoginStatus.unauthorized,
+          ));
+        },
+        codeSent: (String verificationId, [int forceResendingToken]) {
+          //show screen to take input from the user
+          emit(state.copyWith(
+              status: LoginStatus.codeRequired, verification: verificationId));
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          print("WARNING: Code autoretrieval timeout exceeded");
+          // TODO: Logg event to crashalytic
+
+          if (state.status == LoginStatus.phoneVerifying)
+            emit(state.copyWith(
+                status: LoginStatus.codeRequired,
+                verification: verificationId));
+        });
+
     emit(state.copyWith(
-      status: LoginStatus.signinRequested,
+      status: LoginStatus.phoneVerifying,
     ));
   }
 
@@ -160,40 +262,45 @@ class LoginCubit extends Cubit<LoginState> {
 
   // Press Confirm button => LOGIN
   void confirmPressed() {
+    AuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: state.verification, smsCode: state.code);
+
+    FirebaseAuth.instance.signInWithCredential(credential).catchError((e) {
+      print('EXCEPTION: Signin with code exception $e');
+      // TODO: Keep in crashalitics
+      emit(state.copyWith(
+        status: LoginStatus.unauthorized,
+      ));
+    });
+
     // TODO: Add code to validate code
-    emit(state.copyWith(status: LoginStatus.phoneConfirmed));
+    emit(state.copyWith(status: LoginStatus.signInInProgress));
   }
 
   // Choose subscription plan => LOGIN
-  void planSelected(SubscriptionPlan value) {
-    emit(state.copyWith(plan: value));
+  void planSelected(Package value) {
+    emit(state.copyWith(package: value));
   }
 
-  // Tick/untick Privacy Policy => LOGIN
-  void ppSelected(bool value) {
-    LoginStatus status = state.status;
-    if (status == LoginStatus.phoneConfirmed && state.tos && value)
-      status = LoginStatus.legalAccepted;
-    else if (status == LoginStatus.legalAccepted && (!state.tos || !value))
-      status = LoginStatus.phoneConfirmed;
-
-    emit(state.copyWith(pp: value, status: status));
-  }
-
-  // Tick/untick Terms of Service => LOGIN
-  void tosSelected(bool value) {
-    LoginStatus status = state.status;
-    if (status == LoginStatus.phoneConfirmed && state.pp && value)
-      status = LoginStatus.legalAccepted;
-    else if (status == LoginStatus.legalAccepted && (!state.pp || !value))
-      status = LoginStatus.phoneConfirmed;
-
-    emit(state.copyWith(pp: value, status: status));
+  // Check/Uncheck TOS => LOGIN
+  void termsOfServiceEntered(bool value) {
+    emit(state.copyWith(
+      tos: value,
+    ));
   }
 
   // Press Subscribe button => LOGIN
-  void subscribePressed() {
-    // TODO: Validate Subscribtion
-    emit(state.copyWith(status: LoginStatus.subscribed));
+  void subscribePressed() async {
+    try {
+      await Purchases.purchasePackage(state.package);
+    } catch (e, stack) {
+      print('EXCEPTION: Purchase failed $e');
+      // TODO: Keep in crashalitics
+      emit(state.copyWith(
+        status: LoginStatus.unauthorized,
+      ));
+    }
+
+    emit(state.copyWith(status: LoginStatus.subscriptionInProgress));
   }
 }
