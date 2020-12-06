@@ -80,6 +80,9 @@ dependencies:
   # Permission handler
   permission_handler: ^5.0.1+1
 
+  # Open external URLs (PP, TOS)
+  url_launcher: ^5.7.10
+
   flutter_svg: ^0.19.1
 
 dev_dependencies:

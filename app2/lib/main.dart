@@ -45,6 +45,9 @@ import 'package:google_place/google_place.dart';
 import 'package:contacts_service/contacts_service.dart';
 // Permission handler
 import 'package:permission_handler/permission_handler.dart';
+// Gesture detector and URL launcher for PP and TOS
+import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 part 'login.dart';
 part 'login_bloc.dart';
@@ -372,6 +375,10 @@ class _MainPageState extends State<MainPage>
 
                               // TODO: Stack is needed otherwise map is blinking on the start of the animation
                               return Stack(children: [
+                                // TODO: Improve animation:
+                                //        - make it precise to the right point on the map
+                                //        - make the marker on the map
+                                //        - make a path smoth (liner despite the upper panel and full screen)
                                 Center(
                                     child: SingleChildScrollView(
                                         child: Container(
@@ -387,24 +394,6 @@ class _MainPageState extends State<MainPage>
                                               cameraCtrl.value.aspectRatio,
                                           child: CameraPreview(cameraCtrl)))
                               ]);
-/*
-                              return Center(
-                                  child: Container(
-                                      //color: Colors.blue,
-                                      width: width,
-                                      height: height,
-                                      child: AspectRatio(
-                                          aspectRatio:
-                                              cameraCtrl.value.aspectRatio,
-                                          child: child)));
-*/
-                              // TODO: Add animation here with the image flying to the map
-/*
-                              return Center(
-                                  widthFactor: _imageWidthTween.value,
-                                  heightFactor: _imageWidthTween.value,
-                                  child: Image.file(_pictureFile));
-*/
                             } else if (filters.view == ViewType.details)
                               return DetailsPage();
                             else
