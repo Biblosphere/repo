@@ -577,11 +577,6 @@ class FilterCubit extends Cubit<FilterState> {
   FilterCubit() : super(FilterState()) {
     List<Book> books = [];
     List<Place> places = [];
-    Place place = Place(
-        name: FirebaseAuth.instance.currentUser.displayName,
-        phones: [FirebaseAuth.instance.currentUser.phoneNumber],
-        privacy: Privacy.all,
-        type: PlaceType.me);
     Set<MarkerData> markers = {};
     LatLng center = const LatLng(49.8397, 24.0297);
     LatLngBounds bounds = LatLngBounds(
@@ -597,7 +592,6 @@ class FilterCubit extends Cubit<FilterState> {
         center: center,
         bounds: bounds,
         places: places,
-        place: place,
         markers: markers,
         view: ViewType.map,
       ));
@@ -1093,16 +1087,32 @@ class FilterCubit extends Cubit<FilterState> {
         view: ViewType.list,
       ));
     } else if (view == ViewType.camera) {
+      emit(state.copyWith(
+        view: view,
+      ));
+
       LatLng pos = await currentLatLng();
       String hash = GeoHasher().encode(pos.longitude, pos.latitude);
 
-      Place place = state.place.copyWith(location: pos, geohash: hash);
+      Place place = state.place;
+
+      if (place == null)
+        place = Place(
+            name: FirebaseAuth.instance.currentUser.displayName,
+            phones: [FirebaseAuth.instance.currentUser.phoneNumber],
+            emails: [FirebaseAuth.instance.currentUser.email],
+            privacy: Privacy.all,
+            type: PlaceType.me,
+            location: pos,
+            geohash: hash);
+      else
+        place = place.copyWith(location: pos, geohash: hash);
+
       print('!!!DEBUG Place geohash ${place.geohash}');
 
       emit(state.copyWith(
         location: pos,
         place: place,
-        view: view,
       ));
 
       // Move map to the current user location

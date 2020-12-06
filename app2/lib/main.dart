@@ -123,13 +123,14 @@ class _MyAppState extends State<MyApp> {
                 BlocProvider(create: (BuildContext context) => LoginCubit())
               ],
               child: BlocBuilder<LoginCubit, LoginState>(
+                  buildWhen: (prev, curr) => prev.status != curr.status,
                   builder: (context, login) {
-                if (login.status == LoginStatus.subscribed) {
-                  return MainPage();
-                } else {
-                  return LoginPage();
-                }
-              }));
+                    if (login.status == LoginStatus.subscribed) {
+                      return MainPage();
+                    } else {
+                      return LoginPage();
+                    }
+                  }));
         }));
   }
 }

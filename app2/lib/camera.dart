@@ -4,6 +4,8 @@ List<CameraDescription> cameras;
 
 Widget chipBuilderCamera(BuildContext context, Place place,
     {bool selected = false}) {
+  if (place == null) return Container();
+
   return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
     return InputChip(
       label: Row(
