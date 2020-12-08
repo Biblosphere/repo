@@ -994,7 +994,7 @@ class FilterCubit extends Cubit<FilterState> {
     _searchController.text = '';
     _snappingControler.snapToPosition(
       SnapPosition(
-          positionPixel: 280.0,
+          positionPixel: 530.0,
           snappingCurve: Curves.elasticOut,
           snappingDuration: Duration(milliseconds: 750)),
     );
@@ -1504,7 +1504,7 @@ class FilterCubit extends Cubit<FilterState> {
             name: c.displayName,
             // TODO: Take only phones with "mobile" label
             phones: c.phones.map((p) => internationalPhone(p.value)).toList(),
-            emails: c.emails.map((e) => e.value),
+            emails: c.emails.map((e) => e.value).toList(),
             privacy: Privacy.contacts,
             type: PlaceType.contact)));
       }
@@ -1539,7 +1539,7 @@ class FilterCubit extends Cubit<FilterState> {
     _searchController.text = '';
     _snappingControler.snapToPosition(
       SnapPosition(
-          positionPixel: 280.0,
+          positionPixel: 530.0,
           snappingCurve: Curves.elasticOut,
           snappingDuration: Duration(milliseconds: 750)),
     );

@@ -81,8 +81,7 @@ class LoginState extends Equatable {
 
   bool get confirmAllowed => code.length >= 4;
 
-  bool get subscriptionAllowed =>
-      tos && pp && phone.isNotEmpty && name.isNotEmpty && country != null;
+  bool get subscriptionAllowed => tos && status == LoginStatus.signedIn;
 
   LoginState copyWith(
       {String phone,

@@ -112,7 +112,6 @@ class _CameraPanelState extends State<CameraPanel> {
                 height: 45.0,
                 alignment: Alignment.topLeft,
                 margin: EdgeInsets.fromLTRB(10.0, 5.0, 10.0, 5.0),
-                color: Colors.white,
                 child: ListView(scrollDirection: Axis.horizontal, children: [
                   chipBuilderCamera(context, state.place),
                   chipBuilderPrivacy(context, state.privacy, true),
@@ -124,7 +123,6 @@ class _CameraPanelState extends State<CameraPanel> {
             alignment: Alignment.topLeft,
             child: Container(
                 margin: EdgeInsets.all(10.0),
-                color: Colors.white,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[

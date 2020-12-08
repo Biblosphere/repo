@@ -5,6 +5,7 @@ Widget chipBuilder(BuildContext context, Filter filter) {
 
   IconData icon;
   Panel position = context.bloc<FilterCubit>().state.panel;
+  Widget chip;
 
   if (filter.type == FilterType.place) {
     // TODO: Add leading avatar for people from the contact list
@@ -29,10 +30,16 @@ Widget chipBuilder(BuildContext context, Filter filter) {
       icon = Icons.favorite;
     else if (filter.type == FilterType.contacts) icon = Icons.contact_phone;
 
-    return InputChip(
+    chip = InputChip(
+      showCheckmark: false,
+      selectedColor: chipSelectedBackground,
+      backgroundColor: chipUnselectedBackground,
+      shadowColor: chipUnselectedBackground,
+      selectedShadowColor: chipSelectedBackground,
       selected: filter.selected,
       // !!!DEBUG
-      label: Icon(icon),
+      label: Icon(icon,
+          color: filter.selected ? chipSelectedText : chipUnselectedText),
       // TODO: Put book icon here
       // avatar: CircleAvatar(),
       onPressed: () {
@@ -46,25 +53,40 @@ Widget chipBuilder(BuildContext context, Filter filter) {
     Widget label;
 
     if (filter.type == FilterType.genre)
-      label = Text(genres[filter.value]);
+      label = Text(genres[filter.value],
+          style: filter.selected
+              ? chipSelectedTextStyle
+              : chipUnselectedTextStyle);
     else if (filter.type == FilterType.language && position == Panel.full)
       // Present full name of the language instead of code in FULL view
-      label = Text(languages[filter.value]);
+      label = Text(languages[filter.value],
+          style: filter.selected
+              ? chipSelectedTextStyle
+              : chipUnselectedTextStyle);
     else if (filter.type == FilterType.place && position == Panel.full) {
       // Add distance to location in FULL view
       LatLng location = context.bloc<FilterCubit>().state.center;
       label = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(filter.value),
+        Text(filter.value,
+            style: filter.selected
+                ? chipSelectedTextStyle
+                : chipUnselectedTextStyle),
         Text(distanceString(location, filter.place.location),
-            style:
-                Theme.of(context).textTheme.subtitle2.copyWith(fontSize: 10.0))
+            style: Theme.of(context).textTheme.subtitle2.copyWith(
+                fontSize: 10.0,
+                color: filter.selected ? chipSelectedText : chipUnselectedText))
       ]);
     } else
-      label = Text(filter.value, overflow: TextOverflow.fade);
+      label = Text(filter.value,
+          overflow: TextOverflow.fade,
+          style: filter.selected
+              ? chipSelectedTextStyle
+              : chipUnselectedTextStyle);
 
-    label = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [if (icon != null) Icon(icon), Flexible(child: label)]);
+    label = Row(mainAxisSize: MainAxisSize.min, children: [
+      if (icon != null) Icon(icon, color: chipSelectedText),
+      Flexible(child: label)
+    ]);
 
     if (position != Panel.full)
       label = ConstrainedBox(
@@ -75,7 +97,14 @@ Widget chipBuilder(BuildContext context, Filter filter) {
 
     // Only show selection for full level (for suggestions)
     if (position == Panel.full)
-      return InputChip(
+      chip = InputChip(
+        showCheckmark: false,
+        deleteIconColor:
+            filter.selected ? chipSelectedText : chipUnselectedText,
+        selectedColor: chipSelectedBackground,
+        backgroundColor: chipUnselectedBackground,
+        shadowColor: chipUnselectedBackground,
+        selectedShadowColor: chipSelectedBackground,
         selected: filter.selected,
         label: label,
         // TODO: Put book icon here
@@ -93,7 +122,14 @@ Widget chipBuilder(BuildContext context, Filter filter) {
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       );
     else
-      return InputChip(
+      chip = InputChip(
+        showCheckmark: false,
+        selectedColor: chipSelectedBackground,
+        backgroundColor: chipUnselectedBackground,
+        shadowColor: chipUnselectedBackground,
+        selectedShadowColor: chipSelectedBackground,
+        deleteIconColor: chipSelectedText,
+        selected: true,
         label: label,
         // TODO: Put book icon here
         // avatar: CircleAvatar(),
@@ -110,6 +146,9 @@ Widget chipBuilder(BuildContext context, Filter filter) {
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       );
   }
+
+  return Container(
+      padding: EdgeInsets.only(left: 2.0, right: 2.0), child: chip);
 }
 
 class SearchPanel extends StatefulWidget {
@@ -134,15 +173,17 @@ class _SearchPanelState extends State<SearchPanel> {
       icon = Icons.location_pin;
     else if (group == FilterGroup.language) icon = Icons.language;
 
-    return Icon(icon);
+    return Icon(icon, color: chipUnselectedText);
   }
 
   Widget groupChips(
       BuildContext context, FilterState state, FilterGroup group) {
     double width = MediaQuery.of(context).size.width;
     return Container(
+        margin: EdgeInsets.only(left: 24.0, right: 24.0, top: 0.0, bottom: 8.0),
+        decoration: placeDecoration(),
         width: width,
-        height: 45.0,
+        height: 48.0,
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           IconButton(
             onPressed: () {
@@ -153,46 +194,35 @@ class _SearchPanelState extends State<SearchPanel> {
           Flexible(
               child: Container(
                   margin: EdgeInsets.only(right: 10.0),
-                  child: ShaderMask(
-                      shaderCallback: (Rect rect) {
-                        return LinearGradient(
-                          begin: Alignment.centerRight,
-                          end: Alignment.centerLeft,
-                          colors: [
-                            Colors.purple,
-                            Colors.transparent,
-                            Colors.transparent,
-                            Colors.purple
-                          ],
-                          stops: [
-                            0.0,
-                            0.1,
-                            0.985,
-                            1.0
-                          ], // 10% purple, 80% transparent, 10% purple
-                        ).createShader(rect);
-                      },
-                      blendMode: BlendMode.dstOut,
-                      child: ListView(
-                          clipBehavior: Clip.antiAlias,
-                          scrollDirection: Axis.horizontal,
-                          children: state.getFilters(group: group).map((f) {
-                            return chipBuilder(context, f);
-                          }).toList()))))
+                  child: shaderScroll(ListView(
+                      clipBehavior: Clip.antiAlias,
+                      scrollDirection: Axis.horizontal,
+                      children: state.getFilters(group: group).map((f) {
+                        return chipBuilder(context, f);
+                      }).toList()))))
         ]));
   }
 
   InputDecoration groupInputDecoration(FilterGroup group) {
     String label = '';
-    if (group == FilterGroup.book)
-      label = "Title / Author";
-    else if (group == FilterGroup.genre)
-      label = "Genre";
-    else if (group == FilterGroup.place)
-      label = "Place / Contact";
-    else if (group == FilterGroup.language) label = "Language";
 
-    return InputDecoration(labelText: label);
+    // TODO: Get rid of '\n' need a better way to locate the labelText
+    //       it's either too high or too low
+    if (group == FilterGroup.book)
+      label = "Title / Author\n";
+    else if (group == FilterGroup.genre)
+      label = "Genre\n";
+    else if (group == FilterGroup.place)
+      label = "Place / Contact\n";
+    else if (group == FilterGroup.language) label = "Language\n";
+
+    return InputDecoration(
+        labelText: label,
+        labelStyle: inputLabelStyle,
+        border: OutlineInputBorder(borderSide: BorderSide.none),
+        isCollapsed: true,
+//        isDense: true,
+        floatingLabelBehavior: FloatingLabelBehavior.always);
   }
 
   @override
@@ -224,24 +254,32 @@ class _SearchPanelState extends State<SearchPanel> {
       if (position == Panel.minimized) {
         // View with single wrap
         return OverflowBox(
-            maxHeight: 400.0,
+            maxHeight: 800.0,
             alignment: Alignment.topLeft,
             child: Container(
-                height: 45.0,
+                constraints: BoxConstraints(
+                  maxHeight: 48.0,
+                  minHeight: 48.0,
+                ),
                 alignment: Alignment.topLeft,
-                margin: EdgeInsets.fromLTRB(10.0, 5.0, 10.0, 5.0),
-                color: Colors.white,
-                child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: state.compact.map((f) {
-                      return chipBuilder(context, f);
-                    }).toList())));
+                padding: EdgeInsets.fromLTRB(24.0, 0.0, 24.0, 0.0),
+                child: Container(
+                    decoration: placeDecoration(),
+                    height: 48.0,
+                    alignment: Alignment.topLeft,
+                    padding: EdgeInsets.only(left: 10.0, right: 10.0),
+                    child: shaderScroll(ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: state.compact.map((f) {
+                          return chipBuilder(context, f);
+                        }).toList())))));
       } else if (position == Panel.open) {
         // View with four wraps
         return OverflowBox(
-            maxHeight: 400.0,
+            maxHeight: 800.0,
             alignment: Alignment.topLeft,
             child: Container(
+//                decoration: boxDecoration(),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
               groupChips(context, state, FilterGroup.book),
               groupChips(context, state, FilterGroup.genre),
@@ -254,38 +292,65 @@ class _SearchPanelState extends State<SearchPanel> {
         List<Filter> suggestions = state.filterSuggestions;
 
         print('!!!DEBUG build suggestions for $group');
-        return Wrap(
-            alignment: WrapAlignment.start,
-            runAlignment: WrapAlignment.start,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 5.0,
-            runSpacing: 5.0,
-            children: [
-              // Icon
-              groupIcon(group),
-              // Input field
-              Container(
-                width: width * 0.9,
-                child: TextField(
-                  autofocus: true,
-                  maxLines: 1,
-                  decoration: groupInputDecoration(group),
-                  controller: _controller,
-                  onEditingComplete: () {
-                    FocusScope.of(context).unfocus();
-                    context.bloc<FilterCubit>().searchEditComplete();
-                  },
-                ),
-              ),
-              // Selected filters
-              ...state.getFilters(group: group).map((f) {
-                return chipBuilder(context, f);
-              }).toList(),
-              if (suggestions != null)
-                ...suggestions.take(15).map((f) {
-                  return chipBuilder(context, f);
-                }).toList()
-            ]);
+        return OverflowBox(
+            maxHeight: 800.0,
+            alignment: Alignment.topLeft,
+            child: Container(
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                  Container(
+                      constraints:
+                          BoxConstraints(maxHeight: 48.0, minHeight: 48.0),
+                      margin:
+                          EdgeInsets.only(left: 24.0, right: 24.0, bottom: 8.0),
+                      padding: EdgeInsets.only(left: 10.0),
+                      decoration: placeDecoration(),
+                      child: Row(children: [
+                        // Icon
+                        groupIcon(group),
+                        // Input field
+                        Container(
+                          margin: EdgeInsets.only(left: 8.0),
+                          width: width - 48.0 - 80.0,
+                          child: TextField(
+                            cursorColor: cursorColor,
+                            autofocus: true,
+                            maxLines: 1,
+                            decoration: groupInputDecoration(group),
+                            controller: _controller,
+                            onEditingComplete: () {
+                              FocusScope.of(context).unfocus();
+                              context.bloc<FilterCubit>().searchEditComplete();
+                            },
+                          ),
+                        ),
+                      ])),
+                  Container(
+                      margin: EdgeInsets.only(left: 24.0, right: 24.0),
+                      padding: EdgeInsets.only(
+                          top: 10.0, bottom: 10.0, left: 8.0, right: 8.0),
+                      decoration: placeDecoration(),
+                      child: Container(
+                          alignment: Alignment.topLeft,
+                          child: Wrap(
+                              alignment: WrapAlignment.start,
+                              runAlignment: WrapAlignment.start,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 5.0,
+                              runSpacing: 5.0,
+                              children: [
+                                // Selected filters
+                                ...state.getFilters(group: group).map((f) {
+                                  return chipBuilder(context, f);
+                                }).toList(),
+                                if (suggestions != null)
+                                  ...suggestions.take(15).map((f) {
+                                    return chipBuilder(context, f);
+                                  }).toList()
+                              ])))
+                ])));
       } else {
         return Container();
       }

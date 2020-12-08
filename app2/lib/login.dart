@@ -47,8 +47,8 @@ class _LoginPageState extends State<LoginPage> {
                                             .transparent, // set border color
                                         width: 1.0), // set border width
                                     borderRadius: BorderRadius.only(
-                                      topRight: Radius.circular(30.0),
-                                      topLeft: Radius.circular(30.0),
+                                      topRight: Radius.circular(24.0),
+                                      topLeft: Radius.circular(24.0),
                                     ), // set rounded corner radius
                                     // make rounded corner of border
                                   ),
@@ -147,8 +147,8 @@ class _LoginPageState extends State<LoginPage> {
                                               .transparent, // set border color
                                           width: 1.0), // set border width
                                       borderRadius: BorderRadius.only(
-                                        bottomRight: Radius.circular(30.0),
-                                        bottomLeft: Radius.circular(30.0),
+                                        bottomRight: Radius.circular(24.0),
+                                        bottomLeft: Radius.circular(24.0),
                                       ), // set rounded corner radius
                                       // make rounded corner of border
                                     ),
@@ -288,7 +288,7 @@ class _LoginPageState extends State<LoginPage> {
                                             .transparent, // set border color
                                         width: 1.0), // set border width
                                     borderRadius: BorderRadius.all(
-                                      Radius.circular(30.0),
+                                      Radius.circular(24.0),
                                     ), // set rounded corner radius
                                     // make rounded corner of border
                                   ),

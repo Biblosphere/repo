@@ -207,10 +207,10 @@ class TripleButtonState extends State<TripleButton>
         AnimationController(vsync: this, duration: Duration(milliseconds: 500));
 
     _activateColorTween =
-        ColorTween(begin: Colors.transparent, end: Colors.blue)
+        ColorTween(begin: Colors.transparent, end: buttonBackground)
             .animate(_animationController);
     _deactivateColorTween =
-        ColorTween(begin: Colors.blue, end: Colors.transparent)
+        ColorTween(begin: buttonBackground, end: Colors.transparent)
             .animate(_animationController);
     _angleTween = Tween<double>(begin: 0.0, end: pi * 2.0 / 3.0)
         .animate(_animationController);
@@ -256,7 +256,7 @@ class TripleButtonState extends State<TripleButton>
                       if (_animationController.isAnimating)
                         color = _activateColorTween.value;
                       else
-                        color = Colors.blue;
+                        color = buttonBackground;
                     } else if (i == oldSelected)
                       color = _deactivateColorTween.value;
 
@@ -357,6 +357,7 @@ class _MainPageState extends State<MainPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        resizeToAvoidBottomInset: false,
         body: BlocBuilder<FilterCubit, FilterState>(
             buildWhen: (previous, current) => previous.view != current.view,
             builder: (context, filters) {
@@ -410,7 +411,7 @@ class _MainPageState extends State<MainPage>
                       context.bloc<FilterCubit>().panelHiden();
                     else if (_snapPosition < 100.0)
                       context.bloc<FilterCubit>().panelMinimized();
-                    else if (_snapPosition < 210.0)
+                    else if (_snapPosition < 240.0)
                       context.bloc<FilterCubit>().panelOpened();
 
                     setState(() {});
@@ -427,7 +428,7 @@ class _MainPageState extends State<MainPage>
                         snappingCurve: Curves.elasticOut,
                         snappingDuration: Duration(milliseconds: 750)),
                     SnapPosition(
-                        positionPixel: 55.0,
+                        positionPixel: 56.0,
                         snappingCurve: Curves.elasticOut,
                         snappingDuration: Duration(milliseconds: 750)),
                     if (filters.view == ViewType.camera)
@@ -437,7 +438,7 @@ class _MainPageState extends State<MainPage>
                           snappingDuration: Duration(milliseconds: 750)),
                     if (filters.view != ViewType.camera)
                       SnapPosition(
-                          positionPixel: 205.0,
+                          positionPixel: 224.0,
                           snappingCurve: Curves.elasticOut,
                           snappingDuration: Duration(milliseconds: 750)),
                   ],
@@ -453,7 +454,7 @@ class _MainPageState extends State<MainPage>
                   sheetBelow: SnappingSheetContent(
                       child: filters.view != ViewType.details
                           ? Container(
-                              color: Colors.white,
+                              decoration: boxDecoration(),
                               child: filters.view == ViewType.camera
                                   ? CameraPanel()
                                   : SearchPanel())
@@ -582,37 +583,90 @@ class GrabSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 20.0,
-            color: Colors.black.withOpacity(0.2),
-          )
-        ],
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(15.0),
-          topRight: Radius.circular(15.0),
+      decoration: boxDecoration(),
+      child: Center(
+        child: Container(
+          width: 81.0,
+          height: 4.0,
+          margin: EdgeInsets.only(left: 20, right: 20),
+          color: Color(0xffadacbc),
         ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[
-          Container(
-            width: 100.0,
-            height: 10.0,
-            margin: EdgeInsets.only(top: 15.0),
-            decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.all(Radius.circular(5.0))),
-          ),
-          Container(
-            height: 2.0,
-            margin: EdgeInsets.only(left: 20, right: 20),
-            color: Colors.grey[300],
-          ),
-        ],
       ),
     );
   }
 }
+
+// Default box decoration
+BoxDecoration boxDecoration() {
+  return BoxDecoration(
+    color: Color(0xffe3e3e1).withOpacity(0.8),
+/*
+    boxShadow: [
+      BoxShadow(
+        blurRadius: 20.0,
+        color: Colors.black.withOpacity(0.2),
+      )
+    ],
+*/
+    /*
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(15.0),
+          topRight: Radius.circular(15.0),
+        ),
+        */
+  );
+}
+
+// Default box decoration
+BoxDecoration placeDecoration() {
+  return BoxDecoration(
+    color: Colors.white,
+/*
+    boxShadow: [
+      BoxShadow(
+        blurRadius: 20.0,
+        color: Colors.black.withOpacity(0.2),
+      )
+    ],
+*/
+    borderRadius: BorderRadius.all(
+      Radius.circular(24.0),
+    ),
+  );
+}
+
+Widget shaderScroll(Widget child) {
+  return ShaderMask(
+      shaderCallback: (Rect rect) {
+        return LinearGradient(
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+          colors: [
+            Colors.purple,
+            Colors.transparent,
+            Colors.transparent,
+            Colors.purple
+          ],
+          stops: [
+            0.0,
+            0.1,
+            0.985,
+            1.0
+          ], // 10% purple, 80% transparent, 10% purple
+        ).createShader(rect);
+      },
+      blendMode: BlendMode.dstOut,
+      child: child);
+}
+
+const Color chipSelectedBackground = Color(0xffd3e9ef);
+const Color chipSelectedText = Color(0xff598a99);
+const TextStyle chipSelectedTextStyle = TextStyle(color: chipSelectedText);
+
+const Color chipUnselectedBackground = Color(0xfff5f4f3);
+const Color chipUnselectedText = Color(0xff8f8993);
+const TextStyle chipUnselectedTextStyle = TextStyle(color: chipUnselectedText);
+
+const Color buttonBackground = Color(0xff598a99);
+const Color cursorColor = Color(0xff598a99);
+const TextStyle inputLabelStyle = TextStyle(color: Color(0xff598a99));
