@@ -4,19 +4,40 @@ List<CameraDescription> cameras;
 
 Widget chipBuilderCamera(BuildContext context, Place place,
     {bool selected = false}) {
-  if (place == null) return Container();
+  if (place == null) {
+    print('EXCEPTION: Place is null');
+    // TODO: Exception handling and report to crashalytic
+    return Container();
+  }
 
-  return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
+  if (place.name == null) {
+    print('EXCEPTION: Place NAME is null');
+    // TODO: Exception handling and report to crashalytic
+    return Container();
+  }
+
+  Widget chip =
+      BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
+    IconData icon;
+
+    if (place.type == PlaceType.me || place.type == PlaceType.contact)
+      icon = Icons.person;
+    else if (place.type == PlaceType.place) icon = Icons.store_mall_directory;
+
     return InputChip(
+      showCheckmark: false,
+      selectedColor: chipSelectedBackground,
+      backgroundColor: chipUnselectedBackground,
+      shadowColor: chipUnselectedBackground,
+      selectedShadowColor: chipSelectedBackground,
       label: Row(
           mainAxisAlignment: MainAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (place.type == PlaceType.me) Icon(Icons.house),
-            if (place.type == PlaceType.place)
-              Icon(Icons.store_mall_directory), // Icons.map
-            if (place.type == PlaceType.contact) Icon(Icons.person),
-            Text(place.name)
+            Icon(icon, color: selected ? chipSelectedText : chipUnselectedText),
+            Text(place.name,
+                style:
+                    selected ? chipSelectedTextStyle : chipUnselectedTextStyle)
           ]),
       // TODO: Put book icon here
       // avatar: CircleAvatar(),
@@ -28,10 +49,13 @@ Widget chipBuilderCamera(BuildContext context, Place place,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
   });
+
+  return Container(
+      padding: EdgeInsets.only(left: 2.0, right: 2.0), child: chip);
 }
 
-Widget chipBuilderPrivacy(
-    BuildContext context, Privacy privacy, bool selected) {
+Widget chipBuilderPrivacy(BuildContext context, Privacy privacy, bool selected,
+    {double width}) {
   String label = '';
   IconData icon;
 
@@ -46,15 +70,32 @@ Widget chipBuilderPrivacy(
     icon = Icons.language;
   }
 
-  return InputChip(
-    label: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [if (icon != null) Icon(icon), Text(label)]),
+  Widget chip = InputChip(
+    showCheckmark: false,
+    selectedColor: chipSelectedBackground,
+    backgroundColor: chipUnselectedBackground,
+    shadowColor: chipUnselectedBackground,
+    selectedShadowColor: chipSelectedBackground,
+    selected: selected,
+    label: Container(
+        width: width,
+        //constraints: BoxConstraints(minWidth: width, maxWidth: width),
+        child: Row(mainAxisAlignment: MainAxisAlignment.start, children: [
+          if (icon != null)
+            Icon(icon, color: selected ? chipSelectedText : chipUnselectedText),
+          Text(label,
+              style: selected ? chipSelectedTextStyle : chipUnselectedTextStyle)
+        ])),
     onPressed: () {
       print('!!!DEBUG Trigger privacy for CAMERA $label');
+
+      context.bloc<FilterCubit>().setPrivacy(privacy);
     },
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
   );
+
+  return Container(
+      padding: EdgeInsets.only(left: 2.0, right: 2.0), child: chip);
 }
 
 class CameraPanel extends StatefulWidget {
@@ -106,110 +147,67 @@ class _CameraPanelState extends State<CameraPanel> {
       if (position == Panel.minimized) {
         // View with single wrap
         return OverflowBox(
-            maxHeight: 400.0,
+            maxHeight: 800.0,
             alignment: Alignment.topLeft,
             child: Container(
-                height: 45.0,
+                constraints: BoxConstraints(
+                  maxHeight: 48.0,
+                  minHeight: 48.0,
+                ),
                 alignment: Alignment.topLeft,
-                margin: EdgeInsets.fromLTRB(10.0, 5.0, 10.0, 5.0),
-                child: ListView(scrollDirection: Axis.horizontal, children: [
-                  chipBuilderCamera(context, state.place),
-                  chipBuilderPrivacy(context, state.privacy, true),
-                ])));
+                padding: EdgeInsets.fromLTRB(24.0, 0.0, 24.0, 0.0),
+                child: Container(
+                    decoration: placeDecoration(),
+                    height: 48.0,
+                    alignment: Alignment.topLeft,
+                    padding: EdgeInsets.only(left: 10.0, right: 10.0),
+                    child: shaderScroll(
+                        ListView(scrollDirection: Axis.horizontal, children: [
+                      chipBuilderCamera(context, state.place, selected: true),
+                      chipBuilderPrivacy(context, state.privacy, true),
+                    ])))));
       } else if (position == Panel.open) {
         // View with four wraps
         return OverflowBox(
-            maxHeight: 400.0,
+            maxHeight: 800.0,
             alignment: Alignment.topLeft,
             child: Container(
-                margin: EdgeInsets.all(10.0),
+                padding: EdgeInsets.only(left: 24.0, right: 24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(5, 0, 0, 0),
-                      child: Text('Book owner or place:'),
-                    ),
+                    GestureDetector(
+                        onTap: () {
+                          context.bloc<FilterCubit>().selectPlaceForPhoto();
+                        },
+                        child: Container(
+                            decoration: placeDecoration(),
+                            padding: EdgeInsets.only(left: 8.0, right: 8.0),
+                            height: 48.0,
+                            child: Container(
+                                alignment: Alignment.centerLeft,
+                                margin: EdgeInsets.all(0.0),
+                                child: chipBuilderCamera(context, state.place,
+                                    selected: true)))),
                     Container(
-                        width: width,
-                        height: 45.0,
+                        height: 48.0,
+                        decoration: placeDecoration(),
+                        margin: EdgeInsets.only(top: 8.0),
+                        padding: EdgeInsets.only(left: 8.0, right: 8.0),
                         child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                  width: 28.0,
-                                  child: IconButton(
-                                    alignment: Alignment.centerLeft,
-                                    //iconSize: 10.0,
-                                    padding: EdgeInsets.all(0.0),
-                                    onPressed: () {
-                                      context
-                                          .bloc<FilterCubit>()
-                                          .selectPlaceForPhoto();
-                                    },
-                                    icon: Icon(Icons.location_pin),
-                                  )),
-                              Flexible(
-                                  child: Container(
-                                      alignment: Alignment.centerLeft,
-                                      margin: EdgeInsets.all(0.0),
-                                      child: chipBuilderCamera(
-                                          context, state.place)))
-                            ])),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Container(
-                            margin: EdgeInsets.only(top: 5.0),
-                            child: ToggleButtons(
-                              renderBorder: false,
-                              children: [
-                                Container(
-                                    width: (width - 24.0) / 3,
-                                    child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        children: [
-                                          Icon(Icons.lock),
-                                          Text('Only me')
-                                        ])),
-                                Container(
-                                    width: (width - 24.0) / 3,
-                                    child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.people),
-                                          Text('Contacts')
-                                        ])),
-                                Container(
-                                    width: (width - 24.0) / 3,
-                                    child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.language),
-                                          Text('All')
-                                        ])),
-                              ],
-                              isSelected: [
-                                state.privacy == Privacy.private,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            chipBuilderPrivacy(context, Privacy.all,
+                                state.privacy == Privacy.all,
+                                width: (width - 68.0) / 3 - 27.0),
+                            chipBuilderPrivacy(context, Privacy.contacts,
                                 state.privacy == Privacy.contacts,
-                                state.privacy == Privacy.all
-                              ],
-                              onPressed: (index) {
-                                setState(() {
-                                  context
-                                      .bloc<FilterCubit>()
-                                      .setPrivacy(Privacy.values[index]);
-                                });
-                              },
-                              selectedColor: Colors.black,
-                              color: Colors.grey,
-                            )),
-                      ],
-                    )
+                                width: (width - 68.0) / 3 - 27.0),
+                            chipBuilderPrivacy(context, Privacy.private,
+                                state.privacy == Privacy.private,
+                                width: (width - 68.0) / 3 - 27.0),
+                          ],
+                        ))
                   ],
                 )));
       } else if (position == Panel.full) {
@@ -217,36 +215,65 @@ class _CameraPanelState extends State<CameraPanel> {
         List<Place> suggestions = state.placeSuggestions;
 
         print('!!!DEBUG build candidate places for CAMERA');
-        return Wrap(
-            alignment: WrapAlignment.start,
-            runAlignment: WrapAlignment.start,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 5.0,
-            runSpacing: 5.0,
-            children: [
-              // Icon
-              Icon(Icons.location_pin),
-              // Input field
-              Container(
-                width: width * 0.9,
-                child: TextField(
-                  autofocus: true,
-                  maxLines: 1,
-                  decoration: InputDecoration(labelText: 'Book owner or place'),
-                  controller: _controller,
-                  onEditingComplete: () {
-                    FocusScope.of(context).unfocus();
-                    context.bloc<FilterCubit>().placeEditComplete();
-                  },
-                ),
-              ),
-              // Selected place
-              chipBuilderCamera(context, state.place, selected: true),
-              if (suggestions != null)
-                ...suggestions.take(15).map((p) {
-                  return chipBuilderCamera(context, p, selected: false);
-                }).toList()
-            ]);
+        return OverflowBox(
+            maxHeight: 800.0,
+            alignment: Alignment.topLeft,
+            child: Container(
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                  Container(
+                      constraints:
+                          BoxConstraints(maxHeight: 48.0, minHeight: 48.0),
+                      margin:
+                          EdgeInsets.only(left: 24.0, right: 24.0, bottom: 8.0),
+                      padding: EdgeInsets.only(left: 10.0),
+                      decoration: placeDecoration(),
+                      child: Row(children: [
+                        // Icon
+                        Icon(Icons.location_pin, color: chipUnselectedText),
+                        // Input field
+                        Container(
+                          margin: EdgeInsets.only(left: 8.0),
+                          width: width - 48.0 - 80.0,
+                          child: TextField(
+                            cursorColor: cursorColor,
+                            autofocus: true,
+                            maxLines: 1,
+                            decoration: inputDecoration('Book owner or place'),
+                            controller: _controller,
+                            onEditingComplete: () {
+                              FocusScope.of(context).unfocus();
+                              context.bloc<FilterCubit>().searchEditComplete();
+                            },
+                          ),
+                        ),
+                      ])),
+                  Container(
+                      margin: EdgeInsets.only(left: 24.0, right: 24.0),
+                      padding: EdgeInsets.only(
+                          top: 10.0, bottom: 10.0, left: 8.0, right: 8.0),
+                      decoration: placeDecoration(),
+                      child: Container(
+                          alignment: Alignment.topLeft,
+                          child: Wrap(
+                              alignment: WrapAlignment.start,
+                              runAlignment: WrapAlignment.start,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 5.0,
+                              runSpacing: 5.0,
+                              children: [
+                                // Selected place
+                                chipBuilderCamera(context, state.place,
+                                    selected: true),
+                                if (suggestions != null)
+                                  ...suggestions.take(15).map((p) {
+                                    return chipBuilderCamera(context, p,
+                                        selected: false);
+                                  }).toList()
+                              ])))
+                ])));
       } else {
         return Container();
       }

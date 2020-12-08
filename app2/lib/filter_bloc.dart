@@ -1096,8 +1096,9 @@ class FilterCubit extends Cubit<FilterState> {
 
       Place place = state.place;
 
-      if (place == null)
+      if (place == null || place.name == null)
         place = Place(
+            // TODO: DisplayName is null. Investigate.
             name: FirebaseAuth.instance.currentUser.displayName,
             phones: [FirebaseAuth.instance.currentUser.phoneNumber],
             emails: [FirebaseAuth.instance.currentUser.email],

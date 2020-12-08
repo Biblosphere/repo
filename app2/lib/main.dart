@@ -363,49 +363,8 @@ class _MainPageState extends State<MainPage>
             builder: (context, filters) {
               return Stack(children: [
                 SnappingSheet(
-                  sheetAbove: SnappingSheetContent(
-                      child: AnimatedBuilder(
-                          animation: _animationController,
-                          child: _pictureFile != null
-                              ? Image.file(_pictureFile)
-                              : Container(),
-                          builder: (context, child) {
-                            // Usinf function to make a selection
-                            if (filters.view == ViewType.list)
-                              return ListWidget();
-                            else if (filters.view == ViewType.camera) {
-                              double width = MediaQuery.of(context).size.width *
-                                  _imageWidthTween.value;
-                              double height =
-                                  MediaQuery.of(context).size.height *
-                                      _imageWidthTween.value;
-
-                              // TODO: Stack is needed otherwise map is blinking on the start of the animation
-                              return Stack(children: [
-                                // TODO: Improve animation:
-                                //        - make it precise to the right point on the map
-                                //        - make the marker on the map
-                                //        - make a path smoth (liner despite the upper panel and full screen)
-                                Center(
-                                    child: SingleChildScrollView(
-                                        child: Container(
-                                            //color: Colors.blue,
-                                            width: width,
-                                            height: height,
-                                            child: child))),
-                                if (!_animationController.isAnimating ||
-                                    _animationController.value < 0.05)
-                                  SingleChildScrollView(
-                                      child: AspectRatio(
-                                          aspectRatio:
-                                              cameraCtrl.value.aspectRatio,
-                                          child: CameraPreview(cameraCtrl)))
-                              ]);
-                            } else if (filters.view == ViewType.details)
-                              return DetailsPage();
-                            else
-                              return Container();
-                          })),
+                  //sheetAbove: SnappingSheetContent(
+                  //    child: ),
                   onSnapEnd: () {
                     if (_snapPosition < 10.0)
                       context.bloc<FilterCubit>().panelHiden();
@@ -433,7 +392,7 @@ class _MainPageState extends State<MainPage>
                         snappingDuration: Duration(milliseconds: 750)),
                     if (filters.view == ViewType.camera)
                       SnapPosition(
-                          positionPixel: 150.0,
+                          positionPixel: 112.0,
                           snappingCurve: Curves.elasticOut,
                           snappingDuration: Duration(milliseconds: 750)),
                     if (filters.view != ViewType.camera)
@@ -442,7 +401,50 @@ class _MainPageState extends State<MainPage>
                           snappingCurve: Curves.elasticOut,
                           snappingDuration: Duration(milliseconds: 750)),
                   ],
-                  child: MapWidget(),
+                  child: Stack(children: [
+                    MapWidget(),
+                    AnimatedBuilder(
+                        animation: _animationController,
+                        child: _pictureFile != null
+                            ? Image.file(_pictureFile)
+                            : Container(),
+                        builder: (context, child) {
+                          // Usinf function to make a selection
+                          if (filters.view == ViewType.list)
+                            return ListWidget();
+                          else if (filters.view == ViewType.camera) {
+                            double width = MediaQuery.of(context).size.width *
+                                _imageWidthTween.value;
+                            double height = MediaQuery.of(context).size.height *
+                                _imageWidthTween.value;
+
+                            // TODO: Stack is needed otherwise map is blinking on the start of the animation
+                            return Stack(children: [
+                              // TODO: Improve animation:
+                              //        - make it precise to the right point on the map
+                              //        - make the marker on the map
+                              //        - make a path smoth (liner despite the upper panel and full screen)
+                              Center(
+                                  child: SingleChildScrollView(
+                                      child: Container(
+                                          //color: Colors.blue,
+                                          width: width,
+                                          height: height,
+                                          child: child))),
+                              if (!_animationController.isAnimating ||
+                                  _animationController.value < 0.05)
+                                SingleChildScrollView(
+                                    child: AspectRatio(
+                                        aspectRatio:
+                                            cameraCtrl.value.aspectRatio,
+                                        child: CameraPreview(cameraCtrl)))
+                            ]);
+                          } else if (filters.view == ViewType.details)
+                            return DetailsPage();
+                          else
+                            return Container();
+                        })
+                  ]),
                   grabbingHeight: filters.view != ViewType.details
                       ? MediaQuery.of(context).padding.bottom + 40
                       : 0.0,
@@ -657,6 +659,19 @@ Widget shaderScroll(Widget child) {
       },
       blendMode: BlendMode.dstOut,
       child: child);
+}
+
+InputDecoration inputDecoration(String label) {
+  // TODO: Get rid of '\n' need a better way to locate the labelText
+  //       it's either too high or too low
+
+  return InputDecoration(
+      labelText: label + '\n',
+      labelStyle: inputLabelStyle,
+      border: OutlineInputBorder(borderSide: BorderSide.none),
+      isCollapsed: true,
+//        isDense: true,
+      floatingLabelBehavior: FloatingLabelBehavior.always);
 }
 
 const Color chipSelectedBackground = Color(0xffd3e9ef);

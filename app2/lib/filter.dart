@@ -206,23 +206,15 @@ class _SearchPanelState extends State<SearchPanel> {
   InputDecoration groupInputDecoration(FilterGroup group) {
     String label = '';
 
-    // TODO: Get rid of '\n' need a better way to locate the labelText
-    //       it's either too high or too low
     if (group == FilterGroup.book)
-      label = "Title / Author\n";
+      label = "Title / Author";
     else if (group == FilterGroup.genre)
-      label = "Genre\n";
+      label = "Genre";
     else if (group == FilterGroup.place)
-      label = "Place / Contact\n";
-    else if (group == FilterGroup.language) label = "Language\n";
+      label = "Place / Contact";
+    else if (group == FilterGroup.language) label = "Language";
 
-    return InputDecoration(
-        labelText: label,
-        labelStyle: inputLabelStyle,
-        border: OutlineInputBorder(borderSide: BorderSide.none),
-        isCollapsed: true,
-//        isDense: true,
-        floatingLabelBehavior: FloatingLabelBehavior.always);
+    return inputDecoration(label);
   }
 
   @override

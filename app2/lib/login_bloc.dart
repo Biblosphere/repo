@@ -124,7 +124,16 @@ class LoginCubit extends Cubit<LoginState> {
         print('User is signed in!');
 
         // Update user name in the Firebase profile
-        user.updateProfile(displayName: state.name);
+        if (state.name != null && state.name.isNotEmpty) {
+          print('!!!DEBUG USER DISPLAY NAME UPDATED: ${state.name}');
+          await user.updateProfile(displayName: state.name);
+          await user.reload();
+        }
+
+        // To be sure that displayName is loaded
+        await user.reload();
+
+        print('!!!DEBUG CURRENT USER: ${user.displayName}');
 
         try {
           // Register user in Purchases
@@ -174,7 +183,7 @@ class LoginCubit extends Cubit<LoginState> {
     });
 
     // UserCredential userCredential =
-    // await FirebaseAuth.instance.signOut();
+    await FirebaseAuth.instance.signOut();
     // await FirebaseAuth.instance.signInAnonymously();
   }
 
