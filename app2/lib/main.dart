@@ -441,6 +441,14 @@ class _MainPageState extends State<MainPage>
                             ]);
                           } else if (filters.view == ViewType.details)
                             return DetailsPage();
+/*
+                            return Positioned(
+                                child: DetailsPage(),
+                                left: 0.0,
+                                right: 0.0,
+                                top: 0.0,
+                                bottom: 0.0);
+*/
                           else
                             return Container();
                         })
@@ -674,6 +682,16 @@ InputDecoration inputDecoration(String label) {
       floatingLabelBehavior: FloatingLabelBehavior.always);
 }
 
+const Color background = Colors.white;
+const TextStyle authorStyle =
+    TextStyle(color: Color(0xff8f8993), fontSize: 12.0);
+
+const TextStyle titleStyle = TextStyle(
+    color: Color(0xff483b50), fontSize: 18.0, fontWeight: FontWeight.bold);
+
+const TextStyle genreStyle = TextStyle(
+    color: Color(0xff598a99), fontSize: 12.0, fontWeight: FontWeight.bold);
+
 const Color chipSelectedBackground = Color(0xffd3e9ef);
 const Color chipSelectedText = Color(0xff598a99);
 const TextStyle chipSelectedTextStyle = TextStyle(color: chipSelectedText);
@@ -685,3 +703,24 @@ const TextStyle chipUnselectedTextStyle = TextStyle(color: chipUnselectedText);
 const Color buttonBackground = Color(0xff598a99);
 const Color cursorColor = Color(0xff598a99);
 const TextStyle inputLabelStyle = TextStyle(color: Color(0xff598a99));
+
+const Color buttonSelectedBackground = Color(0xffc66747);
+const Color buttonSelectedText = Colors.white;
+
+const Color buttonUnselectedBackground = Color(0xffd3e9ef);
+const Color buttonUnselectedText = Color(0xff598a99);
+
+const TextStyle authorDetailsStyle =
+    TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
+
+const TextStyle titleDetailsStyle = TextStyle(
+    color: Color(0xff483b50), fontSize: 18.0, fontWeight: FontWeight.bold);
+
+const TextStyle genreDetailsStyle =
+    TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
+
+const TextStyle languageDetailsStyle =
+    TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
+
+const TextStyle suggestionsDetailsStyle = TextStyle(
+    color: Color(0xff8f8993), fontSize: 18.0, fontStyle: FontStyle.italic);

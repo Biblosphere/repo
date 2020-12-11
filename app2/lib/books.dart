@@ -211,7 +211,7 @@ const Map<String, String> languages = {
   'ROH': 'Rumantsch Grischun',
   'RUN': 'Ikirundi',
   'RON': 'Română',
-  'RUS': 'русский',
+  'RUS': 'Русский',
   'SAN': 'संस्कृतम्',
   'SRD': 'sardu',
   'SND': 'सिन्धी, سنڌي، سندھی‎',
@@ -289,6 +289,10 @@ class Book extends Point {
   final String ownerId;
   // Book outline on the bookshelf image
   final List<ui.Offset> outline;
+  final List<ui.Offset> bookspine;
+  final List<ui.Offset> coverPlace;
+  final int photoHeight;
+  final int photoWidth;
   // Book location
   final String bookplace;
 
@@ -306,6 +310,10 @@ class Book extends Point {
       this.photoId,
       this.ownerId,
       this.outline,
+      this.bookspine,
+      this.coverPlace,
+      this.photoHeight,
+      this.photoWidth,
       location,
       geohash,
       this.bookplace})
@@ -328,6 +336,16 @@ class Book extends Point {
             ? []
             : List<ui.Offset>.from((json['outline'] as List)
                 .map((e) => ui.Offset(e['x'].toDouble(), e['y'].toDouble()))),
+        bookspine = json['spine'] == null
+            ? []
+            : List<ui.Offset>.from((json['spine'] as List)
+                .map((e) => ui.Offset(e['x'].toDouble(), e['y'].toDouble()))),
+        coverPlace = json['place_for_cover'] == null
+            ? []
+            : List<ui.Offset>.from((json['place_for_cover'] as List)
+                .map((e) => ui.Offset(e['x'].toDouble(), e['y'].toDouble()))),
+        photoHeight = json['photo_height'],
+        photoWidth = json['photo_width'],
         super(
             location: LatLng(
                 (json['location']['geopoint'] as GeoPoint).latitude,
@@ -486,10 +504,10 @@ class Place extends Point {
       ];
 }
 
-Widget coverImage(String url) {
+Widget coverImage(String url, {double width}) {
   if (url != null && url.isNotEmpty)
     try {
-      return Image.network(url);
+      return Image.network(url, fit: BoxFit.fitWidth, width: width);
     } catch (e) {
       print('Image loading exception: ${e}');
       // TODO: Report exception to analytics
@@ -516,8 +534,10 @@ class BookCard extends StatelessWidget {
             context.bloc<FilterCubit>().selectBook(book: book);
           },
           child: Card(
+              color: background,
               child: Container(
-                  margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
+                  margin: EdgeInsets.only(top: 4.0, bottom: 4.0),
+                  padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
                   child: Row(children: [
                     ConstrainedBox(
                         constraints: BoxConstraints(
@@ -533,9 +553,11 @@ class BookCard extends StatelessWidget {
                         child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                          Text(book.authors.join(', ')),
-                          Text(book.title ?? ''),
-                          Text(book.genre ?? ''),
+                          Text(book.authors.join(', '), style: authorStyle),
+                          Text(book.title ?? '', style: titleStyle),
+                          Container(
+                              margin: EdgeInsets.only(bottom: 8.0),
+                              child: Text(book.genre ?? '', style: genreStyle)),
                           Row(
                               mainAxisAlignment: MainAxisAlignment.start,
                               children: [
@@ -590,6 +612,7 @@ class _BookDetailsState extends State<BookDetails> {
     }
 
     // Get image data and decode it
+    // TODO: Use Network Cached Image
     _imageProvider = NetworkImage(book.photo);
 
     Completer<ImageInfo> completer = Completer();
@@ -602,8 +625,8 @@ class _BookDetailsState extends State<BookDetails> {
     ImageInfo imageInfo = await completer.future;
     ui.Image image = imageInfo.image;
 
-    if (book.outline == null) {
-      print('!!!DEBUG outline missing');
+    if (book.bookspine == null || book.bookspine.isEmpty) {
+      print('!!!DEBUG bookspine contour missing');
       return;
     }
 
@@ -613,15 +636,30 @@ class _BookDetailsState extends State<BookDetails> {
 
     canvas.drawImage(image, Offset.zero, Paint());
 
+/*
+    // TODO: Highlihth bookspine LATER once recognition is good
     Paint paint = Paint()
-      ..color = Colors.red
+      ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = image.width / 200;
 
     Path path = Path();
-
-    path.addPolygon(book.outline, true);
+    path.addPolygon(book.bookspine, true);
     canvas.drawPath(path, paint);
+*/
+    Offset centerBook = book.bookspine.reduce((a, b) => a + b) /
+        book.bookspine.length.toDouble();
+
+    Offset centerCover = book.coverPlace.reduce((a, b) => a + b) /
+        book.coverPlace.length.toDouble();
+
+    Paint paint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = image.width / 50
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(centerCover, centerBook, paint);
 
     final picture = pictureRecorder.endRecording();
 
@@ -658,89 +696,181 @@ class _BookDetailsState extends State<BookDetails> {
         builder: (context, filters) {
       print('!!!DEBUG rebuild BookCard ${filters.center}');
       String distance = distanceString(filters.center, book.location);
+      double width = MediaQuery.of(context).size.width;
+
+      // Calculate position of cover sopace
+      double scale = (width - 24) / book.photoWidth;
+      Offset offset = book.coverPlace[0] * scale;
+      Offset size = (book.coverPlace[2] - book.coverPlace[0]) * scale;
+
       return Card(
+          color: Colors.white.withOpacity(0.9),
           child: Stack(children: [
-        Container(
-            margin: EdgeInsets.only(top: 5.0, bottom: 5.0),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: 100,
-                      minHeight: 100,
-                      maxWidth: 120,
-                      maxHeight: 100,
-                    ),
-//                  child: CachedNetworkImage(imageUrl: book.cover)),
-//                  child: Image(image: CachedNetworkImageProvider(book.cover))),
-                    child: coverImage(book.cover)),
-                Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text(book.authors.join(', ')),
-                      Text(book.title ?? ''),
-                      Text(book.genre ?? ''),
-                      Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 1, child: Text(distance)),
-                            Icon(Icons.location_pin),
-                            Expanded(flex: 4, child: Text(book.bookplace))
-                          ])
-                    ]))
-              ]),
-              // Figma: buttons
-              Container(
-                  margin: EdgeInsets.only(top: 10.0),
-                  child: Row(children: [
-                    MaterialButton(
-                      onPressed: () {},
-                      color: Colors.orange,
-                      textColor: Colors.white,
-                      child: Icon(
-                        Icons.search,
-                        size: 16,
-                      ),
-                      padding: EdgeInsets.all(3),
-                      shape: CircleBorder(),
-                    ),
-                    MaterialButton(
-                      onPressed: () {},
-                      color: Colors.orange,
-                      textColor: Colors.white,
-                      child: Icon(
-                        Icons.favorite,
-                        size: 16,
-                      ),
-                      padding: EdgeInsets.all(3),
-                      shape: CircleBorder(),
-                    ),
-                    MaterialButton(
-                      onPressed: () {},
-                      color: Colors.orange,
-                      textColor: Colors.white,
-                      child: Icon(
-                        Icons.message,
-                        size: 16,
-                      ),
-                      padding: EdgeInsets.all(3),
-                      shape: CircleBorder(),
-                    ),
-                    MaterialButton(
-                      onPressed: () {},
-                      color: Colors.orange,
-                      textColor: Colors.white,
-                      child: Icon(
-                        Icons.share,
-                        size: 16,
-                      ),
-                      padding: EdgeInsets.all(3),
-                      shape: CircleBorder(),
-                    ),
-                  ])),
-              // Figma: Description
+            Container(
+                margin: EdgeInsets.only(
+                    right: 8.0, left: 8.0, top: 8.0, bottom: 8.0),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Image of the shelf and book cover
+                      Stack(children: [
+                        // Shelf image as a background
+                        Container(
+                          // TODO: Find where these margins come from
+                          width: width - 24.0,
+                          child: _imageProvider != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(4.0),
+                                  child: Image(image: _imageProvider))
+                              : Container(),
+                        ),
+                        Positioned(
+                            top: offset.dy,
+                            left: offset.dx,
+                            child: Container(
+                                height: size.dy,
+                                width: size.dx,
+                                child: Center(
+                                    child: Container(
+                                        decoration: placeDecoration(),
+                                        padding: EdgeInsets.all(16.0),
+                                        // TODO: Use CachedNetworkImage
+                                        //  child: CachedNetworkImage(imageUrl: book.cover)),
+                                        //  child: Image(image: CachedNetworkImageProvider(book.cover))),
+                                        child: coverImage(book.cover,
+                                            width: size.dx * 0.5)))))
+                      ]),
+                      // Figma: buttons
+                      Container(
+                          margin: EdgeInsets.only(top: 10.0, bottom: 16.0),
+                          child: Row(
+                              mainAxisSize: MainAxisSize.max,
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                MaterialButton(
+                                  onPressed: () {},
+                                  color: buttonUnselectedBackground,
+                                  textColor: buttonUnselectedText,
+                                  child: Icon(
+                                    Icons.search,
+                                    size: 20,
+                                  ),
+                                  padding: EdgeInsets.all(2),
+                                  shape: CircleBorder(),
+                                ),
+                                MaterialButton(
+                                  onPressed: () {},
+                                  color: buttonSelectedBackground,
+                                  textColor: buttonSelectedText,
+                                  child: Icon(
+                                    Icons.favorite,
+                                    size: 20,
+                                  ),
+                                  padding: EdgeInsets.all(3),
+                                  shape: CircleBorder(),
+                                ),
+                                MaterialButton(
+                                  onPressed: () {},
+                                  color: buttonUnselectedBackground,
+                                  textColor: buttonUnselectedText,
+                                  child: Icon(
+                                    Icons.message,
+                                    size: 20,
+                                  ),
+                                  padding: EdgeInsets.all(3),
+                                  shape: CircleBorder(),
+                                ),
+                                MaterialButton(
+                                  onPressed: () {},
+                                  color: buttonUnselectedBackground,
+                                  textColor: buttonUnselectedText,
+                                  child: Icon(
+                                    Icons.share,
+                                    size: 20,
+                                  ),
+                                  padding: EdgeInsets.all(3),
+                                  shape: CircleBorder(),
+                                ),
+                              ])),
+                      // TODO: Add editing of the books
+                      Container(
+                          margin: EdgeInsets.only(
+                              bottom: 8.0, left: 24.0, right: 24.0),
+                          child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                    child: Text(book.authors.join(', '),
+                                        style: authorDetailsStyle)),
+                                Container(
+                                  padding: EdgeInsets.only(left: 4.0),
+                                  //child: Icon(Icons.edit, size: 18.0)
+                                )
+                              ])),
+                      Container(
+                          margin: EdgeInsets.only(
+                              bottom: 8.0, left: 24.0, right: 24.0),
+                          child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                    child: Text(book.title ?? '',
+                                        style: titleDetailsStyle)),
+                                Container(
+                                  padding: EdgeInsets.only(left: 4.0),
+                                  //child: Icon(Icons.edit, size: 18.0)
+                                )
+                              ])),
+                      if (book.genre != null && genres.containsKey(book.genre))
+                        Container(
+                            margin: EdgeInsets.only(
+                                bottom: 8.0, left: 24.0, right: 24.0),
+                            child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                      child: Text(
+                                          'Genre: ' + genres[book.genre],
+                                          style: genreDetailsStyle)),
+                                  Container(
+                                    padding: EdgeInsets.only(left: 4.0),
+                                    //child: Icon(Icons.edit, size: 18.0)
+                                  )
+                                ])),
+                      if (book.language != null &&
+                          languages.containsKey(book.language))
+                        Container(
+                            margin: EdgeInsets.only(
+                                bottom: 8.0, left: 24.0, right: 24.0),
+                            child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                      child: Text(
+                                          'Language: ' +
+                                              languages[book.language],
+                                          style: languageDetailsStyle)),
+                                  Container(
+                                    padding: EdgeInsets.only(left: 4.0),
+                                    //child: Icon(Icons.edit, size: 18.0)
+                                  )
+                                ])),
+                      Container(
+                          margin: EdgeInsets.only(
+                              bottom: 8.0, left: 24.0, right: 24.0),
+                          child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Expanded(flex: 1, child: Text(distance)),
+                                Icon(Icons.location_pin),
+                                Expanded(flex: 4, child: Text(book.bookplace))
+                              ]))
+
+                      // Figma: Description
 /*
                       Container(
                           margin: EdgeInsets.only(top: 15.0),
@@ -754,33 +884,29 @@ class _BookDetailsState extends State<BookDetails> {
                         return Chip(label: Text(tag));
                       }).toList()),
 */
-              if (_imageProvider != null)
-                Container(
-                    margin: EdgeInsets.all(10.0),
-                    child: Image(image: _imageProvider)),
-              // TODO: Add last scan date
-              //Text('Last scan 21.01.2020')
-            ])),
-        Positioned(
-          right: 0.0,
-          child: GestureDetector(
-            onTap: () {
-              context.bloc<FilterCubit>().detailsClosed();
-            },
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Container(
-                margin: EdgeInsets.only(right: 3.0, top: 3.0),
-                child: CircleAvatar(
-                  radius: 14.0,
-                  backgroundColor: Colors.red,
-                  child: Icon(Icons.close, color: Colors.white),
+                      // TODO: Add last scan date
+                      //Text('Last scan 21.01.2020')
+                    ])),
+            Positioned(
+              right: 0.0,
+              child: GestureDetector(
+                onTap: () {
+                  context.bloc<FilterCubit>().detailsClosed();
+                },
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: Container(
+                    margin: EdgeInsets.only(right: 3.0, top: 3.0),
+                    child: CircleAvatar(
+                      radius: 14.0,
+                      backgroundColor: Colors.red,
+                      child: Icon(Icons.close, color: Colors.white),
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-      ]));
+          ]));
     });
   }
 }
@@ -796,19 +922,19 @@ class _ListWidgetState extends State<ListWidget> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
-      return ListView(
-          children: filters.books.map((b) {
-        return Slidable(
-          actionPane: SlidableDrawerActionPane(),
-          actionExtentRatio: 0.25,
-          child: BookCard(book: b),
-          actions: <Widget>[
-            IconSlideAction(
-              caption: 'Favorite',
-              color: Colors.red,
-              icon: Icons.favorite,
-              //onTap: () => _showSnackBar('Archive'),
-            ),
+      return ListView(children: [
+        ...filters.books.map((b) {
+          return Slidable(
+            actionPane: SlidableDrawerActionPane(),
+            actionExtentRatio: 0.25,
+            child: BookCard(book: b),
+            actions: <Widget>[
+              IconSlideAction(
+                caption: 'Favorite',
+                color: Colors.red,
+                icon: Icons.favorite,
+                //onTap: () => _showSnackBar('Archive'),
+              ),
 /*
     IconSlideAction(
       caption: 'Share',
@@ -817,23 +943,25 @@ class _ListWidgetState extends State<ListWidget> {
       //onTap: () => _showSnackBar('Share'),
     ),
 */
-          ],
-          secondaryActions: <Widget>[
-            IconSlideAction(
-              caption: 'Share',
-              color: Colors.indigo,
-              icon: Icons.share,
-              //onTap: () => _showSnackBar('More'),
-            ),
-            IconSlideAction(
-              caption: 'Contact',
-              color: Colors.blue,
-              icon: Icons.message,
-              //onTap: () => _showSnackBar('Delete'),
-            ),
-          ],
-        );
-      }).toList());
+            ],
+            secondaryActions: <Widget>[
+              IconSlideAction(
+                caption: 'Share',
+                color: Colors.indigo,
+                icon: Icons.share,
+                //onTap: () => _showSnackBar('More'),
+              ),
+              IconSlideAction(
+                caption: 'Contact',
+                color: Colors.blue,
+                icon: Icons.message,
+                //onTap: () => _showSnackBar('Delete'),
+              ),
+            ],
+          );
+        }).toList(),
+        Container(height: 265)
+      ]);
     });
   }
 }
@@ -851,7 +979,16 @@ class _DetailsPageState extends State<DetailsPage> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
-      return ListView(children: [BookDetails(book: state.selected)]);
+      double height = MediaQuery.of(context).size.height -
+          MediaQuery.of(context).padding.bottom -
+          MediaQuery.of(context).padding.top;
+      return SingleChildScrollView(
+          child: SafeArea(
+        child: Container(
+            constraints:
+                BoxConstraints(minHeight: height, maxHeight: double.infinity),
+            child: BookDetails(book: state.selected)),
+      ));
     });
   }
 }

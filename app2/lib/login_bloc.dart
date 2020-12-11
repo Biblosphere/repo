@@ -183,7 +183,7 @@ class LoginCubit extends Cubit<LoginState> {
     });
 
     // UserCredential userCredential =
-    await FirebaseAuth.instance.signOut();
+    // await FirebaseAuth.instance.signOut();
     // await FirebaseAuth.instance.signInAnonymously();
   }
 
