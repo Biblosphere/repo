@@ -156,14 +156,11 @@ class LoginCubit extends Cubit<LoginState> {
           Purchases.addPurchaserInfoUpdateListener((info) async {
             print('!!!DEBUG Purchase listener: ${info.entitlements}');
 
-            if (!purchaser.entitlements.all["basic"].isActive &&
-                info.entitlements.all["basic"].isActive) {
-              // New subscribtion completed
-              emit(state.copyWith(status: LoginStatus.subscribed));
-            } else if (purchaser.entitlements.all["basic"].isActive) {
-              // Was lready subscribed
+            if (info.entitlements.all["basic"].isActive) {
+              print('!!!DEBUG user SUBSCRIBED');
               emit(state.copyWith(status: LoginStatus.subscribed));
             } else {
+              print('!!!DEBUG user NOT subscribed');
               emit(state.copyWith(status: LoginStatus.unauthorized));
             }
           });

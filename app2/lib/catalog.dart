@@ -31,7 +31,7 @@ Future<List<Book>> searchByText(String text) async {
     //print('!!!DEBUG: Response ${res.body}');
 
     final resJson = json.decode(res.body);
-    //print('!!!DEBUG: Response JSON \n${resJson}');
+    print('!!!DEBUG: Response JSON \n${resJson}');
 
     // TODO: Add language and genre once available in MySQL
     List<Book> books = List<Book>.from(resJson.map((dynamic obj) => Book(

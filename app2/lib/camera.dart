@@ -120,6 +120,7 @@ class _CameraPanelState extends State<CameraPanel> {
 
   @override
   void dispose() {
+    print('!!!DEBUG Camera panel dispose');
     _controller.dispose();
     super.dispose();
   }

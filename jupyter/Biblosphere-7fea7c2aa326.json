@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "biblosphere-210106",
+  "private_key_id": "7fea7c2aa3269cc7222c8a15d74027764bb8c222",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCl8iMAIJtwLaf6\nCmXksVGScQ10MveGtQ9AdbQKUWwL1ZbmfRrb91jC11yKEx85ntmceNmJ3m3DyLNh\np/28Wzp5h8No70PaVSbbQzGvCYYkKYarP1UvWpbivaW749LXc040aM1guYya2liR\nEvH8qcjhBvTiwrlbNbOAl0FX40pojBKpV4zkYssqFUQp8r/Lid7BHQkSbCDc75AA\nYHiX2HdLi8XV5aHL9Uv6Hu8GvPOLxxbQleJoYixLChgVioK2B1jBZAwrgOsVFiGF\nsu3rLK1Y/jQmyEv1nZOSpjcK54fshZcNTc8f0vnox7MsrZWZkp+hHS6iFL989bW2\nfBX3hjMTAgMBAAECggEABI/C4YqD61H995QYl/A930onRgXuou/QMwPpRo1VbH/b\nDYvr1JcYhAaafxsmdRWGQtRZmn4YQ1T9hVYyVd6mHVgbiYNmOJa1ojpXH8ohu1W+\n428yvsH9Os9ewmrxTUXYpP0qhBmloU4WOCqupzTdlj30NlWG9dhkjkjaHXncfkIs\nGNzxqIvxpccYpKex4o/TdWg6ex6Ky+RkObqvfujVDJFjqz0y/zSmQjFv+buwbnry\nC3e9yC879clu71aguhZUkPN+SBqaD4F9rcTX4RFkt/YdJMziMgl6wdv6FYXSunxh\nSYUhPcgNnbxid1GD6yMzSaNO5zRnpRqLCMyGK7LuOQKBgQDbGyk6l32q2TZMwLUT\nxU4SyPJ4ipLjdzFPiWEQjJVnoOgRNyh0bMJRUQpltfumJcI73B0Ee4rWo9ygUA+k\n5AXhpgPRXAPw8ZBayTy7iNCmWR8YlxiyajZTDFpFJ70xMf0d4k5JdoXQeLh3EF88\nsK4ypzqA8rlHqIY2Y1BNMHjrCQKBgQDB42/4a8m+X/hqDZtiPGqLxsI0ikLVvfaC\nGYGKofzL9+GzQHjKsb2bQph0r6gyln5r6cYQmIAP8riOU8m5jaVKBSDRf23kBr09\n2nFF76SaBsmQYf7k8R/x9s9Bv+/TzqAYRHJOClEDYkZ8B0b+y1Fb4CarVqQIj7Od\n1B82YQHIOwKBgQCjo2ttWQr/+G33cM1MUMV4fh+pK0V9IN3xGxclNvm2hZQMl3dd\nTITsGmx7fijN89FWx5PcbzBIEeWKzYCBk9NYrZaYW/KNlrxLMZRsM0gxlMoGoYJO\nbcjYyZb5oy5HeaAjG4uAjkZuZlrOgam/N+1B42dsOttpy1FBeXbVz2ffkQKBgQC/\nVdTPkH88kbSx48+tN/XlDjXkZ3ThPV+gr874oja4ilx+6mbJkHGOYD/XFumjUoRb\ntg0xn2zxUBP00JbHuBKfY0QpudkWJ9hky8bwvzbukTgkdbB2+cUOoQOS3PitSsEO\nca1jeibMchUgnIXhN3+IbUF74DpsAHO+kvBiV4TMtQKBgQC/nz3D8AaBPfBaIrQw\ngmFi6Aew4g/CJlmm/CAqovO65gITTwKlI0ebUKOjXfNqVWcf8jI/uRp1iDXxo3/i\nrepE/wfcP9hcpNDKcORlXys3Fqgya0JUNBZhLXzpFnwGBTcaPUm5xEGQFSdrvUqX\nZdlxXNiEuTg35p84N1VDCb23yw==\n-----END PRIVATE KEY-----\n",
+  "client_email": "biblosphere-210106@appspot.gserviceaccount.com",
+  "client_id": "106972658678192953965",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/biblosphere-210106%40appspot.gserviceaccount.com"
+}

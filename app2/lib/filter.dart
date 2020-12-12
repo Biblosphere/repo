@@ -233,7 +233,10 @@ class _SearchPanelState extends State<SearchPanel> {
 
   @override
   void dispose() {
+    // Dispose editing controller
+    print('!!!DEBUG Search panel dispose');
     _controller.dispose();
+
     super.dispose();
   }
 

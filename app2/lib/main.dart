@@ -80,6 +80,8 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
+    print('!!!DEBUG App dispose');
+
     api.client.close();
     super.dispose();
   }
@@ -123,14 +125,13 @@ class _MyAppState extends State<MyApp> {
                 BlocProvider(create: (BuildContext context) => LoginCubit())
               ],
               child: BlocBuilder<LoginCubit, LoginState>(
-                  buildWhen: (prev, curr) => prev.status != curr.status,
                   builder: (context, login) {
-                    if (login.status == LoginStatus.subscribed) {
-                      return MainPage();
-                    } else {
-                      return LoginPage();
-                    }
-                  }));
+                if (login.status == LoginStatus.subscribed) {
+                  return MainPage();
+                } else {
+                  return LoginPage();
+                }
+              }));
         }));
   }
 }
@@ -183,7 +184,11 @@ class TripleButtonState extends State<TripleButton>
   void didUpdateWidget(covariant TripleButton oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    print('!!!DEBUG DidUpdateWidget Triple button');
+
     if (oldWidget.selected != widget.selected) {
+      print('!!!DEBUG Animate Triple button');
+
       // oldSelected = oldWidget.selected;
       animate(widget.selected);
     }
@@ -203,6 +208,10 @@ class TripleButtonState extends State<TripleButton>
 
   @override
   void initState() {
+    super.initState();
+
+    print('!!!DEBUG initState Triple button');
+
     _animationController =
         AnimationController(vsync: this, duration: Duration(milliseconds: 500));
 
@@ -212,22 +221,31 @@ class TripleButtonState extends State<TripleButton>
     _deactivateColorTween =
         ColorTween(begin: buttonBackground, end: Colors.transparent)
             .animate(_animationController);
-    _angleTween = Tween<double>(begin: 0.0, end: pi * 2.0 / 3.0)
-        .animate(_animationController);
+
+    if (selected == ViewType.list.index) {
+      _angleTween = Tween<double>(begin: pi * 2.0 / 3.0, end: pi * 4.0 / 3.0)
+          .animate(_animationController);
+    } else if (selected == ViewType.camera.index) {
+      _angleTween = Tween<double>(begin: -pi * 2.0 / 3.0, end: 0.0)
+          .animate(_animationController);
+    } else {
+      _angleTween = Tween<double>(begin: 0.0, end: pi * 2.0 / 3.0)
+          .animate(_animationController);
+    }
 
     _radiusTweenOld =
         Tween<double>(begin: rMax, end: rMin).animate(_animationController);
 
     _radiusTweenNew =
         Tween<double>(begin: rMin, end: rMax).animate(_animationController);
-
-    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     // Radius of rotation
     final double rR = rMin / cos(pi / 6.0);
+
+    print('!!!DEBUG Build Triple button: ${_angleTween.value}');
 
     return AnimatedBuilder(
         animation: _animationController,
@@ -350,6 +368,8 @@ class _MainPageState extends State<MainPage>
 
   @override
   void dispose() {
+    print('!!!DEBUG MainPage dispose');
+
     cameraCtrl?.dispose();
     super.dispose();
   }
@@ -358,89 +378,59 @@ class _MainPageState extends State<MainPage>
   Widget build(BuildContext context) {
     return Scaffold(
         resizeToAvoidBottomInset: false,
-        body: BlocBuilder<FilterCubit, FilterState>(
-            buildWhen: (previous, current) => previous.view != current.view,
-            builder: (context, filters) {
-              return Stack(children: [
-                SnappingSheet(
-                  //sheetAbove: SnappingSheetContent(
-                  //    child: ),
-                  onSnapEnd: () {
-                    if (_snapPosition < 10.0)
-                      context.bloc<FilterCubit>().panelHiden();
-                    else if (_snapPosition < 100.0)
-                      context.bloc<FilterCubit>().panelMinimized();
-                    else if (_snapPosition < 240.0)
-                      context.bloc<FilterCubit>().panelOpened();
+        body:
+            BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
+          return Stack(children: [
+            SnappingSheet(
+              //sheetAbove: SnappingSheetContent(
+              //    child: ),
+              onSnapEnd: () {
+                if (_snapPosition < 10.0)
+                  context.bloc<FilterCubit>().panelHiden();
+                else if (_snapPosition < 100.0)
+                  context.bloc<FilterCubit>().panelMinimized();
+                else if (_snapPosition < 240.0)
+                  context.bloc<FilterCubit>().panelOpened();
 
-                    setState(() {});
-                  },
-                  onMove: (moveAmount) {
-                    setState(() {
-                      _snapPosition = moveAmount;
-                    });
-                  },
-                  snappingSheetController: _controller,
-                  snapPositions: [
-                    SnapPosition(
-                        positionPixel: 0.0,
-                        snappingCurve: Curves.elasticOut,
-                        snappingDuration: Duration(milliseconds: 750)),
-                    SnapPosition(
-                        positionPixel: 56.0,
-                        snappingCurve: Curves.elasticOut,
-                        snappingDuration: Duration(milliseconds: 750)),
-                    if (filters.view == ViewType.camera)
-                      SnapPosition(
-                          positionPixel: 112.0,
-                          snappingCurve: Curves.elasticOut,
-                          snappingDuration: Duration(milliseconds: 750)),
-                    if (filters.view != ViewType.camera)
-                      SnapPosition(
-                          positionPixel: 224.0,
-                          snappingCurve: Curves.elasticOut,
-                          snappingDuration: Duration(milliseconds: 750)),
-                  ],
-                  child: Stack(children: [
-                    MapWidget(),
-                    AnimatedBuilder(
-                        animation: _animationController,
-                        child: _pictureFile != null
-                            ? Image.file(_pictureFile)
-                            : Container(),
-                        builder: (context, child) {
-                          // Usinf function to make a selection
-                          if (filters.view == ViewType.list)
-                            return ListWidget();
-                          else if (filters.view == ViewType.camera) {
-                            double width = MediaQuery.of(context).size.width *
-                                _imageWidthTween.value;
-                            double height = MediaQuery.of(context).size.height *
-                                _imageWidthTween.value;
-
-                            // TODO: Stack is needed otherwise map is blinking on the start of the animation
-                            return Stack(children: [
-                              // TODO: Improve animation:
-                              //        - make it precise to the right point on the map
-                              //        - make the marker on the map
-                              //        - make a path smoth (liner despite the upper panel and full screen)
-                              Center(
-                                  child: SingleChildScrollView(
-                                      child: Container(
-                                          //color: Colors.blue,
-                                          width: width,
-                                          height: height,
-                                          child: child))),
-                              if (!_animationController.isAnimating ||
-                                  _animationController.value < 0.05)
-                                SingleChildScrollView(
-                                    child: AspectRatio(
-                                        aspectRatio:
-                                            cameraCtrl.value.aspectRatio,
-                                        child: CameraPreview(cameraCtrl)))
-                            ]);
-                          } else if (filters.view == ViewType.details)
-                            return DetailsPage();
+                setState(() {});
+              },
+              onMove: (moveAmount) {
+                setState(() {
+                  _snapPosition = moveAmount;
+                });
+              },
+              snappingSheetController: _controller,
+              snapPositions: [
+                SnapPosition(
+                    positionPixel: 0.0,
+                    snappingCurve: Curves.elasticOut,
+                    snappingDuration: Duration(milliseconds: 750)),
+                SnapPosition(
+                    positionPixel: 56.0,
+                    snappingCurve: Curves.elasticOut,
+                    snappingDuration: Duration(milliseconds: 750)),
+                if (filters.view == ViewType.camera)
+                  SnapPosition(
+                      positionPixel: 112.0,
+                      snappingCurve: Curves.elasticOut,
+                      snappingDuration: Duration(milliseconds: 750)),
+                if (filters.view != ViewType.camera)
+                  SnapPosition(
+                      positionPixel: 224.0,
+                      snappingCurve: Curves.elasticOut,
+                      snappingDuration: Duration(milliseconds: 750)),
+              ],
+              child: Stack(children: [
+                MapWidget(),
+                AnimatedBuilder(
+                    animation: _animationController,
+                    child: _pictureFile != null
+                        ? Image.file(_pictureFile)
+                        : Container(),
+                    builder: (context, child) {
+                      // Usinf function to make a selection
+                      if (filters.selected != null)
+                        return DetailsPage();
 /*
                             return Positioned(
                                 child: DetailsPage(),
@@ -449,143 +439,160 @@ class _MainPageState extends State<MainPage>
                                 top: 0.0,
                                 bottom: 0.0);
 */
-                          else
-                            return Container();
-                        })
-                  ]),
-                  grabbingHeight: filters.view != ViewType.details
-                      ? MediaQuery.of(context).padding.bottom + 40
-                      : 0.0,
-                  grabbing: filters.view != ViewType.details
-                      ? GrabSection()
-                      : Container(
-                          width: 0.0,
-                          height: 0.0), //Container(color: Colors.grey),
-                  sheetBelow: SnappingSheetContent(
-                      child: filters.view != ViewType.details
-                          ? Container(
-                              decoration: boxDecoration(),
-                              child: filters.view == ViewType.camera
-                                  ? CameraPanel()
-                                  : SearchPanel())
-                          : Container(width: 0.0, height: 0.0)),
-                ),
-                Positioned(
-                    bottom: max(_snapPosition - 35.0, 10.0),
-                    right: 5.0,
-                    child: filters.view != ViewType.details
-                        ? TripleButton(
-                            selected: filters.view.index,
-                            onPressed: [
-                              //onPressed for MAP
-                              () {
-                                // TODO: remember a position and restore it
-                                _controller.snapToPosition(SnapPosition(
-                                  positionPixel: 60.0,
-                                ));
-                                setState(() {
-                                  context
-                                      .bloc<FilterCubit>()
-                                      .setView(ViewType.map);
-                                });
-                              },
-                              //onPressed for CAMERA
-                              () {
-                                // TODO: Make it 0.0 position if place is already confirmed
-                                _controller.snapToPosition(SnapPosition(
-                                  positionPixel: 150.0,
-                                ));
-                                setState(() {
-                                  context
-                                      .bloc<FilterCubit>()
-                                      .setView(ViewType.camera);
-                                });
-                              },
-                              //onPressed for LIST
-                              () {
-                                // TODO: remember a position and restore it
-                                _controller.snapToPosition(SnapPosition(
-                                  positionPixel: 60.0,
-                                ));
-                                context
-                                    .bloc<FilterCubit>()
-                                    .setView(ViewType.list);
-                              }
-                            ],
-                            onPressedSelected: [
-                              // onPressedSelected for MAP
-                              () {
-                                context.bloc<FilterCubit>().mapButtonPressed();
-                              },
-                              // onPressedSelected for CAMERA
-                              () async {
-                                print(
-                                    '!!!DEBUG Selected button pressed for CAMERA');
+                      else if (filters.view == ViewType.list)
+                        return ListWidget();
+                      else if (filters.view == ViewType.camera) {
+                        double width = MediaQuery.of(context).size.width *
+                            _imageWidthTween.value;
+                        double height = MediaQuery.of(context).size.height *
+                            _imageWidthTween.value;
 
-                                if (!cameraCtrl.value.isInitialized) {
-                                  //TODO: do exceptional processing for not initialized camera
-                                  //showInSnackBar('Error: select a camera first.');
-                                  print(
-                                      '!!!DEBUG Camera controller not initialized');
-                                  return;
-                                }
+                        // TODO: Stack is needed otherwise map is blinking on the start of the animation
+                        return Stack(children: [
+                          // TODO: Improve animation:
+                          //        - make it precise to the right point on the map
+                          //        - make the marker on the map
+                          //        - make a path smoth (liner despite the upper panel and full screen)
+                          Center(
+                              child: SingleChildScrollView(
+                                  child: Container(
+                                      //color: Colors.blue,
+                                      width: width,
+                                      height: height,
+                                      child: child))),
+                          if (!_animationController.isAnimating ||
+                              _animationController.value < 0.05)
+                            SingleChildScrollView(
+                                child: AspectRatio(
+                                    aspectRatio: cameraCtrl.value.aspectRatio,
+                                    child: CameraPreview(cameraCtrl)))
+                        ]);
+                      } else
+                        return Container();
+                    })
+              ]),
+              grabbingHeight: filters.selected == null
+                  ? MediaQuery.of(context).padding.bottom + 40
+                  : 0.0,
+              grabbing: filters.selected == null
+                  ? GrabSection()
+                  : Container(
+                      width: 0.0, height: 0.0), //Container(color: Colors.grey),
+              sheetBelow: SnappingSheetContent(
+                  child: filters.selected == null
+                      ? Container(
+                          decoration: boxDecoration(),
+                          child: filters.view == ViewType.camera
+                              ? CameraPanel()
+                              : SearchPanel())
+                      : Container(width: 0.0, height: 0.0)),
+            ),
+            Positioned(
+                bottom: max(_snapPosition - 35.0, 10.0),
+                right: 5.0,
+                child: filters.selected == null
+                    ? TripleButton(
+                        selected: filters.view.index,
+                        onPressed: [
+                          //onPressed for MAP
+                          () {
+                            // TODO: remember a position and restore it
+                            _controller.snapToPosition(SnapPosition(
+                              positionPixel: 60.0,
+                            ));
+                            context.bloc<FilterCubit>().setView(ViewType.map);
+                          },
+                          //onPressed for CAMERA
+                          () {
+                            // TODO: Make it 0.0 position if place is already confirmed
+                            _controller.snapToPosition(SnapPosition(
+                              positionPixel: 150.0,
+                            ));
+                            context
+                                .bloc<FilterCubit>()
+                                .setView(ViewType.camera);
+                          },
+                          //onPressed for LIST
+                          () {
+                            // TODO: remember a position and restore it
+                            _controller.snapToPosition(SnapPosition(
+                              positionPixel: 60.0,
+                            ));
+                            context.bloc<FilterCubit>().setView(ViewType.list);
+                          }
+                        ],
+                        onPressedSelected: [
+                          // onPressedSelected for MAP
+                          () {
+                            context.bloc<FilterCubit>().mapButtonPressed();
+                          },
+                          // onPressedSelected for CAMERA
+                          () async {
+                            print(
+                                '!!!DEBUG Selected button pressed for CAMERA');
 
-                                if (cameraCtrl.value.isTakingPicture) {
-                                  // A capture is already pending, do nothing.
-                                  print(
-                                      '!!!DEBUG Camera controller in pogress (taking picture)');
-                                  return null;
-                                }
+                            if (!cameraCtrl.value.isInitialized) {
+                              //TODO: do exceptional processing for not initialized camera
+                              //showInSnackBar('Error: select a camera first.');
+                              print(
+                                  '!!!DEBUG Camera controller not initialized');
+                              return;
+                            }
 
-                                _animationController.reset();
+                            if (cameraCtrl.value.isTakingPicture) {
+                              // A capture is already pending, do nothing.
+                              print(
+                                  '!!!DEBUG Camera controller in pogress (taking picture)');
+                              return null;
+                            }
 
-                                setState(() {
-                                  _pictureFile = null;
-                                });
+                            _animationController.reset();
 
-                                final Directory extDir =
-                                    await getApplicationDocumentsDirectory();
-                                final String filePath =
-                                    '${extDir.path}/Pictures/Biblosphere';
-                                await Directory(filePath)
-                                    .create(recursive: true);
-                                final String fileName = '${timestamp()}.jpg';
-                                final File file = File('$filePath/$fileName');
-                                print('!!!DEBUG file path ${file.path}');
+                            setState(() {
+                              _pictureFile = null;
+                            });
 
-                                try {
-                                  await cameraCtrl.takePicture(file.path);
-                                } on CameraException catch (e) {
-                                  //TODO: Do exception processing for the camera;
-                                  print(
-                                      '!!!DEBUG Camera controller exception: $e');
-                                  return null;
-                                }
+                            final Directory extDir =
+                                await getApplicationDocumentsDirectory();
+                            final String filePath =
+                                '${extDir.path}/Pictures/Biblosphere';
+                            await Directory(filePath).create(recursive: true);
+                            final String fileName = '${timestamp()}.jpg';
+                            final File file = File('$filePath/$fileName');
+                            print('!!!DEBUG file path ${file.path}');
 
-                                print(
-                                    '!!!DEBUG: Is controller animating: ${_animationController.isAnimating}');
+                            try {
+                              await cameraCtrl.takePicture(file.path);
+                            } on CameraException catch (e) {
+                              //TODO: Do exception processing for the camera;
+                              print('!!!DEBUG Camera controller exception: $e');
+                              return null;
+                            }
 
-                                setState(() {
-                                  _pictureFile = file;
-                                });
+                            print(
+                                '!!!DEBUG: Is controller animating: ${_animationController.isAnimating}');
 
-                                _animationController.forward();
+                            setState(() {
+                              _pictureFile = file;
+                            });
 
-                                context
-                                    .bloc<FilterCubit>()
-                                    .cameraButtonPressed(file, fileName);
-                              },
-                              () {}
-                            ],
-                            icons: [
-                              Icons.location_pin,
-                              Icons.camera_alt,
-                              Icons.list_alt
-                            ],
-                          )
-                        : Container(width: 0.0, height: 0.0))
-              ]);
-            }));
+                            _animationController.forward();
+
+                            context
+                                .bloc<FilterCubit>()
+                                .cameraButtonPressed(file, fileName);
+                          },
+                          () {}
+                        ],
+                        icons: [
+                          Icons.location_pin,
+                          Icons.camera_alt,
+                          Icons.list_alt
+                        ],
+                      )
+                    : Container(width: 0.0, height: 0.0))
+          ]);
+        }));
   }
 }
 
@@ -724,3 +731,7 @@ const TextStyle languageDetailsStyle =
 
 const TextStyle suggestionsDetailsStyle = TextStyle(
     color: Color(0xff8f8993), fontSize: 18.0, fontStyle: FontStyle.italic);
+
+const Color closeCrossColor = Color(0xff598a99);
+
+const Color placeholderColor = Color(0x8f8f8993);

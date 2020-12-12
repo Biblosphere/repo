@@ -116,10 +116,12 @@ class MarkerData extends Equatable {
 
 enum Panel { hiden, minimized, open, full }
 
-enum ViewType { map, camera, list, details }
+enum ViewType { map, camera, list }
 
 enum Privacy { private, contacts, all }
 const List<String> PrivacyLabels = ['private', 'contacts', 'all'];
+
+typedef Book BookCallback();
 
 class FilterState extends Equatable {
   // USER STATE
@@ -145,6 +147,8 @@ class FilterState extends Equatable {
   final LatLngBounds bounds;
   // Current geohashes on the map
   final Set<String> geohashes;
+  // Offcet in List view
+  final double offset;
 
   // FILTERS SUGGESTIONS
   // List of books for the list view
@@ -179,6 +183,7 @@ class FilterState extends Equatable {
         center,
         bounds,
         geohashes,
+        offset,
         view,
         books,
         selected,
@@ -191,11 +196,13 @@ class FilterState extends Equatable {
         candidates
       ];
 
+  static const List<Filter> empty = const [
+    Filter(type: FilterType.wish, selected: false),
+    Filter(type: FilterType.contacts, selected: false),
+  ];
+
   const FilterState({
-    this.filters = const [
-      Filter(type: FilterType.wish, selected: false),
-      Filter(type: FilterType.contacts, selected: false),
-    ],
+    this.filters = empty,
     this.favorite,
     this.isbns = const [],
     this.panel = Panel.minimized,
@@ -203,6 +210,7 @@ class FilterState extends Equatable {
     this.center = const LatLng(49.8397, 24.0297),
     this.bounds,
     this.geohashes = const {'u8c5d'},
+    this.offset,
     this.view = ViewType.map,
     this.books,
     this.selected,
@@ -228,8 +236,9 @@ class FilterState extends Equatable {
     LatLngBounds bounds,
     ViewType view,
     Set<String> geohashes,
+    double offset,
     List<Book> books,
-    Book selected,
+    BookCallback selected,
     Set<MarkerData> markers,
     List<Filter> filterSuggestions,
     List<Place> placeSuggestions,
@@ -249,8 +258,9 @@ class FilterState extends Equatable {
       bounds: bounds ?? this.bounds,
       view: view ?? this.view,
       geohashes: geohashes ?? this.geohashes,
+      offset: offset ?? this.offset,
       books: books ?? this.books,
-      selected: selected ?? this.selected,
+      selected: selected != null ? selected() : this.selected,
       markers: markers ?? this.markers,
       filterSuggestions: filterSuggestions ?? this.filterSuggestions,
       placeSuggestions: placeSuggestions ?? this.placeSuggestions,
@@ -448,13 +458,15 @@ class FilterState extends Equatable {
           .where('isbn', whereIn: isbns.take(10).toList());
     }
 
-    query = query.limit(2000);
+    query = query.limit(100);
 
     bookSnap = await query.get();
 
     // Group all books for geohash areas one level down
     List<Book> books =
         bookSnap.docs.map((doc) => Book.fromJson(doc.id, doc.data())).toList();
+
+    books = books.where((b) => bounds.contains(b.location)).toList();
 
     print('!!!DEBUG: booksFor reads ${books.length} books');
 
@@ -572,6 +584,7 @@ class FilterCubit extends Cubit<FilterState> {
   GoogleMapController _mapController;
   SnappingSheetController _snappingControler;
   TextEditingController _searchController;
+  ScrollController _scrollController;
   GooglePlace googlePlace = GooglePlace(GooglePlaceKey);
 
   FilterCubit() : super(FilterState()) {
@@ -985,7 +998,8 @@ class FilterCubit extends Cubit<FilterState> {
     }
 
     // Emit state with updated markers
-    emit(state.copyWith(books: books, places: places, markers: markers));
+    emit(state.copyWith(
+        books: books, offset: 0.0, places: places, markers: markers));
   }
 
   // FILTER PANEL:
@@ -1066,11 +1080,23 @@ class FilterCubit extends Cubit<FilterState> {
   // - Set view => FILTER
   void setView(ViewType view) async {
     if (view == ViewType.list) {
+      // Switch to list view immediately and then build the list of books
+      print('!!!DEBUG Are we here at all???');
+
+      // Keep state select prior to switch
+      QueryType select = state.select;
+
+      // Switch view to unblock UI
+      emit(state.copyWith(
+        view: view,
+      ));
+
       List<Book> books = [];
-      if (state.select == QueryType.books)
+      if (select == QueryType.books)
         // Use preselected books
         books = state.books;
-      else if (state.select == QueryType.places) {
+      else if (select == QueryType.places) {
+        // TODO: Query any 100 books if terettory is too big
         await Future.forEach(state.geohashes, (hash) async {
           books.addAll(await state.booksFor(hash));
         });
@@ -1080,12 +1106,9 @@ class FilterCubit extends Cubit<FilterState> {
             .round());
       }
 
-      print('!!!DEBUG books sorted around ${state.center}');
+      print('!!!DEBUG books [${books.length}] sorted around ${state.center}');
 
-      emit(state.copyWith(
-        books: books,
-        view: ViewType.list,
-      ));
+      emit(state.copyWith(books: books, offset: 0.0, view: view));
     } else if (view == ViewType.camera) {
       emit(state.copyWith(
         view: view,
@@ -1168,16 +1191,11 @@ class FilterCubit extends Cubit<FilterState> {
   // MAP VIEW
   // - Set controller
   void setSearchController(TextEditingController controller) {
-    // Dispose listener if controller switched
-    if (_searchController != null && _searchController != controller) {
-      _searchController.removeListener(_onSearchChanged);
-      _searchController = null;
-    }
+    print('!!!DEBUG Set search controller $_searchController $controller');
+    _searchController = controller;
 
-    if (_searchController == null) {
-      _searchController = controller;
-      _searchController.addListener(_onSearchChanged);
-    }
+    print('!!!DEBUG Add a listener to TextController');
+    _searchController.addListener(_onSearchChanged);
   }
 
   // MAP VIEW
@@ -1274,6 +1292,7 @@ class FilterCubit extends Cubit<FilterState> {
         bounds: bounds != null ? bounds : state.bounds,
         geohashes: hashes,
         books: books,
+        offset: 0.0,
         places: places,
         filterSuggestions:
             (state.panel == Panel.full && state.group == FilterGroup.place)
@@ -1323,8 +1342,7 @@ class FilterCubit extends Cubit<FilterState> {
       // Hide panel
       _snappingControler.snapToPosition(_snappingControler.snapPositions.first);
       emit(state.copyWith(
-        selected: (marker.points.first as Book),
-        view: ViewType.details,
+        selected: () => (marker.points.first as Book),
         center: marker.position,
       ));
     } else if (marker.points.length > 1 && marker.points.first is Book) {
@@ -1335,6 +1353,7 @@ class FilterCubit extends Cubit<FilterState> {
       // Zoom in if marker has too many books
       emit(state.copyWith(
         books: books,
+        offset: 0.0,
         view: ViewType.list,
         center: marker.position,
       ));
@@ -1350,6 +1369,15 @@ class FilterCubit extends Cubit<FilterState> {
   }
 
   // LIST VIEW
+  // - Set controller
+  void setScrollController(ScrollController controller) {
+    print('!!!DEBUG: ****************** SCROLL CONTROLLER *******************');
+
+    // Keep scrolling controller
+    _scrollController = controller;
+  }
+
+  // LIST VIEW
   // - Select book from the list
   void selectBook({Book book}) async {
     print('!!!DEBUG Book selected ${book.title}');
@@ -1357,34 +1385,42 @@ class FilterCubit extends Cubit<FilterState> {
     _snappingControler.snapToPosition(_snappingControler.snapPositions.first);
 
     emit(state.copyWith(
-      selected: book,
-      view: ViewType.details,
+      offset: _scrollController.hasClients ? _scrollController.offset : 0.0,
+      selected: () => book,
     ));
   }
 
   // DETAILS
   // - Search button pressed => FILTER
   void searchBookPressed(Book book) async {
-    // NOT WORKING NOW!!!!!!!!!!!!!!!
+    // Modify filter to add given book
+    // Modify list of ISBN to search
+    FilterState newState = state.copyWith(filters: [
+      ...FilterState.empty,
+      Filter(
+          type: FilterType.title, value: book.title, book: book, selected: true)
+    ], isbns: [
+      book.isbn
+    ]);
 
-    // TODO: Set filter for given book, so only this book is displayed
-    //       probably zoom out to contains more copies of this book.
+    // Search book globally
+    List<Book> books = await newState.booksFor('');
 
-    List<Book> books;
-    Set<MarkerData> markers;
-    await Future.forEach(state.geohashes, (hash) async {
-      books.addAll(await state.booksFor(hash));
-      // TODO: Add places as well???
-    });
-
-    markers = await state.markersFor(
-        points: books, hashes: state.geohashes, bounds: state.bounds);
-
-    emit(state.copyWith(
+    // Emit a NEW state with books and map view
+    emit(newState.copyWith(
       books: books,
-      markers: markers,
+      offset: 0.0,
       view: ViewType.map,
     ));
+
+    // Move map view to given bounds
+    // Set a bounds of the map to all found books (if more than 1)
+    if (books.length > 1) {
+      LatLngBounds bounds = boundsFromPoints(books);
+      _mapController.moveCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
+    } else {
+      _mapController.moveCamera(CameraUpdate.newLatLng(book.location));
+    }
   }
 
   // DETAILS
@@ -1392,8 +1428,10 @@ class FilterCubit extends Cubit<FilterState> {
   void detailsClosed() async {
     // TODO: Restore previous view MAP or LIST
 
+    // _scrollController.jumpTo(state.offset);
+
     emit(state.copyWith(
-      view: ViewType.list,
+      selected: () => null,
     ));
   }
 
@@ -1425,6 +1463,8 @@ class FilterCubit extends Cubit<FilterState> {
           return 50000000;
         else if (a.type == PlaceType.place && b.type == PlaceType.contact)
           return 0;
+        else
+          return a.name.compareTo(b.name);
       });
 
       emit(state.copyWith(place: place, placeSuggestions: suggestions));

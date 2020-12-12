@@ -294,30 +294,32 @@ class Book extends Point {
   final int photoHeight;
   final int photoWidth;
   // Book location
-  final String bookplace;
+  final String bookplaceId;
+  final String bookplaceName;
 
-  const Book(
-      {this.id,
-      this.isbn,
-      this.title,
-      this.authors,
-      this.genre,
-      this.language,
-      this.description,
-      this.tags = const <String>[],
-      this.cover,
-      this.photo,
-      this.photoId,
-      this.ownerId,
-      this.outline,
-      this.bookspine,
-      this.coverPlace,
-      this.photoHeight,
-      this.photoWidth,
-      location,
-      geohash,
-      this.bookplace})
-      : super(location: location, geohash: geohash);
+  const Book({
+    this.id,
+    this.isbn,
+    this.title,
+    this.authors,
+    this.genre,
+    this.language,
+    this.description,
+    this.tags = const <String>[],
+    this.cover,
+    this.photo,
+    this.photoId,
+    this.ownerId,
+    this.outline,
+    this.bookspine,
+    this.coverPlace,
+    this.photoHeight,
+    this.photoWidth,
+    location,
+    geohash,
+    this.bookplaceId,
+    this.bookplaceName,
+  }) : super(location: location, geohash: geohash);
 
   Book.fromJson(this.id, Map json)
       : isbn = json['isbn'],
@@ -331,7 +333,8 @@ class Book extends Point {
         photo = json['photo'],
         photoId = json['photo_id'],
         ownerId = json['owner_id'],
-        bookplace = json['bookplace'],
+        bookplaceId = json['bookplace'],
+        bookplaceName = json['place_name'],
         outline = json['outline'] == null
             ? []
             : List<ui.Offset>.from((json['outline'] as List)
@@ -354,6 +357,8 @@ class Book extends Point {
 
   @override
   List<Object> get props => [id];
+
+  String get place => bookplaceName != null ? bookplaceName : bookplaceId;
 }
 
 enum PlaceType { me, place, contact }
@@ -504,17 +509,41 @@ class Place extends Point {
       ];
 }
 
+Widget bookImagePlaceholder() {
+  return Container(
+      height: 110.0,
+      width: 110.0 * 2 / 3,
+      child: Icon(Icons.menu_book, size: 50.0, color: placeholderColor));
+}
+
 Widget coverImage(String url, {double width}) {
   if (url != null && url.isNotEmpty)
     try {
-      return Image.network(url, fit: BoxFit.fitWidth, width: width);
+      return ClipRRect(
+          borderRadius: BorderRadius.circular(4.0),
+          child: width != null
+//              ? Image.network(url, fit: BoxFit.fitWidth, width: width)
+//              : Image.network(url));
+              ? CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.fitWidth,
+                  width: width,
+                  placeholder: (context, text) => bookImagePlaceholder(),
+                  errorWidget: (context, text, error) => bookImagePlaceholder())
+              : CachedNetworkImage(
+                  imageUrl: url,
+                  placeholder: (context, text) => bookImagePlaceholder(),
+                  errorWidget: (context, text, error) =>
+                      bookImagePlaceholder()));
     } catch (e) {
       print('Image loading exception: ${e}');
       // TODO: Report exception to analytics
-      return Container();
+      return Container(
+          child: bookImagePlaceholder()); // Icons.photo_library_sharp
     }
   else
-    return Container();
+    return Container(
+        child: bookImagePlaceholder()); // Icons.photo_library_sharp
 }
 
 class BookCard extends StatelessWidget {
@@ -539,15 +568,17 @@ class BookCard extends StatelessWidget {
                   margin: EdgeInsets.only(top: 4.0, bottom: 4.0),
                   padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
                   child: Row(children: [
-                    ConstrainedBox(
+/*                    ConstrainedBox(
                         constraints: BoxConstraints(
                           minWidth: 100,
                           minHeight: 100,
                           maxWidth: 120,
                           maxHeight: 100,
                         ),
-//                  child: CachedNetworkImage(imageUrl: book.cover)),
-//                  child: Image(image: CachedNetworkImageProvider(book.cover))),
+*/
+                    Container(
+                        width: 100,
+                        padding: EdgeInsets.all(8.0),
                         child: coverImage(book.cover)),
                     Expanded(
                         child: Column(
@@ -563,7 +594,7 @@ class BookCard extends StatelessWidget {
                               children: [
                                 Expanded(flex: 1, child: Text(distance)),
                                 Icon(Icons.location_pin),
-                                Expanded(flex: 4, child: Text(book.bookplace))
+                                Expanded(flex: 4, child: Text(book.place))
                               ])
                         ]))
                   ]))));
@@ -601,6 +632,8 @@ class BookDetails extends StatefulWidget {
 class _BookDetailsState extends State<BookDetails> {
   Book book;
   ImageProvider _imageProvider;
+  double imageHeight;
+  double imageWidth;
 
   _BookDetailsState({this.book});
 
@@ -613,10 +646,11 @@ class _BookDetailsState extends State<BookDetails> {
 
     // Get image data and decode it
     // TODO: Use Network Cached Image
-    _imageProvider = NetworkImage(book.photo);
+    ImageProvider provider = CachedNetworkImageProvider(book.photo);
+    //ImageProvider provider = NetworkImage(book.photo);
 
     Completer<ImageInfo> completer = Completer();
-    _imageProvider
+    provider
         .resolve(ImageConfiguration())
         .addListener(ImageStreamListener((ImageInfo info, bool _) {
       completer.complete(info);
@@ -625,8 +659,16 @@ class _BookDetailsState extends State<BookDetails> {
     ImageInfo imageInfo = await completer.future;
     ui.Image image = imageInfo.image;
 
+    imageWidth = image.width.toDouble();
+    imageHeight = image.height.toDouble();
+
     if (book.bookspine == null || book.bookspine.isEmpty) {
-      print('!!!DEBUG bookspine contour missing');
+      print('!!!DEBUG bookspine contour missing. Book id: ${book.id}');
+      return;
+    }
+
+    if (book.coverPlace == null || book.coverPlace.isEmpty) {
+      print('!!!DEBUG cover space contour missing. Book id: ${book.id}');
       return;
     }
 
@@ -654,9 +696,9 @@ class _BookDetailsState extends State<BookDetails> {
         book.coverPlace.length.toDouble();
 
     Paint paint = Paint()
-      ..color = Colors.red
+      ..color = Colors.white //.withOpacity(0.6)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = image.width / 50
+      ..strokeWidth = image.width / 15
       ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(centerCover, centerBook, paint);
@@ -668,6 +710,7 @@ class _BookDetailsState extends State<BookDetails> {
     ByteData bytes = await image.toByteData(format: ui.ImageByteFormat.png);
 
     _imageProvider = MemoryImage(bytes.buffer.asUint8List());
+
     return;
   }
 
@@ -694,14 +737,54 @@ class _BookDetailsState extends State<BookDetails> {
     return BlocBuilder<FilterCubit, FilterState>(
         // buildWhen: (previous, current) => previous.center != current.center,
         builder: (context, filters) {
-      print('!!!DEBUG rebuild BookCard ${filters.center}');
+      print('!!!DEBUG rebuild BookDetails ${filters.center}');
+
+      // Not in detail mode
+      if (filters.selected == null) {
+        return Container(height: 0.0, width: 0.0);
+      }
+
       String distance = distanceString(filters.center, book.location);
       double width = MediaQuery.of(context).size.width;
 
-      // Calculate position of cover sopace
-      double scale = (width - 24) / book.photoWidth;
-      Offset offset = book.coverPlace[0] * scale;
-      Offset size = (book.coverPlace[2] - book.coverPlace[0]) * scale;
+      // Calculate position of cover space
+      double scale;
+      Offset offset;
+      Offset coverSize;
+      Offset fullSize;
+
+      if (_imageProvider != null &&
+          book.photoWidth != null &&
+          book.coverPlace != null &&
+          book.coverPlace.length > 0) {
+        // If image is loaded show real image
+        scale = (width - 24) / book.photoWidth;
+        offset = book.coverPlace[0] * scale;
+        coverSize = (book.coverPlace[2] - book.coverPlace[0]) * scale;
+        fullSize = Offset(width - 24, book.photoHeight * scale);
+      } else if (book.photoWidth != null && book.photoHeight != null) {
+        // If image is not yet loaded but size is known show default blury
+        // image with proper size
+        scale = (width - 24) / book.photoWidth;
+        offset = Offset(0.0, 0.0);
+        coverSize =
+            Offset(book.photoWidth.toDouble(), book.photoHeight.toDouble()) *
+                scale;
+        fullSize = Offset(width - 24, book.photoHeight * scale);
+      } else if (_imageProvider != null &&
+          imageWidth != null &&
+          imageHeight != null) {
+        // If image is available but no info about otline and place for cover
+        scale = (width - 24) / imageWidth;
+        offset = Offset(0.0, 0.0);
+        coverSize = Offset(imageWidth, imageHeight) * scale;
+        fullSize = Offset(width - 24, imageHeight * scale);
+      } else {
+        scale = (width - 24) / 938.0;
+        offset = Offset(0.0, 0.0);
+        coverSize = Offset(938.0, 596.0) * scale;
+        fullSize = Offset(width - 24, 596.0 * scale);
+      }
 
       return Card(
           color: Colors.white.withOpacity(0.9),
@@ -717,28 +800,33 @@ class _BookDetailsState extends State<BookDetails> {
                         // Shelf image as a background
                         Container(
                           // TODO: Find where these margins come from
-                          width: width - 24.0,
-                          child: _imageProvider != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(4.0),
-                                  child: Image(image: _imageProvider))
-                              : Container(),
+                          width: fullSize.dx,
+                          height: fullSize.dy,
+                          child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4.0),
+                              child: _imageProvider != null
+                                  ? Image(image: _imageProvider)
+                                  : Image.asset('lib/assets/bookshelf.jpg',
+                                      fit: BoxFit.fill)),
                         ),
+                        // Add foggy layer if image is not available
+                        if (_imageProvider == null)
+                          Positioned.fill(
+                              child: Container(
+                                  color: Colors.grey.withOpacity(0.6))),
                         Positioned(
                             top: offset.dy,
                             left: offset.dx,
                             child: Container(
-                                height: size.dy,
-                                width: size.dx,
+                                height: coverSize.dy,
+                                width: coverSize.dx,
                                 child: Center(
                                     child: Container(
                                         decoration: placeDecoration(),
                                         padding: EdgeInsets.all(16.0),
-                                        // TODO: Use CachedNetworkImage
-                                        //  child: CachedNetworkImage(imageUrl: book.cover)),
-                                        //  child: Image(image: CachedNetworkImageProvider(book.cover))),
                                         child: coverImage(book.cover,
-                                            width: size.dx * 0.5)))))
+                                            width: min(
+                                                130, coverSize.dx * 0.5))))))
                       ]),
                       // Figma: buttons
                       Container(
@@ -747,8 +835,13 @@ class _BookDetailsState extends State<BookDetails> {
                               mainAxisSize: MainAxisSize.max,
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
+                                // Searc book button
                                 MaterialButton(
-                                  onPressed: () {},
+                                  onPressed: () {
+                                    context
+                                        .bloc<FilterCubit>()
+                                        .searchBookPressed(book);
+                                  },
                                   color: buttonUnselectedBackground,
                                   textColor: buttonUnselectedText,
                                   child: Icon(
@@ -867,7 +960,7 @@ class _BookDetailsState extends State<BookDetails> {
                               children: [
                                 Expanded(flex: 1, child: Text(distance)),
                                 Icon(Icons.location_pin),
-                                Expanded(flex: 4, child: Text(book.bookplace))
+                                Expanded(flex: 4, child: Text(book.place))
                               ]))
 
                       // Figma: Description
@@ -899,7 +992,7 @@ class _BookDetailsState extends State<BookDetails> {
                     margin: EdgeInsets.only(right: 3.0, top: 3.0),
                     child: CircleAvatar(
                       radius: 14.0,
-                      backgroundColor: Colors.red,
+                      backgroundColor: closeCrossColor,
                       child: Icon(Icons.close, color: Colors.white),
                     ),
                   ),
@@ -919,22 +1012,47 @@ class ListWidget extends StatefulWidget {
 }
 
 class _ListWidgetState extends State<ListWidget> {
+  ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _scrollController = ScrollController(
+        initialScrollOffset: context.bloc<FilterCubit>().state.offset ?? 0.0);
+
+    print(
+        '!!!DEBUG ============================ LIST VIEW INIT STATE ==================================');
+  }
+
+  @override
+  void didChangeDependencies() {
+    // TODO: Make a code to do it only once at first call afer initState
+    context.bloc<FilterCubit>().setScrollController(_scrollController);
+
+    super.didChangeDependencies();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
-      return ListView(children: [
-        ...filters.books.map((b) {
-          return Slidable(
-            actionPane: SlidableDrawerActionPane(),
-            actionExtentRatio: 0.25,
-            child: BookCard(book: b),
-            actions: <Widget>[
-              IconSlideAction(
-                caption: 'Favorite',
-                color: Colors.red,
-                icon: Icons.favorite,
-                //onTap: () => _showSnackBar('Archive'),
-              ),
+      return ListView(
+          controller: ScrollController(
+              initialScrollOffset:
+                  context.bloc<FilterCubit>().state.offset ?? 0.0),
+          children: [
+            ...filters.books.map((b) {
+              return Slidable(
+                actionPane: SlidableDrawerActionPane(),
+                actionExtentRatio: 0.25,
+                child: BookCard(book: b),
+                actions: <Widget>[
+                  IconSlideAction(
+                    caption: 'Favorite',
+                    color: Colors.red,
+                    icon: Icons.favorite,
+                    //onTap: () => _showSnackBar('Archive'),
+                  ),
 /*
     IconSlideAction(
       caption: 'Share',
@@ -943,25 +1061,25 @@ class _ListWidgetState extends State<ListWidget> {
       //onTap: () => _showSnackBar('Share'),
     ),
 */
-            ],
-            secondaryActions: <Widget>[
-              IconSlideAction(
-                caption: 'Share',
-                color: Colors.indigo,
-                icon: Icons.share,
-                //onTap: () => _showSnackBar('More'),
-              ),
-              IconSlideAction(
-                caption: 'Contact',
-                color: Colors.blue,
-                icon: Icons.message,
-                //onTap: () => _showSnackBar('Delete'),
-              ),
-            ],
-          );
-        }).toList(),
-        Container(height: 265)
-      ]);
+                ],
+                secondaryActions: <Widget>[
+                  IconSlideAction(
+                    caption: 'Share',
+                    color: Colors.indigo,
+                    icon: Icons.share,
+                    //onTap: () => _showSnackBar('More'),
+                  ),
+                  IconSlideAction(
+                    caption: 'Contact',
+                    color: Colors.blue,
+                    icon: Icons.message,
+                    //onTap: () => _showSnackBar('Delete'),
+                  ),
+                ],
+              );
+            }).toList(),
+            Container(height: 265)
+          ]);
     });
   }
 }
@@ -987,7 +1105,9 @@ class _DetailsPageState extends State<DetailsPage> {
         child: Container(
             constraints:
                 BoxConstraints(minHeight: height, maxHeight: double.infinity),
-            child: BookDetails(book: state.selected)),
+            child: state.selected != null
+                ? BookDetails(book: state.selected)
+                : Container()),
       ));
     });
   }
