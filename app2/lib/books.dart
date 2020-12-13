@@ -516,10 +516,11 @@ Widget bookImagePlaceholder() {
       child: Icon(Icons.menu_book, size: 50.0, color: placeholderColor));
 }
 
-Widget coverImage(String url, {double width}) {
+Widget coverImage(String url, {double width, bool bookmark = false}) {
+  Widget image;
   if (url != null && url.isNotEmpty)
     try {
-      return ClipRRect(
+      image = ClipRRect(
           borderRadius: BorderRadius.circular(4.0),
           child: width != null
 //              ? Image.network(url, fit: BoxFit.fitWidth, width: width)
@@ -538,10 +539,30 @@ Widget coverImage(String url, {double width}) {
     } catch (e) {
       print('Image loading exception: ${e}');
       // TODO: Report exception to analytics
-      return Container(child: bookImagePlaceholder());
+      image = Container(child: bookImagePlaceholder());
     }
   else
-    return Container(child: bookImagePlaceholder());
+    image = Container(child: bookImagePlaceholder());
+
+  return Stack(children: [
+    Container(padding: EdgeInsets.all(4.0), child: image),
+    if (bookmark)
+      Positioned(
+        left: 0.0,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.7),
+              borderRadius: BorderRadius.all(
+                Radius.circular(8.0),
+              ),
+            ),
+            child: Icon(Icons.bookmark, color: bookmarkListColor),
+          ),
+        ),
+      ),
+  ]);
 }
 
 class BookCard extends StatelessWidget {
@@ -577,7 +598,8 @@ class BookCard extends StatelessWidget {
                     Container(
                         width: 100,
                         padding: EdgeInsets.all(8.0),
-                        child: coverImage(book.cover)),
+                        child: coverImage(book.cover,
+                            bookmark: filters.isUserBookmark(book))),
                     Expanded(
                         child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -620,8 +642,9 @@ class ImagePainter extends CustomPainter {
 
 class BookDetails extends StatefulWidget {
   final Book book;
+  final List<String> bookmarks;
 
-  BookDetails({Key key, this.book}) : super(key: key);
+  BookDetails({Key key, this.book, this.bookmarks}) : super(key: key);
 
   @override
   _BookDetailsState createState() => _BookDetailsState(book: book);
@@ -735,7 +758,8 @@ class _BookDetailsState extends State<BookDetails> {
     return BlocBuilder<FilterCubit, FilterState>(
         // buildWhen: (previous, current) => previous.center != current.center,
         builder: (context, filters) {
-      print('!!!DEBUG rebuild BookDetails ${filters.center}');
+      print(
+          '!!!DEBUG rebuild BookDetails ${filters.bookmarks} ${filters.isUserBookmark(book)}');
 
       // Not in detail mode
       if (filters.selected == null) {
@@ -823,6 +847,8 @@ class _BookDetailsState extends State<BookDetails> {
                                         decoration: placeDecoration(),
                                         padding: EdgeInsets.all(16.0),
                                         child: coverImage(book.cover,
+                                            bookmark:
+                                                filters.isUserBookmark(book),
                                             width: min(
                                                 130, coverSize.dx * 0.5))))))
                       ]),
@@ -836,8 +862,20 @@ class _BookDetailsState extends State<BookDetails> {
                                 // Bookmark button
                                 detailsButton(
                                     icon: Icons.bookmark,
-                                    onPressed: () {},
-                                    selected: true),
+                                    onPressed: () {
+                                      if (filters.isUserBookmark(book)) {
+                                        context
+                                            .bloc<FilterCubit>()
+                                            .removeUserBookmark(book);
+                                      } else {
+                                        context
+                                            .bloc<FilterCubit>()
+                                            .addUserBookmark(book);
+                                      }
+                                      // TODO: button state does not refrest without setState
+                                      setState(() {});
+                                    },
+                                    selected: filters.isUserBookmark(book)),
                                 // Problem button
                                 detailsButton(
                                     icon: Icons.report_problem,
@@ -1061,16 +1099,7 @@ class _ListWidgetState extends State<ListWidget> {
   }
 }
 
-class DetailsPage extends StatefulWidget {
-  DetailsPage({Key key}) : super(key: key);
-
-  @override
-  _DetailsPageState createState() => _DetailsPageState();
-}
-
-class _DetailsPageState extends State<DetailsPage> {
-  _DetailsPageState();
-
+class DetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {

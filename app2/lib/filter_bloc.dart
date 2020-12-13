@@ -101,6 +101,68 @@ class Filter extends Equatable {
   }
 }
 
+class AppUser extends Equatable {
+  final String id;
+
+  // Display name
+  final String name;
+
+  // Registration mobile
+  final String mobile;
+
+  // All contacts of the users both phones and e-mails
+  // final List<String> contacts;
+
+  // Places where the user is accosiated (contacts, place where he/she contributed)
+  // final List<String> places;
+
+  // List of bookmarks (books marked in the app)
+  final List<String> bookmarks;
+
+  AppUser(
+      {@required this.id,
+      @required this.name,
+      @required this.mobile,
+      // this.contacts,
+      // this.places,
+      this.bookmarks});
+
+  @override
+  List<Object> get props => [id, name, mobile, bookmarks];
+
+  AppUser.fromJson(String id, Map<String, dynamic> json)
+      : id = id ?? json['id'],
+        name = json['name'],
+        mobile = json['mobile'],
+        // contacts = List<String>.from(json['contacts'] ?? []),
+        // places = List<String>.from(json['contacts'] ?? []),
+        bookmarks = List<String>.from(json['contacts'] ?? []);
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'mobile': mobile,
+      'bookmarks': bookmarks,
+      // Not include places, bookmarks as them updated outside app
+    };
+  }
+
+  AppUser copyWith({
+    String id,
+    String name,
+    String mobile,
+    List<String> bookmarks,
+  }) {
+    return AppUser(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      mobile: mobile ?? this.mobile,
+      bookmarks: bookmarks ?? this.bookmarks,
+    );
+  }
+}
+
 String up(String geohash) {
   int len = geohash.length;
 
@@ -147,6 +209,7 @@ class FilterState extends Equatable {
   final Offerings offerings;
 
   // USER STATE
+  final List<String> bookmarks;
   final LatLng location;
 
   // FILTERS
@@ -207,6 +270,7 @@ class FilterState extends Equatable {
         tos,
         offerings,
         location,
+        bookmarks,
         filters,
         isbns,
         favorite,
@@ -264,6 +328,7 @@ class FilterState extends Equatable {
     this.privacy = Privacy.all,
     this.candidates = const [],
     this.location,
+    this.bookmarks,
   });
 
   FilterState copyWith({
@@ -299,6 +364,7 @@ class FilterState extends Equatable {
     Privacy privacy,
     List<Place> candidates,
     LatLng location,
+    List<String> bookmarks,
   }) {
     return FilterState(
       status: status ?? this.status,
@@ -331,6 +397,7 @@ class FilterState extends Equatable {
       privacy: privacy ?? this.privacy,
       candidates: candidates ?? this.candidates,
       location: location ?? this.location,
+      bookmarks: bookmarks ?? this.bookmarks,
     );
   }
 
@@ -344,6 +411,10 @@ class FilterState extends Equatable {
   bool get confirmAllowed => code.length >= 4;
 
   bool get subscriptionAllowed => tos && status == LoginStatus.signedIn;
+
+  bool isUserBookmark(Book book) {
+    return bookmarks != null && bookmarks.contains(book.isbn);
+  }
 
   List<Filter> getFilters({FilterGroup group, FilterType type}) {
     assert(group != null || type != null,
@@ -882,7 +953,6 @@ class FilterCubit extends Cubit<FilterState> {
     // Update user record if any information are there
     Map<String, dynamic> data = {};
     if (all.length > 0) data['contacts'] = FieldValue.arrayUnion(all);
-
     if (places.length > 0) data['places'] = FieldValue.arrayUnion(places);
 
     // Update found contacts to the user record
@@ -942,6 +1012,7 @@ class FilterCubit extends Cubit<FilterState> {
     }).then((value) {
       emit(state.copyWith(
         geohashes: geohashes,
+        location: center,
         center: center,
         places: places,
         books: books,
@@ -973,7 +1044,25 @@ class FilterCubit extends Cubit<FilterState> {
         // To be sure that displayName is loaded
         await user.reload();
 
-        print('!!!DEBUG CURRENT USER: ${user.displayName}');
+        // Check if user exist in Firestore. Create if missing. Add to state.
+        DocumentReference ref =
+            FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+        DocumentSnapshot doc = await ref.get();
+        if (doc.exists && doc.data().containsKey('bookmarks'))
+          emit(state.copyWith(
+              bookmarks: List<String>.from(doc.data()['bookmarks'])));
+
+/*
+        AppUser currentUser;
+        if (doc.exists) {
+          currentUser = AppUser.fromJson(doc.id, doc.data());
+        } else {
+          currentUser = AppUser(
+              id: user.uid, name: user.displayName, mobile: state.mobile);
+          ref.set(currentUser.toJson());
+        }
+*/
 
         try {
           // Register user in Purchases
@@ -1732,6 +1821,79 @@ class FilterCubit extends Cubit<FilterState> {
     } else {
       _mapController.moveCamera(CameraUpdate.newLatLng(book.location));
     }
+  }
+
+  // DETAILS
+  // - Add bookmark => FILTER
+  void addUserBookmark(Book book) async {
+    print('!!!DEBUG User bookmark to be added');
+
+    if (book == null || book.isbn == null) {
+      // TODO: Record an exception
+      print('EXCEPTION: Bookmarks are not available to add');
+      return;
+    }
+
+    List<String> bookmarks = state.bookmarks;
+
+    if (bookmarks == null) {
+      bookmarks = [book.isbn];
+    } else {
+      if (!bookmarks.contains(book.isbn)) {
+        bookmarks.add(book.isbn);
+      }
+    }
+
+    print('!!!DEBUG Emit new user value [${bookmarks.join(',')}]');
+    emit(state.copyWith(
+      bookmarks: bookmarks,
+    ));
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(FirebaseAuth.instance.currentUser.uid)
+        .update({
+      'bookmarks': FieldValue.arrayUnion([book.isbn])
+    });
+  }
+
+  // DETAILS
+  // - Remove bookmark => FILTER
+  void removeUserBookmark(Book book) async {
+    print('!!!DEBUG Bookmark to be removed');
+
+    if (book == null || book.isbn == null) {
+      // TODO: Record an exception
+      print('EXCEPTION: Bookmarks are not available to remove');
+      return;
+    }
+
+    List<String> bookmarks = state.bookmarks;
+
+    if (bookmarks == null) {
+      // TODO: Record an exception
+      print('EXCEPTION: Bookmarks missing while removing by UI');
+      bookmarks = [];
+    } else {
+      if (bookmarks.contains(book.isbn)) {
+        bookmarks.remove(book.isbn);
+      } else {
+        // TODO: Record an exception
+        print('EXCEPTION: ISBN value missing while removing by UI');
+      }
+    }
+
+    print('!!!DEBUG Emit new user value [${bookmarks.join(',')}]');
+    emit(state.copyWith(
+      bookmarks: bookmarks,
+    ));
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(FirebaseAuth.instance.currentUser.uid)
+        .update({
+      'bookmarks': FieldValue.arrayRemove([book.isbn])
+    });
   }
 
   // DETAILS

@@ -750,3 +750,5 @@ const TextStyle suggestionsDetailsStyle = TextStyle(
 const Color closeCrossColor = Color(0xff598a99);
 
 const Color placeholderColor = Color(0x8f8f8993);
+
+const Color bookmarkListColor = Color(0xffc66747);
