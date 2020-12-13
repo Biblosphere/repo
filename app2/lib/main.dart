@@ -50,7 +50,6 @@ import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 part 'login.dart';
-part 'login_bloc.dart';
 part 'camera.dart';
 part 'books.dart';
 part 'map.dart';
@@ -62,6 +61,8 @@ part 'secret.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   cameras = await availableCameras();
+  await Firebase.initializeApp();
+
   runApp(MyApp());
 
   // TODO: Switch dedug OFF
@@ -119,14 +120,11 @@ class _MyAppState extends State<MyApp> {
                   side: BorderSide(color: Colors.transparent)),
             )),
         home: Builder(builder: (context) {
-          return MultiBlocProvider(
-              providers: [
-                BlocProvider(create: (BuildContext context) => FilterCubit()),
-                BlocProvider(create: (BuildContext context) => LoginCubit())
-              ],
-              child: BlocBuilder<LoginCubit, LoginState>(
-                  builder: (context, login) {
-                if (login.status == LoginStatus.subscribed) {
+          return BlocProvider(
+              create: (BuildContext context) => FilterCubit(),
+              child: BlocBuilder<FilterCubit, FilterState>(
+                  builder: (context, state) {
+                if (state.status == LoginStatus.subscribed) {
                   return MainPage();
                 } else {
                   return LoginPage();
@@ -506,7 +504,7 @@ class _MainPageState extends State<MainPage>
                           () {
                             // TODO: Make it 0.0 position if place is already confirmed
                             _controller.snapToPosition(SnapPosition(
-                              positionPixel: 150.0,
+                              positionPixel: 60.0,
                             ));
                             context
                                 .bloc<FilterCubit>()
@@ -687,6 +685,23 @@ InputDecoration inputDecoration(String label) {
       isCollapsed: true,
 //        isDense: true,
       floatingLabelBehavior: FloatingLabelBehavior.always);
+}
+
+Widget detailsButton(
+    {IconData icon, VoidCallback onPressed, bool selected = false}) {
+  return Container(
+      width: 50.0,
+      child: MaterialButton(
+        onPressed: onPressed,
+        color: selected ? buttonSelectedBackground : buttonUnselectedBackground,
+        textColor: selected ? buttonSelectedText : buttonUnselectedText,
+        child: Icon(
+          icon,
+          size: 20,
+        ),
+        padding: EdgeInsets.all(0.0),
+        shape: CircleBorder(),
+      ));
 }
 
 const Color background = Colors.white;

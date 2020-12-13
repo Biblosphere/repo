@@ -538,12 +538,10 @@ Widget coverImage(String url, {double width}) {
     } catch (e) {
       print('Image loading exception: ${e}');
       // TODO: Report exception to analytics
-      return Container(
-          child: bookImagePlaceholder()); // Icons.photo_library_sharp
+      return Container(child: bookImagePlaceholder());
     }
   else
-    return Container(
-        child: bookImagePlaceholder()); // Icons.photo_library_sharp
+    return Container(child: bookImagePlaceholder());
 }
 
 class BookCard extends StatelessWidget {
@@ -835,55 +833,34 @@ class _BookDetailsState extends State<BookDetails> {
                               mainAxisSize: MainAxisSize.max,
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                // Searc book button
-                                MaterialButton(
-                                  onPressed: () {
-                                    context
-                                        .bloc<FilterCubit>()
-                                        .searchBookPressed(book);
-                                  },
-                                  color: buttonUnselectedBackground,
-                                  textColor: buttonUnselectedText,
-                                  child: Icon(
-                                    Icons.search,
-                                    size: 20,
-                                  ),
-                                  padding: EdgeInsets.all(2),
-                                  shape: CircleBorder(),
-                                ),
-                                MaterialButton(
-                                  onPressed: () {},
-                                  color: buttonSelectedBackground,
-                                  textColor: buttonSelectedText,
-                                  child: Icon(
-                                    Icons.favorite,
-                                    size: 20,
-                                  ),
-                                  padding: EdgeInsets.all(3),
-                                  shape: CircleBorder(),
-                                ),
-                                MaterialButton(
-                                  onPressed: () {},
-                                  color: buttonUnselectedBackground,
-                                  textColor: buttonUnselectedText,
-                                  child: Icon(
-                                    Icons.message,
-                                    size: 20,
-                                  ),
-                                  padding: EdgeInsets.all(3),
-                                  shape: CircleBorder(),
-                                ),
-                                MaterialButton(
-                                  onPressed: () {},
-                                  color: buttonUnselectedBackground,
-                                  textColor: buttonUnselectedText,
-                                  child: Icon(
-                                    Icons.share,
-                                    size: 20,
-                                  ),
-                                  padding: EdgeInsets.all(3),
-                                  shape: CircleBorder(),
-                                ),
+                                // Bookmark button
+                                detailsButton(
+                                    icon: Icons.bookmark,
+                                    onPressed: () {},
+                                    selected: true),
+                                // Problem button
+                                detailsButton(
+                                    icon: Icons.report_problem,
+                                    onPressed: () {},
+                                    selected: false),
+                                // Search book button
+                                detailsButton(
+                                    icon: Icons.search,
+                                    onPressed: () {
+                                      context
+                                          .bloc<FilterCubit>()
+                                          .searchBookPressed(book);
+                                    }),
+                                // Share button
+                                detailsButton(
+                                    icon: Icons.share,
+                                    onPressed: () {},
+                                    selected: false),
+                                // Message button
+                                detailsButton(
+                                    icon: Icons.message,
+                                    onPressed: () {},
+                                    selected: false),
                               ])),
                       // TODO: Add editing of the books
                       Container(
@@ -1050,7 +1027,7 @@ class _ListWidgetState extends State<ListWidget> {
                   IconSlideAction(
                     caption: 'Favorite',
                     color: Colors.red,
-                    icon: Icons.favorite,
+                    icon: Icons.bookmark,
                     //onTap: () => _showSnackBar('Archive'),
                   ),
 /*

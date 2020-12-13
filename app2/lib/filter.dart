@@ -27,8 +27,8 @@ Widget chipBuilder(BuildContext context, Filter filter) {
   // Permanent filters
   if (filter.type == FilterType.wish || filter.type == FilterType.contacts) {
     if (filter.type == FilterType.wish)
-      icon = Icons.favorite;
-    else if (filter.type == FilterType.contacts) icon = Icons.contact_phone;
+      icon = Icons.bookmark;
+    else if (filter.type == FilterType.contacts) icon = Icons.phone;
 
     chip = InputChip(
       showCheckmark: false,
