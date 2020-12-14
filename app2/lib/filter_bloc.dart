@@ -110,6 +110,9 @@ class AppUser extends Equatable {
   // Registration mobile
   final String mobile;
 
+  // Registration email
+  final String email;
+
   // All contacts of the users both phones and e-mails
   // final List<String> contacts;
 
@@ -122,7 +125,8 @@ class AppUser extends Equatable {
   AppUser(
       {@required this.id,
       @required this.name,
-      @required this.mobile,
+      this.mobile,
+      this.email,
       // this.contacts,
       // this.places,
       this.bookmarks});
@@ -134,6 +138,7 @@ class AppUser extends Equatable {
       : id = id ?? json['id'],
         name = json['name'],
         mobile = json['mobile'],
+        email = json['email'],
         // contacts = List<String>.from(json['contacts'] ?? []),
         // places = List<String>.from(json['contacts'] ?? []),
         bookmarks = List<String>.from(json['contacts'] ?? []);

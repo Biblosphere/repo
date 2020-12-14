@@ -296,6 +296,7 @@ class Book extends Point {
   // Book location
   final String bookplaceId;
   final String bookplaceName;
+  final String bookplaceContact;
 
   const Book({
     this.id,
@@ -319,6 +320,7 @@ class Book extends Point {
     geohash,
     this.bookplaceId,
     this.bookplaceName,
+    this.bookplaceContact,
   }) : super(location: location, geohash: geohash);
 
   Book.fromJson(this.id, Map json)
@@ -335,6 +337,7 @@ class Book extends Point {
         ownerId = json['owner_id'],
         bookplaceId = json['bookplace'],
         bookplaceName = json['place_name'],
+        bookplaceContact = json['place_contact'],
         outline = json['outline'] == null
             ? []
             : List<ui.Offset>.from((json['outline'] as List)
@@ -359,6 +362,15 @@ class Book extends Point {
   List<Object> get props => [id];
 
   String get place => bookplaceName != null ? bookplaceName : bookplaceId;
+
+  String get phone =>
+      bookplaceContact != null && bookplaceContact.startsWith('+')
+          ? bookplaceContact
+          : null;
+
+  String get email => bookplaceContact != null && bookplaceContact.contains('@')
+      ? bookplaceContact
+      : null;
 }
 
 enum PlaceType { me, place, contact }
@@ -367,6 +379,7 @@ const List<String> PlaceTypeLabels = ['contact', 'place', 'contact'];
 class Place extends Point {
   final String id;
   final String name;
+  final String contact;
   final Privacy privacy;
   final PlaceType type;
   // Fields for contacts
@@ -386,6 +399,7 @@ class Place extends Point {
   const Place(
       {this.id,
       this.name,
+      this.contact,
       this.emails,
       this.phones,
       this.placeId,
@@ -401,6 +415,7 @@ class Place extends Point {
 
   Place.fromJson(this.id, Map json)
       : name = json['name'],
+        contact = json['contact'],
         emails = List<String>.from(json['emails'] ?? []),
         phones = List<String>.from(json['phones'] ?? []),
         placeId = json['placeId'],
@@ -423,6 +438,7 @@ class Place extends Point {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
+      'contact': contact,
       'emails': emails,
       'phones': phones,
       'placeId': placeId,
@@ -442,6 +458,7 @@ class Place extends Point {
   Place copyWith(
       {String id,
       String name,
+      String contact,
       LatLng location,
       String geohash,
       Privacy privacy,
@@ -456,6 +473,7 @@ class Place extends Point {
     return Place(
         id: id ?? this.id,
         name: name ?? this.name,
+        contact: contact ?? this.contact,
         privacy: privacy ?? this.privacy,
         location: location ?? this.location,
         geohash: geohash ?? this.geohash,
@@ -474,6 +492,7 @@ class Place extends Point {
     return copyWith(
       id: id ?? other.id,
       name: name ?? other.name,
+      contact: contact ?? other.contact,
       privacy: privacy ?? other.privacy,
       type: type ?? other.type,
       emails:
@@ -495,6 +514,7 @@ class Place extends Point {
   List<Object> get props => [
         id,
         name,
+        contact,
         emails,
         phones,
         placeId,
@@ -739,7 +759,9 @@ class _BookDetailsState extends State<BookDetails> {
   void initState() {
     super.initState();
 
-    loadShelfImage().then((value) => setState(() {}));
+    loadShelfImage().then((value) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -749,7 +771,9 @@ class _BookDetailsState extends State<BookDetails> {
     if (oldWidget.book != widget.book) {
       book = widget.book;
       _imageProvider = null;
-      loadShelfImage().then((value) => setState(() {}));
+      loadShelfImage().then((value) {
+        if (mounted) setState(() {});
+      });
     }
   }
 
@@ -876,11 +900,13 @@ class _BookDetailsState extends State<BookDetails> {
                                       setState(() {});
                                     },
                                     selected: filters.isUserBookmark(book)),
+/*
                                 // Problem button
                                 detailsButton(
                                     icon: Icons.report_problem,
                                     onPressed: () {},
                                     selected: false),
+*/
                                 // Search book button
                                 detailsButton(
                                     icon: Icons.search,
@@ -896,8 +922,29 @@ class _BookDetailsState extends State<BookDetails> {
                                     selected: false),
                                 // Message button
                                 detailsButton(
-                                    icon: Icons.message,
-                                    onPressed: () {},
+                                    icon: book.phone != null
+                                        ? Icons.phone
+                                        : Icons.message,
+                                    onPressed: () async {
+                                      String url;
+                                      if (book.phone != null)
+                                        url = 'tel:${book.phone}';
+                                      else if (book.email != null)
+                                        url = 'mailto:${book.email}';
+                                      else {
+                                        print(
+                                            'EXCEPTION: Book does not have neither mobile nor email');
+                                        // TODO: Log an exception
+                                      }
+
+                                      if (url != null && await canLaunch(url)) {
+                                        await launch(url);
+                                      } else {
+                                        print(
+                                            'EXCEPTION: Could not launch contact owner action');
+                                        // TODO: Log an exception
+                                      }
+                                    },
                                     selected: false),
                               ])),
                       // TODO: Add editing of the books
