@@ -918,40 +918,14 @@ class _BookDetailsState extends State<BookDetails> {
                                 // Share button
                                 detailsButton(
                                     icon: Icons.share,
-                                    onPressed: () async {
-                                      String link = await buildLink(
-                                          'book?isbn=${book.isbn}&title=${book.title}');
-
-                                      Share.share(link,
-                                          subject:
-                                              '"${book.title}" on Biblosphere');
-                                    },
+                                    onPressed: () => shareBook(book),
                                     selected: false),
                                 // Message button
                                 detailsButton(
                                     icon: book.phone != null
                                         ? Icons.phone
-                                        : Icons.message,
-                                    onPressed: () async {
-                                      String url;
-                                      if (book.phone != null)
-                                        url = 'tel:${book.phone}';
-                                      else if (book.email != null)
-                                        url = 'mailto:${book.email}';
-                                      else {
-                                        print(
-                                            'EXCEPTION: Book does not have neither mobile nor email');
-                                        // TODO: Log an exception
-                                      }
-
-                                      if (url != null && await canLaunch(url)) {
-                                        await launch(url);
-                                      } else {
-                                        print(
-                                            'EXCEPTION: Could not launch contact owner action');
-                                        // TODO: Log an exception
-                                      }
-                                    },
+                                        : Icons.email,
+                                    onPressed: () => contactBook(book),
                                     selected: false),
                               ])),
                       // TODO: Add editing of the books
@@ -1120,7 +1094,15 @@ class _ListWidgetState extends State<ListWidget> {
                     caption: 'Favorite',
                     color: Colors.red,
                     icon: Icons.bookmark,
-                    //onTap: () => _showSnackBar('Archive'),
+                    onTap: () {
+                      if (filters.isUserBookmark(b)) {
+                        context.bloc<FilterCubit>().removeUserBookmark(b);
+                      } else {
+                        context.bloc<FilterCubit>().addUserBookmark(b);
+                      }
+                      // TODO: button state does not refrest without setState
+                      //setState(() {});
+                    },
                   ),
 /*
     IconSlideAction(
@@ -1136,13 +1118,13 @@ class _ListWidgetState extends State<ListWidget> {
                     caption: 'Share',
                     color: Colors.indigo,
                     icon: Icons.share,
-                    //onTap: () => _showSnackBar('More'),
+                    onTap: () => shareBook(b),
                   ),
                   IconSlideAction(
                     caption: 'Contact',
                     color: Colors.blue,
-                    icon: Icons.message,
-                    //onTap: () => _showSnackBar('Delete'),
+                    icon: b.phone != null ? Icons.phone : Icons.email,
+                    onTap: () => contactBook(b),
                   ),
                 ],
               );
@@ -1204,4 +1186,29 @@ Future<String> buildLink(String query,
   final ShortDynamicLink shortLink = await parameters.buildShortLink();
 
   return shortLink.shortUrl.toString();
+}
+
+void shareBook(Book book) async {
+  String link = await buildLink('book?isbn=${book.isbn}&title=${book.title}');
+
+  Share.share(link, subject: '"${book.title}" on Biblosphere');
+}
+
+void contactBook(Book book) async {
+  String url;
+  if (book.phone != null)
+    url = 'tel:${book.phone}';
+  else if (book.email != null)
+    url = 'mailto:${book.email}';
+  else {
+    print('EXCEPTION: Book does not have neither mobile nor email');
+    // TODO: Log an exception
+  }
+
+  if (url != null && await canLaunch(url)) {
+    await launch(url);
+  } else {
+    print('EXCEPTION: Could not launch contact owner action');
+    // TODO: Log an exception
+  }
 }
