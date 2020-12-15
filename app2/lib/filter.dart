@@ -1,8 +1,6 @@
 part of 'main.dart';
 
 Widget chipBuilder(BuildContext context, Filter filter) {
-  //print('!!!DEBUG chipBuilder ${filter.type}');
-
   IconData icon;
   Panel position = context.bloc<FilterCubit>().state.panel;
   Widget chip;
@@ -37,13 +35,11 @@ Widget chipBuilder(BuildContext context, Filter filter) {
       shadowColor: chipUnselectedBackground,
       selectedShadowColor: chipSelectedBackground,
       selected: filter.selected,
-      // !!!DEBUG
       label: Icon(icon,
           color: filter.selected ? chipSelectedText : chipUnselectedText),
       // TODO: Put book icon here
       // avatar: CircleAvatar(),
       onPressed: () {
-        print('!!!DEBUG Trigger onPressed for filter ${filter.type}');
         context.bloc<FilterCubit>().toggleFilter(filter.type, filter);
       },
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -114,10 +110,9 @@ Widget chipBuilder(BuildContext context, Filter filter) {
         },
         onPressed: () {
           if (!filter.selected)
-            print('!!!DEBUG Trigger Adding filter ${filter.type}');
-          context
-              .bloc<FilterCubit>()
-              .addFilter(filter.copyWith(selected: true));
+            context
+                .bloc<FilterCubit>()
+                .addFilter(filter.copyWith(selected: true));
         },
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       );
@@ -138,10 +133,9 @@ Widget chipBuilder(BuildContext context, Filter filter) {
         },
         onPressed: () {
           if (!filter.selected)
-            print('!!!DEBUG Trigger Adding filter ${filter.type}');
-          context
-              .bloc<FilterCubit>()
-              .addFilter(filter.copyWith(selected: true));
+            context
+                .bloc<FilterCubit>()
+                .addFilter(filter.copyWith(selected: true));
         },
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       );
@@ -234,7 +228,6 @@ class _SearchPanelState extends State<SearchPanel> {
   @override
   void dispose() {
     // Dispose editing controller
-    print('!!!DEBUG Search panel dispose');
     _controller.dispose();
 
     super.dispose();
@@ -286,7 +279,6 @@ class _SearchPanelState extends State<SearchPanel> {
         FilterGroup group = state.group;
         List<Filter> suggestions = state.filterSuggestions;
 
-        print('!!!DEBUG build suggestions for $group');
         return OverflowBox(
             maxHeight: 800.0,
             alignment: Alignment.topLeft,

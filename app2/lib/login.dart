@@ -253,8 +253,7 @@ class _LoginPageState extends State<LoginPage> {
                         )),
                     Expanded(child: Container())
                   ]);
-            }
-            if (login.status == LoginStatus.codeRequired) {
+            } else if (login.status == LoginStatus.codeRequired) {
               return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
@@ -436,9 +435,18 @@ class _LoginPageState extends State<LoginPage> {
                     Expanded(child: Container())
                   ]);
             } else {
-              // TODO: Add progress indicator here
-              return Container(
-                  child: Center(child: Text(login.status.toString())));
+              return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Expanded(
+                        flex: 8,
+                        child: Center(
+                            child: Image.asset('lib/assets/biblio.png',
+                                height: 90.0))),
+
+                    // Button (Sign-In or Confirm)
+                    Expanded(child: Container())
+                  ]);
             }
           }),
         )));

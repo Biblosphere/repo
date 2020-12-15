@@ -92,8 +92,6 @@ Future<Set<Marker>> markersFor(
   // Create icons of different sizes
   Set<Marker> markers = Set();
 
-  //print('!!!DEBUG Marker data length ${data.length}');
-
   var m = data.iterator;
 
   //iterate over the list
@@ -163,8 +161,6 @@ class _MapWidgetState extends State<MapWidget> {
                   zoom: 5.0,
                 ),
                 onCameraIdle: () async {
-                  print('!!!DEBUG: Map move completed');
-                  // TODO: Add condition for significant moves only
                   context.bloc<FilterCubit>().mapMoved(
                       _position, await _controller.getVisibleRegion());
                 },

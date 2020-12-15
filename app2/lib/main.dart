@@ -84,8 +84,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
-    print('!!!DEBUG App dispose');
-
     api.client.close();
     super.dispose();
   }
@@ -185,11 +183,7 @@ class TripleButtonState extends State<TripleButton>
   void didUpdateWidget(covariant TripleButton oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    print('!!!DEBUG DidUpdateWidget Triple button');
-
     if (oldWidget.selected != widget.selected) {
-      print('!!!DEBUG Animate Triple button');
-
       // oldSelected = oldWidget.selected;
       animate(widget.selected);
     }
@@ -210,8 +204,6 @@ class TripleButtonState extends State<TripleButton>
   @override
   void initState() {
     super.initState();
-
-    print('!!!DEBUG initState Triple button');
 
     _animationController =
         AnimationController(vsync: this, duration: Duration(milliseconds: 500));
@@ -245,8 +237,6 @@ class TripleButtonState extends State<TripleButton>
   Widget build(BuildContext context) {
     // Radius of rotation
     final double rR = rMin / cos(pi / 6.0);
-
-    print('!!!DEBUG Build Triple button: ${_angleTween.value}');
 
     return AnimatedBuilder(
         animation: _animationController,
@@ -369,8 +359,6 @@ class _MainPageState extends State<MainPage>
 
   @override
   void dispose() {
-    print('!!!DEBUG MainPage dispose');
-
     cameraCtrl?.dispose();
     super.dispose();
   }
@@ -529,21 +517,18 @@ class _MainPageState extends State<MainPage>
                           },
                           // onPressedSelected for CAMERA
                           () async {
-                            print(
-                                '!!!DEBUG Selected button pressed for CAMERA');
-
                             if (!cameraCtrl.value.isInitialized) {
                               //TODO: do exceptional processing for not initialized camera
                               //showInSnackBar('Error: select a camera first.');
                               print(
-                                  '!!!DEBUG Camera controller not initialized');
+                                  'EXCEPTION: Camera controller not initialized');
                               return;
                             }
 
                             if (cameraCtrl.value.isTakingPicture) {
                               // A capture is already pending, do nothing.
                               print(
-                                  '!!!DEBUG Camera controller in pogress (taking picture)');
+                                  'EXCEPTION: Camera controller in pogress (taking picture)');
                               return null;
                             }
 
@@ -560,18 +545,15 @@ class _MainPageState extends State<MainPage>
                             await Directory(filePath).create(recursive: true);
                             final String fileName = '${timestamp()}.jpg';
                             final File file = File('$filePath/$fileName');
-                            print('!!!DEBUG file path ${file.path}');
 
                             try {
                               await cameraCtrl.takePicture(file.path);
                             } on CameraException catch (e) {
                               //TODO: Do exception processing for the camera;
-                              print('!!!DEBUG Camera controller exception: $e');
+                              print(
+                                  'EXCEPTION: Camera controller exception: $e');
                               return null;
                             }
-
-                            print(
-                                '!!!DEBUG: Is controller animating: ${_animationController.isAnimating}');
 
                             setState(() {
                               _pictureFile = file;

@@ -43,7 +43,6 @@ Widget chipBuilderCamera(BuildContext context, Place place,
       // avatar: CircleAvatar(),
       selected: selected,
       onPressed: () {
-        print('!!!DEBUG Trigger set place for CAMERA ${place.name}');
         context.bloc<FilterCubit>().setPlace(place);
       },
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -66,7 +65,7 @@ Widget chipBuilderPrivacy(BuildContext context, Privacy privacy, bool selected,
     label = 'Contacts';
     icon = Icons.people;
   } else if (privacy == Privacy.all) {
-    label = 'All';
+    label = 'Everybody';
     icon = Icons.language;
   }
 
@@ -80,15 +79,20 @@ Widget chipBuilderPrivacy(BuildContext context, Privacy privacy, bool selected,
     label: Container(
         width: width,
         //constraints: BoxConstraints(minWidth: width, maxWidth: width),
-        child: Row(mainAxisAlignment: MainAxisAlignment.start, children: [
-          if (icon != null)
-            Icon(icon, color: selected ? chipSelectedText : chipUnselectedText),
-          Text(label,
-              style: selected ? chipSelectedTextStyle : chipUnselectedTextStyle)
-        ])),
+        child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              if (icon != null)
+                Icon(icon,
+                    color: selected ? chipSelectedText : chipUnselectedText),
+              Flexible(
+                  child: Text(label,
+                      style: selected
+                          ? chipSelectedTextStyle
+                          : chipUnselectedTextStyle))
+            ])),
     onPressed: () {
-      print('!!!DEBUG Trigger privacy for CAMERA $label');
-
       context.bloc<FilterCubit>().setPrivacy(privacy);
     },
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -120,7 +124,6 @@ class _CameraPanelState extends State<CameraPanel> {
 
   @override
   void dispose() {
-    print('!!!DEBUG Camera panel dispose');
     _controller.dispose();
     super.dispose();
   }
@@ -215,7 +218,6 @@ class _CameraPanelState extends State<CameraPanel> {
         // Full view with wrap of values and edit field
         List<Place> suggestions = state.placeSuggestions;
 
-        print('!!!DEBUG build candidate places for CAMERA');
         return OverflowBox(
             maxHeight: 800.0,
             alignment: Alignment.topLeft,

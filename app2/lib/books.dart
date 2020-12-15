@@ -595,7 +595,6 @@ class BookCard extends StatelessWidget {
     return BlocBuilder<FilterCubit, FilterState>(
         // buildWhen: (previous, current) => previous.center != current.center,
         builder: (context, filters) {
-      print('!!!DEBUG rebuild BookCard ${filters.center}');
       String distance = distanceString(filters.center, book.location);
       return GestureDetector(
           onTap: () {
@@ -704,16 +703,17 @@ class _BookDetailsState extends State<BookDetails> {
     imageHeight = image.height.toDouble();
 
     if (book.bookspine == null || book.bookspine.isEmpty) {
-      print('!!!DEBUG bookspine contour missing. Book id: ${book.id}');
+      print('EXCEPTION: bookspine contour missing. Book id: ${book.id}');
+      // TODO: Report exception
       return;
     }
 
     if (book.coverPlace == null || book.coverPlace.isEmpty) {
-      print('!!!DEBUG cover space contour missing. Book id: ${book.id}');
+      print('EXCEPTION: cover space contour missing. Book id: ${book.id}');
+      // TODO: Report exception
       return;
     }
 
-    print('!!!DEBUG drawing outline');
     final pictureRecorder = ui.PictureRecorder();
     final canvas = Canvas(pictureRecorder);
 
@@ -782,9 +782,6 @@ class _BookDetailsState extends State<BookDetails> {
     return BlocBuilder<FilterCubit, FilterState>(
         // buildWhen: (previous, current) => previous.center != current.center,
         builder: (context, filters) {
-      print(
-          '!!!DEBUG rebuild BookDetails ${filters.bookmarks} ${filters.isUserBookmark(book)}');
-
       // Not in detail mode
       if (filters.selected == null) {
         return Container(height: 0.0, width: 0.0);
@@ -1063,9 +1060,6 @@ class _ListWidgetState extends State<ListWidget> {
 
     _scrollController = ScrollController(
         initialScrollOffset: context.bloc<FilterCubit>().state.offset ?? 0.0);
-
-    print(
-        '!!!DEBUG ============================ LIST VIEW INIT STATE ==================================');
   }
 
   @override
@@ -1090,20 +1084,22 @@ class _ListWidgetState extends State<ListWidget> {
                 actionExtentRatio: 0.25,
                 child: BookCard(book: b),
                 actions: <Widget>[
-                  IconSlideAction(
-                    caption: 'Favorite',
-                    color: Colors.red,
-                    icon: Icons.bookmark,
-                    onTap: () {
-                      if (filters.isUserBookmark(b)) {
-                        context.bloc<FilterCubit>().removeUserBookmark(b);
-                      } else {
-                        context.bloc<FilterCubit>().addUserBookmark(b);
-                      }
-                      // TODO: button state does not refrest without setState
-                      //setState(() {});
-                    },
-                  ),
+                  Container(
+                      margin: EdgeInsets.only(top: 6.0, bottom: 6.0),
+                      child: IconSlideAction(
+                        caption: 'Favorite',
+                        color: Colors.red,
+                        icon: Icons.bookmark,
+                        onTap: () {
+                          if (filters.isUserBookmark(b)) {
+                            context.bloc<FilterCubit>().removeUserBookmark(b);
+                          } else {
+                            context.bloc<FilterCubit>().addUserBookmark(b);
+                          }
+                          // TODO: button state does not refrest without setState
+                          //setState(() {});
+                        },
+                      )),
 /*
     IconSlideAction(
       caption: 'Share',
@@ -1114,18 +1110,22 @@ class _ListWidgetState extends State<ListWidget> {
 */
                 ],
                 secondaryActions: <Widget>[
-                  IconSlideAction(
-                    caption: 'Share',
-                    color: Colors.indigo,
-                    icon: Icons.share,
-                    onTap: () => shareBook(b),
-                  ),
-                  IconSlideAction(
-                    caption: 'Contact',
-                    color: Colors.blue,
-                    icon: b.phone != null ? Icons.phone : Icons.email,
-                    onTap: () => contactBook(b),
-                  ),
+                  Container(
+                      margin: EdgeInsets.only(top: 6.0, bottom: 6.0),
+                      child: IconSlideAction(
+                        caption: 'Share',
+                        color: Colors.indigo,
+                        icon: Icons.share,
+                        onTap: () => shareBook(b),
+                      )),
+                  Container(
+                      margin: EdgeInsets.only(top: 6.0, bottom: 6.0),
+                      child: IconSlideAction(
+                        caption: 'Contact',
+                        color: Colors.blue,
+                        icon: b.phone != null ? Icons.phone : Icons.email,
+                        onTap: () => contactBook(b),
+                      )),
                 ],
               );
             }).toList(),

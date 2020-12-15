@@ -36,7 +36,8 @@ FILTER => Book filter changed
 */
 
 enum LoginStatus {
-  unauthorized, // Initial status
+  unknown, // Initial status
+  unauthorized, // User not yet authorized
   phoneVerifying, // Button "Signin" pressed
   codeRequired, // Confirmation code required to be entered
   signInInProgress, // Sign-in with credential requested
@@ -303,7 +304,7 @@ class FilterState extends Equatable {
   ];
 
   const FilterState({
-    this.status = LoginStatus.unauthorized,
+    this.status = LoginStatus.unknown,
     this.phone = '',
     this.name = '',
     this.country,
@@ -432,7 +433,7 @@ class FilterState extends Equatable {
 
   List<Filter> get compact {
     // Return all filters 3 or below
-    if (filters.length <= 3) return filters;
+    if (filters.length == 2) return filters;
 
     List<Filter> selected = filters.where((f) => f.selected).toList();
     return selected;
@@ -484,7 +485,6 @@ class FilterState extends Equatable {
     // Do not expand if highest level
     if (level <= 1) return hashes;
 
-    print('!!!DEBUG seed: $seed ${gc.neighbors(seed)}');
     Set<String> neighbors = gc.neighbors(seed).values.toSet();
     hashes.addAll(neighbors);
     int i = 0;
@@ -505,7 +505,6 @@ class FilterState extends Equatable {
       hashes.addAll(neighbors);
 
       i++;
-      print('!!!DEBUG cycle $i hashes = [$hashes]');
     } while (inside.length > 0 || i > 10);
 
     return hashes;
@@ -706,8 +705,6 @@ class FilterState extends Equatable {
         lat /= value.length;
         lng /= value.length;
 
-        print('!!!DEBUG Value for hash $key = ${value.length}');
-
         int count = 0;
         if (value.first is Book)
           count = value.length;
@@ -723,9 +720,6 @@ class FilterState extends Equatable {
             points: value));
       });
     }
-
-    print(
-        '!!!DEBUG markersFor: ${markers.length} SIZES: ${markers.map((m) => m.size).join(', ')}');
 
     return markers;
   }
@@ -808,8 +802,6 @@ class FilterCubit extends Cubit<FilterState> {
     // If no books returned return empty list
     if (books == null) return const <Filter>[];
 
-    print('!!!DEBUG: Catalog query return ${books?.length} records');
-
     // If author match use FilterType.author, otherwise FilterType.title
     return books
         //  .where((b) =>
@@ -880,7 +872,6 @@ class FilterCubit extends Cubit<FilterState> {
     }
 
     if (query.length == 0) {
-      print('!!!DEBUG length 0');
       places = places.take(15).toList();
     } else if (query.length > 0) {
       places = places.where((p) {
@@ -939,8 +930,6 @@ class FilterCubit extends Cubit<FilterState> {
   Future<void> scanContacts() async {
     // Get all contacts on device
     Iterable<Contact> addressBook = await ContactsService.getContacts();
-
-    print('!!!DEBUG ${addressBook.length} contacts found');
 
     List<String> all = [];
     List<String> places = [];
@@ -1009,9 +998,6 @@ class FilterCubit extends Cubit<FilterState> {
 
   // Emit state with the filters on Deep link
   Future<void> processDeepLink(Uri deepLink) async {
-    // !!!DEBUG
-    deepLink.queryParameters.forEach((k, v) => print('$k: $v'));
-
     if (deepLink.path == "/book") {
       String isbn = deepLink.queryParameters['isbn'];
       String title = deepLink.queryParameters['title'];
@@ -1064,7 +1050,6 @@ class FilterCubit extends Cubit<FilterState> {
     } else {
       // Check the location permission
       if (!await Permission.locationWhenInUse.isGranted) {
-        print('!!!DEBUG Location permission is not granted');
         // Initiate contacts for a first time then permission is granted
         if (await Permission.locationWhenInUse.request().isGranted) {
           print('!!!DEBUG Location permission requested and granted');
@@ -1090,24 +1075,24 @@ class FilterCubit extends Cubit<FilterState> {
 
       Set<String> geohashes = [geohash, ...neighbors.values].toSet();
 
-      Future.forEach(geohashes, (hash) async {
+      await Future.forEach(geohashes, (hash) async {
         places.addAll(await state.placesFor(hash));
-        markers
-            .addAll(await state.markersFor(points: places, hashes: geohashes));
-      }).then((value) {
-        emit(state.copyWith(
-          geohashes: geohashes,
-          location: center,
-          center: center,
-          places: places,
-          books: books,
-          markers: markers,
-        ));
-
-        // Move map if map view controller is available
-        if (_mapController != null)
-          _mapController.moveCamera(CameraUpdate.newLatLng(center));
       });
+
+      markers = await state.markersFor(points: places, hashes: geohashes);
+
+      emit(state.copyWith(
+        geohashes: geohashes,
+        location: center,
+        center: center,
+        places: places,
+        books: books,
+        markers: markers,
+      ));
+
+      // Move map if map view controller is available
+      if (_mapController != null)
+        _mapController.moveCamera(CameraUpdate.newLatLng(center));
     }
   }
 
@@ -1115,25 +1100,16 @@ class FilterCubit extends Cubit<FilterState> {
   Future<void> init() async {
     FirebaseAuth.instance.authStateChanges().listen((User user) async {
       if (user == null) {
-        print('User is currently signed out!');
         emit(state.copyWith(status: LoginStatus.unauthorized));
       } else {
-        print('User is signed in!');
-
         // Update user name in the Firebase profile
         if (state.name != null && state.name.isNotEmpty) {
-          print('!!!DEBUG USER DISPLAY NAME UPDATED: ${state.name}');
           await user.updateProfile(displayName: state.name);
           await user.reload();
         }
 
-        print('!!!DEBUG Hey');
-
         // To be sure that displayName is loaded
         await user.reload();
-
-        print(
-            '!!!DEBUG USER DISPLAY NAME FROM FB: ${FirebaseAuth.instance.currentUser.displayName}');
 
         // Check if user exist in Firestore. Create if missing. Add to state.
         DocumentReference ref =
@@ -1156,17 +1132,12 @@ class FilterCubit extends Cubit<FilterState> {
 */
 
         try {
-          print('!!!DEBUG Query purchases');
-
           // Register user in Purchases
           PurchaserInfo purchaser = await Purchases.identify(user.uid);
 
           // Check if user already subscribed and skip the purchase screen
           if (purchaser?.entitlements?.all["basic"]?.isActive ?? false) {
-            print('!!!DEBUG plan already purchased');
-
             emitInitial();
-
             return;
           }
 
@@ -1178,13 +1149,9 @@ class FilterCubit extends Cubit<FilterState> {
 
           // Add listener for the successful purchase
           Purchases.addPurchaserInfoUpdateListener((info) async {
-            print('!!!DEBUG Purchase listener: ${info.entitlements}');
-
             if (info.entitlements.all["basic"].isActive) {
-              print('!!!DEBUG user SUBSCRIBED');
               emitInitial();
             } else {
-              print('!!!DEBUG user NOT subscribed');
               emit(state.copyWith(status: LoginStatus.unauthorized));
             }
           });
@@ -1217,7 +1184,6 @@ class FilterCubit extends Cubit<FilterState> {
 
   // Enter phone => LOGIN
   void phoneEntered(String value) {
-    print('!!!DEBUG Phone $value');
     emit(state.copyWith(
       phone: value,
     ));
@@ -1239,7 +1205,6 @@ class FilterCubit extends Cubit<FilterState> {
 
   // Press Login button => LOGIN
   void signinPressed() {
-    print('!!!DEBUG Sign in with phone: ${state.mobile}');
     FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: state.mobile,
         timeout: Duration(seconds: 60),
@@ -1360,7 +1325,7 @@ class FilterCubit extends Cubit<FilterState> {
   // - Places filter changed => FILTER (permission for Address Book if My Places)
   // - Language filter changed => FILTER
   // - Genre filter changed => FILTER
-  void addFilter(Filter filter) async {
+  void addFilter(Filter filter, {bool resetType = false}) async {
     List<Filter> filters = state.filters;
 
     // Do nothing if filter already there
@@ -1393,6 +1358,10 @@ class FilterCubit extends Cubit<FilterState> {
         .where((f) => f.type != filter.type || f.value != filter.value)
         .toList();
 
+    // Remove filters of the same type if flag resetType is true
+    if (resetType)
+      filters = filters.where((f) => f.type != filter.type).toList();
+
     filters = [...filters, filter]
       ..sort((a, b) => a.type.index.compareTo(b.type.index));
 
@@ -1405,8 +1374,6 @@ class FilterCubit extends Cubit<FilterState> {
   // - Language filter changed => FILTER
   // - Genre filter changed => FILTER
   void toggleFilter(FilterType type, Filter filter) async {
-    print('!!!DEBUG Toggle filter ${filter.type}');
-
     // Only toggle wish and contacts filter
     if (filter.type != FilterType.contacts && filter.type != FilterType.wish)
       return;
@@ -1416,7 +1383,6 @@ class FilterCubit extends Cubit<FilterState> {
       if (!await Permission.contacts.isGranted) {
         // Initiate contacts for a first time then permission is granted
         if (await Permission.contacts.request().isGranted) {
-          print('!!!DEBUG CONTACTS permission granted for a first time');
           // Async procedure, no wait
           scanContacts();
         } else {
@@ -1425,7 +1391,6 @@ class FilterCubit extends Cubit<FilterState> {
         }
       }
       // Either the permission was already granted before or the user just granted it.
-      print('!!!DEBUG CONTACTS permission checked');
     }
 
     List<Filter> filters = state.filters;
@@ -1457,7 +1422,6 @@ class FilterCubit extends Cubit<FilterState> {
 
     // Make markers based on BOOKS
     if (state.select == QueryType.books) {
-      print('!!!DEBUG Filtered markers based on BOOKS');
       // Add books only for missing areas
       await Future.forEach(state.geohashes, (hash) async {
         books.addAll(await state.booksFor(hash));
@@ -1474,7 +1438,6 @@ class FilterCubit extends Cubit<FilterState> {
 
       // Make markers based on PLACES
     } else if (state.select == QueryType.places) {
-      print('!!!DEBUG Filtered markers based on PLACES');
       // Add places only for missing areas
       await Future.forEach(state.geohashes, (hash) async {
         places.addAll(await state.placesFor(hash));
@@ -1514,8 +1477,6 @@ class FilterCubit extends Cubit<FilterState> {
   // FILTER PANEL:
   // - Filter panel opened => FILTER
   void panelOpened() async {
-    print('!!!DEBUG PANEL OPEN');
-
     // TODO: Load near by book places and keep it in the state object
     emit(state.copyWith(
       panel: Panel.open,
@@ -1525,7 +1486,6 @@ class FilterCubit extends Cubit<FilterState> {
   // FILTER PANEL:
   // - Filter panel minimized => FILTER
   void panelMinimized() {
-    print('!!!DEBUG PANEL MINIMIZED');
     emit(state.copyWith(
       panel: Panel.minimized,
     ));
@@ -1534,7 +1494,6 @@ class FilterCubit extends Cubit<FilterState> {
   // FILTER PANEL:
   // - Filter panel closed => FILTER
   void panelHiden() {
-    print('!!!DEBUG PANEL HIDDEN');
     emit(state.copyWith(
       panel: Panel.hiden,
     ));
@@ -1544,8 +1503,6 @@ class FilterCubit extends Cubit<FilterState> {
   // - Map button pressed (selected) => FILTER
   void mapButtonPressed() async {
     LatLng location = await currentLatLng();
-    print(
-        '!!!DEBUG New location ${LatLng(location.latitude, location.longitude)}');
 
     // Inform about new position if distance more than 50 meters
     // And drop place candidates for the camera
@@ -1828,7 +1785,7 @@ class FilterCubit extends Cubit<FilterState> {
 
   // MAP VIEW
   // - Tap on Marker => FILTER
-  void markerPressed(MarkerData marker) {
+  void markerPressed(MarkerData marker) async {
     print('!!!DEBUG Marker pressed ${marker.position} size: ${marker.size} ');
     print('!!!DEBUG Marker points ${marker.points.first.runtimeType}');
     if (marker.points.length == 1 && marker.points.first is Book) {
@@ -1840,6 +1797,7 @@ class FilterCubit extends Cubit<FilterState> {
         center: marker.position,
       ));
     } else if (marker.points.length > 1 && marker.points.first is Book) {
+      print('!!!DEBUG marker with books');
       List<Book> books = List<Book>.from(marker.points);
       books.sort((a, b) => (distanceBetween(a.location, marker.position) -
               distanceBetween(b.location, marker.position))
@@ -1852,10 +1810,34 @@ class FilterCubit extends Cubit<FilterState> {
         center: marker.position,
       ));
     } else if (marker.points.length == 1 && marker.points.first is Place) {
+      // TODO: Open books of the place in the List view
       // Set filter by place id
+      print('!!!DEBUG Marker for single Place ${marker.points.first}');
+      Place place = marker.points.first;
+      addFilter(
+          Filter(
+              type: FilterType.place,
+              value: place.name,
+              place: place,
+              selected: true),
+          resetType: true);
+
+      // Reset List view offset
+      emit(state.copyWith(offset: 0.0));
+
       // Get books for this place (filters)
+      print('!!!DEBUG filters: ${state.filters}');
+      List<Book> books = [];
+      await Future.forEach(state.geohashes, (hash) async {
+        books.addAll(await state.booksFor(hash));
+        emit(state.copyWith(
+          books: books,
+          view: ViewType.list,
+        ));
+      });
+
       // Change view to LIST
-    } else if (marker.points.length >= 1 && marker.points.first is Place) {
+    } else if (marker.points.length > 1 && marker.points.first is Place) {
       // Zoom to the places
       LatLngBounds bounds = boundsFromPoints(marker.points);
       _mapController.moveCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
