@@ -473,14 +473,42 @@ class FilterState extends Equatable {
 
     // Find longest common starting substring for center and corners
     int level = max(max(lcp(center, ne), lcp(center, sw)),
-        max(lcp(center, nw), lcp(center, se)));
+            max(lcp(center, nw), lcp(center, se))) +
+        1;
 
-    return [
-      ne.substring(0, level),
-      sw.substring(0, level),
-      nw.substring(0, level),
-      se.substring(0, level)
-    ].toSet();
+    String seed =
+        gc.encode(position.longitude, position.latitude).substring(0, level);
+    Set<String> inside = Set();
+    Set<String> hashes = {seed};
+
+    // Do not expand if highest level
+    if (level <= 1) return hashes;
+
+    print('!!!DEBUG seed: $seed ${gc.neighbors(seed)}');
+    Set<String> neighbors = gc.neighbors(seed).values.toSet();
+    hashes.addAll(neighbors);
+    int i = 0;
+
+    do {
+      // All neighbours which are inside the boundaries
+      inside = neighbors.where((h) {
+        List<double> c = gc.decode(h);
+        return bounds.contains(LatLng(c[1], c[0]));
+      }).toSet();
+      // Find all new neighbors which are not in hashes yet
+      neighbors = {};
+      inside.forEach((i) {
+        neighbors.addAll(gc.neighbors(seed).values.toSet().difference(hashes));
+      });
+
+      // Add all neigbours to the hashes
+      hashes.addAll(neighbors);
+
+      i++;
+      print('!!!DEBUG cycle $i hashes = [$hashes]');
+    } while (inside.length > 0 || i > 10);
+
+    return hashes;
   }
 
   Future<List<Book>> booksFor(String geohash) async {
@@ -649,7 +677,8 @@ class FilterState extends Equatable {
       {List<Point> points, LatLngBounds bounds, Set<String> hashes}) async {
     // Two levels down compare to hashes of the state
     int level = 9;
-    if (hashes != null && hashes.length > 0) min(hashes.first.length + 2, 9);
+    if (hashes != null && hashes.length > 0)
+      level = min(hashes.first.length + 1, 9);
 
     Set<MarkerData> markers = Set();
 
@@ -1098,8 +1127,13 @@ class FilterCubit extends Cubit<FilterState> {
           await user.reload();
         }
 
+        print('!!!DEBUG Hey');
+
         // To be sure that displayName is loaded
         await user.reload();
+
+        print(
+            '!!!DEBUG USER DISPLAY NAME FROM FB: ${FirebaseAuth.instance.currentUser.displayName}');
 
         // Check if user exist in Firestore. Create if missing. Add to state.
         DocumentReference ref =
@@ -1122,6 +1156,8 @@ class FilterCubit extends Cubit<FilterState> {
 */
 
         try {
+          print('!!!DEBUG Query purchases');
+
           // Register user in Purchases
           PurchaserInfo purchaser = await Purchases.identify(user.uid);
 

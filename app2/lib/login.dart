@@ -199,26 +199,29 @@ class _LoginPageState extends State<LoginPage> {
 
                               // Confirm PP & TS
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(50, 0, 0, 0),
+                                padding: const EdgeInsets.fromLTRB(5, 0, 0, 0),
                                 child: Container(
                                   margin:
-                                      EdgeInsets.only(left: 20.0, right: 20.0),
+                                      EdgeInsets.only(left: 25.0, right: 20.0),
                                   child:
                                       // Figma: Privacy Policy
                                       Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.start,
                                           children: <Widget>[
-                                        Checkbox(
-                                            activeColor: Colors.black,
-                                            value: login.pp,
-                                            onChanged: (value) {
-                                              context
-                                                  .bloc<FilterCubit>()
-                                                  .privacyPolicyEntered(value);
-                                            }),
-                                        RichText(
-                                            text: TextSpan(children: [
+                                        Container(
+                                            child: Checkbox(
+                                                activeColor: Colors.black,
+                                                value: login.pp,
+                                                onChanged: (value) {
+                                                  context
+                                                      .bloc<FilterCubit>()
+                                                      .privacyPolicyEntered(
+                                                          value);
+                                                })),
+                                        Flexible(
+                                            child: RichText(
+                                                text: TextSpan(children: [
                                           TextSpan(
                                               text: 'Agree to ',
                                               style: new TextStyle(
@@ -241,7 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                                                     }
                                                   },
                                           ),
-                                        ]))
+                                        ])))
                                       ]),
                                 ),
                               ),
