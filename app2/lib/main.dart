@@ -35,6 +35,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 // Geo hashes
 import 'package:dart_geohash/dart_geohash.dart';
 // Geo location
@@ -48,6 +49,8 @@ import 'package:permission_handler/permission_handler.dart';
 // Gesture detector and URL launcher for PP and TOS
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
+// Share the book link to others
+import 'package:share/share.dart';
 
 part 'login.dart';
 part 'camera.dart';

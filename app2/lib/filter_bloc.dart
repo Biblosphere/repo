@@ -615,7 +615,8 @@ class FilterState extends Equatable {
     List<Book> books =
         bookSnap.docs.map((doc) => Book.fromJson(doc.id, doc.data())).toList();
 
-    books = books.where((b) => bounds.contains(b.location)).toList();
+    if (bounds != null)
+      books = books.where((b) => bounds.contains(b.location)).toList();
 
     print('!!!DEBUG: booksFor reads ${books.length} books');
 
@@ -647,7 +648,8 @@ class FilterState extends Equatable {
   Future<Set<MarkerData>> markersFor(
       {List<Point> points, LatLngBounds bounds, Set<String> hashes}) async {
     // Two levels down compare to hashes of the state
-    int level = min(hashes.first.length + 2, 9);
+    int level = 9;
+    if (hashes != null && hashes.length > 0) min(hashes.first.length + 2, 9);
 
     Set<MarkerData> markers = Set();
 
@@ -976,6 +978,25 @@ class FilterCubit extends Cubit<FilterState> {
       ));
   }
 
+  // Emit state with the filters on Deep link
+  Future<void> processDeepLink(Uri deepLink) async {
+    // !!!DEBUG
+    deepLink.queryParameters.forEach((k, v) => print('$k: $v'));
+
+    if (deepLink.path == "/book") {
+      String isbn = deepLink.queryParameters['isbn'];
+      String title = deepLink.queryParameters['title'];
+
+      if (isbn == null || isbn.isEmpty || title == null || title.isEmpty) {
+        print('EXCEPTION: Isbn or Title is empty in a deep link');
+        // TODO: Report an exception
+      } else {
+        // Search all books with this ISBN and show on map
+        searchAndShowBook(book: Book(isbn: isbn, title: title));
+      }
+    }
+  }
+
   void emitInitial() async {
     // Confirm that user is subscribed
     emit(state.copyWith(
@@ -983,51 +1004,82 @@ class FilterCubit extends Cubit<FilterState> {
       view: ViewType.map,
     ));
 
-    // Check the location permission
-    if (!await Permission.locationWhenInUse.isGranted) {
-      print('!!!DEBUG Location permission is not granted');
-      // Initiate contacts for a first time then permission is granted
-      if (await Permission.locationWhenInUse.request().isGranted) {
-        print('!!!DEBUG Location permission requested and granted');
-      } else {
-        // TODO: What to do without location
-        print('!!!DEBUG Location permission requested and denied');
-        return;
-      }
-    }
+    // Set a call back for the deep link
+    // TODO: Do I need to cancel/unsubscribe from onLink listener?
+    FirebaseDynamicLinks.instance.onLink(
+        onSuccess: (PendingDynamicLinkData dynamicLink) {
+      return Future.delayed(Duration.zero, () async {
+        final Uri deepLink = dynamicLink?.link;
 
-    // Get current location and initial markers
-    LatLng center = await currentLatLng();
-
-    List<Book> books = [];
-    List<Place> places = [];
-    Set<MarkerData> markers = {};
-
-    // Get geohash of the current location and neighbours ~ 60 km
-    String geohash = GeoHasher().encode(center.longitude, center.latitude);
-
-    Map<String, String> neighbors =
-        GeoHasher().neighbors(geohash.substring(0, 4));
-
-    Set<String> geohashes = [geohash, ...neighbors.values].toSet();
-
-    Future.forEach(geohashes, (hash) async {
-      places.addAll(await state.placesFor(hash));
-      markers.addAll(await state.markersFor(points: places, hashes: geohashes));
-    }).then((value) {
-      emit(state.copyWith(
-        geohashes: geohashes,
-        location: center,
-        center: center,
-        places: places,
-        books: books,
-        markers: markers,
-      ));
-
-      // Move map if map view controller is available
-      if (_mapController != null)
-        _mapController.moveCamera(CameraUpdate.newLatLng(center));
+        if (deepLink != null) {
+          await processDeepLink(deepLink);
+        } else {
+          print('EXCEPTION: Empty deep link');
+          // TODO: Report into crashalytic
+        }
+      });
+    }, onError: (OnLinkErrorException e) {
+      return Future.delayed(Duration.zero, () {
+        // TODO: Add to Crashalitics
+        print('EXCEPTION: onLinkError ${e.message}');
+      });
     });
+
+    // Check if app is started by dynamic link
+    final PendingDynamicLinkData data =
+        await FirebaseDynamicLinks.instance.getInitialLink();
+
+    final Uri deepLink = data?.link;
+    if (deepLink != null) {
+      processDeepLink(deepLink);
+    } else {
+      // Check the location permission
+      if (!await Permission.locationWhenInUse.isGranted) {
+        print('!!!DEBUG Location permission is not granted');
+        // Initiate contacts for a first time then permission is granted
+        if (await Permission.locationWhenInUse.request().isGranted) {
+          print('!!!DEBUG Location permission requested and granted');
+        } else {
+          // TODO: What to do without location
+          print('!!!DEBUG Location permission requested and denied');
+          return;
+        }
+      }
+
+      // Get current location and initial markers
+      LatLng center = await currentLatLng();
+
+      List<Book> books = [];
+      List<Place> places = [];
+      Set<MarkerData> markers = {};
+
+      // Get geohash of the current location and neighbours ~ 60 km
+      String geohash = GeoHasher().encode(center.longitude, center.latitude);
+
+      Map<String, String> neighbors =
+          GeoHasher().neighbors(geohash.substring(0, 4));
+
+      Set<String> geohashes = [geohash, ...neighbors.values].toSet();
+
+      Future.forEach(geohashes, (hash) async {
+        places.addAll(await state.placesFor(hash));
+        markers
+            .addAll(await state.markersFor(points: places, hashes: geohashes));
+      }).then((value) {
+        emit(state.copyWith(
+          geohashes: geohashes,
+          location: center,
+          center: center,
+          places: places,
+          books: books,
+          markers: markers,
+        ));
+
+        // Move map if map view controller is available
+        if (_mapController != null)
+          _mapController.moveCamera(CameraUpdate.newLatLng(center));
+      });
+    }
   }
 
   // LOGIN SCREENS
@@ -1666,7 +1718,8 @@ class FilterCubit extends Cubit<FilterState> {
 
       // Make markers based on PLACES
     } else if (state.select == QueryType.places) {
-      print('!!!DEBUG Markers based on PLACES');
+      print(
+          '!!!DEBUG Markers based on PLACES Filters: ${state.filters} Books: ${state.books}');
       // Add places only for missing areas
       await Future.forEach(extraHashes, (hash) async {
         places.addAll(await state.placesFor(hash));
@@ -1795,11 +1848,7 @@ class FilterCubit extends Cubit<FilterState> {
     ));
   }
 
-  // DETAILS
-  // - Search button pressed => FILTER
-  void searchBookPressed(Book book) async {
-    // Modify filter to add given book
-    // Modify list of ISBN to search
+  void searchAndShowBook({Book book}) async {
     FilterState newState = state.copyWith(filters: [
       ...FilterState.empty,
       Filter(
@@ -1808,12 +1857,18 @@ class FilterCubit extends Cubit<FilterState> {
       book.isbn
     ]);
 
+    print('!!!DEBUG Search and show books by ISBN ${book.isbn}');
+
     // Search book globally
     List<Book> books = await newState.booksFor('');
+    Set<MarkerData> markers = await newState.markersFor(points: books);
+
+    print('!!!DEBUG ${books.length} books found');
 
     // Emit a NEW state with books and map view
     emit(newState.copyWith(
       books: books,
+      markers: markers,
       offset: 0.0,
       view: ViewType.map,
     ));
@@ -1826,6 +1881,15 @@ class FilterCubit extends Cubit<FilterState> {
     } else {
       _mapController.moveCamera(CameraUpdate.newLatLng(book.location));
     }
+  }
+
+  // DETAILS
+  // - Search button pressed => FILTER
+  void searchBookPressed(Book book) async {
+    // Modify filter to add given book
+    // Modify list of ISBN to search
+
+    searchAndShowBook(book: book);
   }
 
   // DETAILS
