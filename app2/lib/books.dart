@@ -371,6 +371,11 @@ class Book extends Point {
   String get email => bookplaceContact != null && bookplaceContact.contains('@')
       ? bookplaceContact
       : null;
+
+  String get web =>
+      bookplaceContact != null && bookplaceContact.startsWith('http')
+          ? bookplaceContact
+          : null;
 }
 
 enum PlaceType { me, place, contact }
@@ -437,6 +442,7 @@ class Place extends Point {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'name': name,
       'contact': contact,
       'emails': emails,
@@ -1200,8 +1206,10 @@ void contactBook(Book book) async {
     url = 'tel:${book.phone}';
   else if (book.email != null)
     url = 'mailto:${book.email}';
+  else if (book.web != null)
+    url = '${book.email}';
   else {
-    print('EXCEPTION: Book does not have neither mobile nor email');
+    print('EXCEPTION: Book does not have none of mobile, email or web');
     // TODO: Log an exception
   }
 

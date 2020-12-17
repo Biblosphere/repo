@@ -1573,10 +1573,16 @@ class FilterCubit extends Cubit<FilterState> {
         place = Place(
             // TODO: DisplayName is null. Investigate.
             name: FirebaseAuth.instance.currentUser.displayName,
-            phones: [FirebaseAuth.instance.currentUser.phoneNumber],
-            emails: [FirebaseAuth.instance.currentUser.email],
+            phones: FirebaseAuth.instance.currentUser.phoneNumber != null
+                ? [FirebaseAuth.instance.currentUser.phoneNumber]
+                : [],
+            emails: FirebaseAuth.instance.currentUser.email != null
+                ? [FirebaseAuth.instance.currentUser.email]
+                : [],
             privacy: Privacy.all,
             type: PlaceType.me,
+            contact: FirebaseAuth.instance.currentUser.phoneNumber ??
+                FirebaseAuth.instance.currentUser.email,
             location: pos,
             geohash: hash);
       else
@@ -2074,7 +2080,7 @@ class FilterCubit extends Cubit<FilterState> {
       print(
           '!!!DEBUG places query result: ${result.status}, number ${result.results.length}');
 
-      // TODO: Place contacts is not available at this search details required
+      // TODO: Place contacts is not available at this search. Details required
       candidates = result.results
           .map((r) => Place(
               placeId: r.placeId,
@@ -2099,15 +2105,25 @@ class FilterCubit extends Cubit<FilterState> {
           c.phones.forEach((p) {
             print('!!!DEBUG: ${c.displayName} ${p.label} ${p.value}');
           });
-        });
 
-        candidates.addAll(addressBook.map((c) => Place(
-            name: c.displayName,
-            // TODO: Take only phones with "mobile" label
-            phones: c.phones.map((p) => internationalPhone(p.value)).toList(),
-            emails: c.emails.map((e) => e.value).toList(),
-            privacy: Privacy.contacts,
-            type: PlaceType.contact)));
+          List<String> phones =
+              c.phones.map((p) => internationalPhone(p.value)).toList();
+          List<String> emails = c.emails.map((e) => e.value).toList();
+          String contact;
+          if (phones.length > 0)
+            contact = phones.first;
+          else if (emails.length > 0) contact = emails.first;
+
+          if (contact != null)
+            candidates.add(Place(
+                name: c.displayName,
+                // TODO: Take only phones with "mobile" label
+                phones: phones,
+                emails: emails,
+                contact: contact,
+                privacy: Privacy.contacts,
+                type: PlaceType.contact));
+        });
       }
 
       // Update state with newly retrieved candidates
@@ -2154,11 +2170,12 @@ class FilterCubit extends Cubit<FilterState> {
   Future<Place> getPlaceFromDb(Place place) async {
     if (place.id != null) {
       // Place already found in DB
+      print('!!!DEBUG: Place already in DB');
       return place;
     } else if (place.type == PlaceType.place) {
       // If place is a Google map place search by id
       DocumentReference ref = FirebaseFirestore.instance
-          .collection('places')
+          .collection('bookplaces')
           .doc('P' + place.placeId);
       DocumentSnapshot doc = await ref.get();
 
@@ -2167,6 +2184,31 @@ class FilterCubit extends Cubit<FilterState> {
         place = place.merge(Place.fromJson(doc.id, doc.data()));
       } else {
         // If place is not in DB create it
+
+        // Check if contact is there. If not query GooglePlaces
+        if (place.contact == null) {
+          DetailsResponse details =
+              await googlePlace.details.get(place.placeId);
+
+          // TODO: Find constant for this value 'OK'
+          if (details.status == 'OK') {
+            if (details.result.internationalPhoneNumber != null)
+              place = place.copyWith(
+                  contact: details.result.internationalPhoneNumber);
+            else if (details.result.website != null)
+              place = place.copyWith(contact: details.result.website);
+            else
+              place = place.copyWith(
+                  contact:
+                      'https://www.google.com/maps/search/?api=1&query=${place.name}&query_place_id=${place.placeId}');
+          } else {
+            // TODO: Report an exception. Most probably it means some garbage!
+            place = place.copyWith(
+                contact:
+                    'https://www.google.com/maps/search/?api=1&query=${place.name}&query_place_id=${place.placeId}');
+          }
+        }
+
         ref.set(place.toJson());
         place = place.copyWith(id: ref.id);
       }
@@ -2177,11 +2219,11 @@ class FilterCubit extends Cubit<FilterState> {
 
       if (place.phones != null && place.phones.isNotEmpty)
         query = FirebaseFirestore.instance
-            .collection('places')
+            .collection('bookplaces')
             .where('phones', arrayContainsAny: state.place.phones);
       else if (place.emails != null && place.emails.isNotEmpty)
         query = FirebaseFirestore.instance
-            .collection('places')
+            .collection('bookplaces')
             .where('phones', arrayContainsAny: place.phones);
       else {
         // TODO: Record an exception: either phone or email should be filled in contact
@@ -2207,14 +2249,14 @@ class FilterCubit extends Cubit<FilterState> {
       } else {
         // Create a place in DB if not found or too far
         DocumentReference ref =
-            FirebaseFirestore.instance.collection('places').doc();
+            FirebaseFirestore.instance.collection('bookplaces').doc();
         ref.set(place.toJson());
         place = place.copyWith(id: ref.id);
       }
     } else if (state.place.type == PlaceType.me) {
       // Check if my own location is already exist near the current location
       DocumentReference ref = FirebaseFirestore.instance
-          .collection('places')
+          .collection('bookplaces')
           .doc('U' +
               FirebaseAuth.instance.currentUser.uid +
               ':' +
@@ -2222,12 +2264,14 @@ class FilterCubit extends Cubit<FilterState> {
       DocumentSnapshot doc = await ref.get();
 
       if (doc.exists) {
+        print('!!!DEBUG Place exist in DB merge');
         // If place exist in DB merge it with current one
         place = place.merge(Place.fromJson(doc.id, doc.data()));
       } else {
+        print('!!!DEBUG Create place in DB ${ref.id}');
         // If place is not in DB create it
-        ref.set(place.toJson());
         place = place.copyWith(id: ref.id);
+        await ref.set(place.toJson());
       }
     }
 
@@ -2260,7 +2304,7 @@ class FilterCubit extends Cubit<FilterState> {
     // Return reference to get url and path
     return ref;
   }
-
+/* DO IT BY TRIGGER IN FIRESTORE PYTHON
   // Trigger image recognition
   Future recognizeImage(String photoId) async {
     try {
@@ -2293,6 +2337,7 @@ class FilterCubit extends Cubit<FilterState> {
       // TODO: Add event into analytics
     }
   }
+*/
 
   // CAMERA PANEL:
   // - Tripple button with a camera
@@ -2302,21 +2347,24 @@ class FilterCubit extends Cubit<FilterState> {
     // Find place if it exist or create it in Firestore DB
     Place place = await getPlaceFromDb(state.place);
 
-    print('!!!DEBUG Place found/created');
+    print('!!!DEBUG Place found/created: ${place.id}');
 
     // TODO: Validate that place.id is not null and throw exception
+
+    print('!!!DEBUG Image taken: images/${place.id}/$fileName');
 
     // Upload picture to GCS
     Reference ref = await uploadPicture(file, 'images/${place.id}/$fileName');
 
-    print('!!!DEBUG Image uploaded');
+    print('!!!DEBUG Image uploaded: images/${place.id}/$fileName');
 
     // Create a photo record for the given place and uploaded image
     DocumentReference doc =
         FirebaseFirestore.instance.collection('photos').doc();
+
     doc.set({
       'id': doc.id,
-      'place': place.id,
+      'bookplace': place.id,
       'location': {
         'geopoint': GeoPoint(place.location.latitude, place.location.longitude),
         'geohash': place.geohash
@@ -2327,11 +2375,5 @@ class FilterCubit extends Cubit<FilterState> {
     });
 
     print('!!!DEBUG photo record created');
-
-    //TODO: Add animated transition of image to Map
-
-    // Trigger image recognition into backend
-    recognizeImage(doc.id);
-    print('!!!DEBUG book recognition triggered');
   }
 }

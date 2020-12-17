@@ -16,8 +16,6 @@ from tools import imread_blob, ocr_url, ocr_image, convex_for_points, line_angle
     is_overlap, minrect_area, in_section, rotate
 from books import is_same_book, has_cyrillic, Book
 from catalog import list_books, find_book, add_book_sql, get_book_sql, lang_codes, get_tag_list
-from scrappers import lookup_ozon, lookup_abebooks, search_google_by_isbn, search_rsl_by_isbn, \
-    search_google_by_titleauthor, search_rsl_by_titleauthor
 
 import firebase_admin
 from firebase_admin import credentials
@@ -71,11 +69,6 @@ def send_notification(data, context):
     print('Successfully sent message:', response)
 
 
-# Function to calculate chat id from user ids
-def get_chat_id(from_id, to_id):
-    return ':'.join(sorted([from_id, to_id]))
-
-
 # Function to calculate distance between two geo-points
 def distance_between(p1, p2):
     lat1, lon1 = p1.latitude, p1.longitude
@@ -89,78 +82,6 @@ def distance_between(p1, p2):
     distance = r * c
 
     return distance / 1000
-
-
-# Function to match book with wish and send personal message
-# Deploy with:
-# gcloud functions deploy ask_book --runtime python37 --memory=512MB --timeout=300s --trigger-event providers/cloud.firestore/eventTypes/document.create --trigger-resource 'projects/biblosphere-210106/databases/(default)/documents/bookrecords/{bookId}'
-# gcloud functions logs read ask_book
-def ask_book(data1, context):
-    try:
-        path_parts = context.resource.split('/documents/')[1].split('/')
-        book_id = path_parts[1]
-
-        data = db.collection('bookrecords').document(book_id).get().to_dict()
-
-        if data['ownerId'] != 'oyYUDByQGVdgP13T1nyArhyFkct1':
-            return
-
-        # Look for the book matching the wish or wish matching the book
-        query_snapshot = db.collection('bookrecords').where('isbn', '==', data['isbn']) \
-            .where('wish', '==', not data['wish']) \
-            .limit(10) \
-            .stream()
-
-        matches = [doc.to_dict() for doc in query_snapshot]
-
-        # Skip the rest if matches not found
-        if len(matches) == 0:
-            return
-
-        match = None
-        if data['location'] is not None:
-            # Find the closest one
-            min_distance = 100000
-            for b in matches:
-                if b['location'] is not None:
-                    distance = distance_between(data['location']['geopoint'], b['location']['geopoint'])
-                    if distance < min_distance:
-                        min_distance = distance
-                        match = b
-
-        if match is None:
-            print('Geo-information is not available, use a random match')
-            match = matches[0]
-
-        print('Match found:', match['id'], match['ownerId'])
-
-        if data['wish']:
-            user_from, user_to = data['holderId'], match['holderId']
-            wish, book = data, match
-        else:
-            user_to, user_from = data['holderId'], match['holderId']
-            wish, book = match, data
-
-        # Prepare data for the message
-        chat_id = get_chat_id(book['holderId'], wish['ownerId'])
-
-        db.collection('messages').document(chat_id).collection(chat_id).document().set(
-            {
-                'content': 'Hello, you have a book "%s", which I wish to read' % (book['title']),
-                'type': 0,
-                'attachment': 'Bookrecord',
-                'id': book['id'],
-                'image': book['image'],
-                'bot': True,
-                'language': 'en',
-                'idFrom': user_from,
-                'idTo': user_to,
-                'timestamp': firestore.SERVER_TIMESTAMP
-            }
-        )
-    except Exception as e:
-        print('Exception for book [%s]' % book['id'], e)
-        traceback.print_exc()
 
 
 def json_abort(status_code, message):
@@ -233,10 +154,10 @@ def connect_mysql(f):
     return wrapper
 
 
-# Wrapper for MySQL connection
-def connect_mysql_pubsub(f):
+# Wrapper for MySQL connection for Firestore trigger
+def connect_mysql_firestore(f):
     @wraps(f)
-    def wrapper(event, context):
+    def wrapper(data, context):
         try:
             cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
                                           unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
@@ -249,7 +170,7 @@ def connect_mysql_pubsub(f):
             print("MySQL connection failed")
             json_abort(401, message="MySQL connection failed")
 
-        result = f(event, context, cursor)
+        result = f(data, context, cursor)
         cursor.close()
         cnx.close()
 
@@ -341,19 +262,6 @@ def get_book(request, cursor):
         # Search book in Biblosphere
         book = get_book_sql(cursor, isbn, trace=True)
 
-        # If not found in Biblosphere search in Google Books
-        if book is None:
-            book = search_google_by_isbn(isbn, cursor, trace=True)
-
-        # If not found in Biblosphere and Google search in RSL and Abebook
-        if book is None and isbn.startswith('9785'):
-            # If russian ISBN search in RSL
-            book = search_rsl_by_isbn(isbn, cursor, trace=True)
-
-        if book is None:
-            # If RSL fails or not cyrillic -> search in Abebooks
-            book, match = lookup_abebooks('', cursor, isbn=isbn, trace=True)
-
         books = []
         if book is not None:
             books = [book]
@@ -394,38 +302,6 @@ def search_book(request, cursor):
         print('Exception for search_book', e)
         traceback.print_exc()
         json_abort(400, message="%s" % e)
-
-
-# HTTP API function to add books to user library from bookshelf image (Asynchronous)
-# gcloud functions deploy add_user_books_from_image --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=30s
-# gcloud functions logs read add_user_books_from_image
-def add_user_books_from_image(request):
-    params = request.get_json(silent=True)
-
-    if params is None:
-        json_abort(400, message="Missing input parameters")
-
-    # TODO: Validate parameters: uid, uri, location
-    # Call Pub/Sub function to recognize image and add books to the user library
-
-    topic = 'projects/biblosphere-210106/topics/add_user_books_from_image'
-    publisher.publish(topic, json.dumps(params).encode('utf8'))
-
-    return 'Image recognition requested'
-
-
-# Function to add books to the user library
-# gcloud functions deploy add_user_books --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=30s
-# gcloud functions logs read add_user_books
-def add_user_books(request, cursor):
-    params = request.get_json(silent=True)
-
-    if params is None:
-        json_abort(400, message="Missing input parameters")
-
-    #TODO: Add books to Firestore for a user
-
-    return 'Books added to user library'
 
 
 # Extract blocks from book cover recognition response
@@ -570,40 +446,128 @@ def add_back(request):
 class RecognitionStatus:
     none, upload, scan, outline, catalogs_lookup, rescan, completed, failed, store = range(0, 9)
 
-# Function to recognize image with bookshelf and add books to the user library
-# gcloud functions deploy add_user_books_from_image_sub --runtime python37 --trigger-topic add_user_books_from_image --allow-unauthenticated --memory=1024MB --timeout=300s
-# gcloud functions logs read add_user_books_from_image_sub
-@connect_mysql_pubsub
-def add_user_books_from_image_sub(event, context, cursor):
+class Place:
+    def __init__(self, id, name, email, mobile):
+        self.id = id
+        self.name = name
+        self.contact = contact
+
+    @classmethod
+    def from_json(cls, obj):
+        return cls(obj['id'], obj['name'], obj['contact'])
+
+
+class Photo:
+    def __init__(self, id, bookplace, photo, location, url, reporter, width=None, height=None):
+        self.id = id
+        self.bookplace = bookplace
+        self.photo = photo
+        self.location = location
+        self.url = url
+        self.reporter = reporter
+        self.width = width
+        self.height = height
+
+    @classmethod
+    def from_json(cls, obj):
+        return cls(obj['id'], obj['bookplace'], obj['photo'], obj['location'], obj['url'], obj['reporter'], \
+                   obj.get('width', None), obj.get('height', None))
+
+
+
+# Function to fit biggest rectangle with given aspect ratio
+def fit(ratio, contour):
+    # TODO: Make it working for triangles and polygons
+    # For each point of the contour draw two diagonals of the potential rectangle
+    # Discard diagnals which are outside the angle of enclosing sides
+    # Find intersection of diagonal with the rest of the sides
+    # Calculate complimentary diagonal and check if corners are inside the photo
+    # Choose biggest candidate, if several are biggest join them together
+
+    width, height = abs(contour[2, 0] - contour[0, 0]), abs(contour[2, 1] - contour[0, 1])
+
+    return min(width, height * ratio)
+
+
+# Function to determine the biggest free part outside of book image
+def place_for_cover(width, height, contour):
+    # Aspect ration of book cover (Width / Height)
+    ratio = 2.0 / 3.0
+
+    min_x, max_x = min(contour[:, 0]), max(contour[:, 0])
+    min_y, max_y = min(contour[:, 1]), max(contour[:, 1])
+
+    if min_x > width - max_x:
+        candidate1 = np.array([[0, 0], [0, height], [min_x, height], [min_x, 0]])
+    else:
+        candidate1 = np.array([[max_x, 0], [max_x, height], [width, height], [width, 0]])
+
+    if min_y > height - max_y:
+        candidate2 = np.array([[0, 0], [0, min_y], [width, min_y], [width, 0]])
+    else:
+        candidate2 = np.array([[0, max_y], [0, height], [width, height], [width, max_y]])
+
+    if fit(ratio, candidate1) > fit(ratio, candidate2):
+        cover = candidate1
+    else:
+        cover = candidate2
+
+    return cover
+
+
+# Function to return book spine rectangle
+def spine_rectangle(contour):
+    rect = cv2.minAreaRect(contour)
+    return np.int0(cv2.boxPoints(rect))
+
+
+# Function to recognize the books once photo  added to Firestore
+# Deploy with:
+# gcloud functions deploy photo_created --runtime python37 --trigger-event providers/cloud.firestore/eventTypes/document.create --trigger-resource projects/biblosphere-210106/databases/(default)/documents/photos/{photo}
+# gcloud functions logs read photo_created
+@connect_mysql_firestore
+def photo_created(data, context, cursor):
+    path_parts = context.resource.split('/documents/')[1].split('/')
+    doc_path = path_parts[0]
+    photo_id = path_parts[1]
+
+    rec = db.collection(doc_path).document(photo_id).get().to_dict()
+
+    # Check that all required fields are there
+    if not rec.keys() >= {'photo', 'reporter', 'bookplace', 'id', 'location', 'url'}:
+        # TODO: Make proper error handling
+        print('ERROR: photo/reporter/bookplace/id/location/url parameters missing.', photo_id)
+        return
+
+    photo = Photo.from_json(rec)
+    print('!!!DEBUG: Photo id: ', photo.id)
+    print('!!!DEBUG: Image: ', photo.photo)
+    print('!!!DEBUG: User: ', photo.reporter)
+    print('!!!DEBUG: Place: ', photo.bookplace)
+
+    trace = False
+    if 'trace' in rec:
+        trace = rec['trace']
+
+    rec = db.collection('bookplaces').document(photo.bookplace).get().to_dict()
+    if rec is None:
+        # TODO: Make proper error handling
+        print('ERROR: bookplace record not found by id.', photo.bookplace)
+        return
+
+    if not rec.keys() >= {'id', 'name', 'contact'}:
+        # TODO: Make proper error handling
+        print('ERROR: id/name/contact missing in bookplace record.', photo.bookplace)
+        return
+
+    place = Place.from_json(rec)
+    print('!!!DEBUG: Place id: ', place.id)
+    print('!!!DEBUG: Place Name: ', place.name)
+
     try:
-        import base64
-
-        if 'data' not in event:
-            # TODO: Make proper error handling
-            print('ERROR: parameters missing in a pubsub payload.')
-            return
-
-        params = json.loads(base64.b64decode(event['data']).decode('utf-8'))
-
-        if 'uri' not in params or 'uid' not in params:
-            # TODO: Make proper error handling
-            print('ERROR: uri/uid parameters missing.')
-            return
-
-        filename = params['uri']
-        uid = params['uid']
-        shelf_id = params['shelf']
-        notification = True
-        if 'notification' in params:
-            notification = params['notification']
-
-        trace = False
-        if 'trace' in params:
-            trace = params['trace']
-
-        location = None
-        if 'location' in params:
-            location = {'geohash': params['location']['geohash'], 'geopoint': firestore.GeoPoint(params['location']['lat'], params['location']['lon'])}
+        filename = photo.photo
+        uid = photo.reporter
+        #place = photo.bookplace
 
         client = storage.Client()
         bucket = client.get_bucket('biblosphere-210106.appspot.com')
@@ -617,15 +581,11 @@ def add_user_books_from_image_sub(event, context, cursor):
         if not result_blob.exists():
             b = bucket.blob(filename)
             img = imread_blob(b)
-            response = ocr_url('gs://biblosphere-210106.appspot.com/' + b.name)
 
-            db.collection('shelves').document(shelf_id).set({
-                'id': shelf_id,
-                'image': filename,
-                'userId': uid,
-                'status': RecognitionStatus.outline,
-                #'started': firestore.SERVER_TIMESTAMP not to override existing one
-              }, merge=True)
+            # Keep photo size
+            photo.height, photo.width = img.shape[0:2]
+
+            response = ocr_url('gs://biblosphere-210106.appspot.com/' + b.name)
 
             # Enable profiler
             # pr.enable()
@@ -647,20 +607,14 @@ def add_user_books_from_image_sub(event, context, cursor):
             # Merge cross lines
             merge_along_confident(blocks, confident_blocks, w_other, img, trace=trace)
 
-            db.collection('shelves').document(shelf_id).update({'status': RecognitionStatus.catalogs_lookup})
-
             # Search for books (as new words matched to the blocks search might be different)
             lookup_books(cursor, blocks, confident_blocks, trace=trace)
 
             # Merge smaller blocks with text not in the title/author (usually publisher)
             merge_publisher(blocks, confident_blocks, w_other, img, trace=trace)
 
-            db.collection('shelves').document(shelf_id).update({'status': RecognitionStatus.rescan})
-
             # Assume corrupted blocks are scanned up-side-down. Recognize again.
             rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=trace)
-
-            db.collection('shelves').document(shelf_id).update({'status': RecognitionStatus.store})
 
             # Stitch fragments of the same book (if same book is cut to two blocks)
             merge_book_fragments(blocks, confident_blocks, img, trace=trace)
@@ -692,14 +646,22 @@ def add_user_books_from_image_sub(event, context, cursor):
 
             recognized_blocks = stored_results['recognized']
             unrecognized_blocks = stored_results['unrecognized']
+            if stored_results.keys() >= {'height', 'width'}:
+                photo.height, photo.width = stored_results['height'], stored_results['width']
+            else:
+                # TODO: Temporary for debug perposes for old JSON files (REMOVE)
+                b = bucket.blob(filename)
+                img = imread_blob(b)
+                photo.height, photo.width = img.shape[0:2]
 
         # Add confident books to the Biblosphere user (Firestore)
         batch = db.batch()
 
+        print('!!!DEBUG Place ', place)
         for b in recognized_blocks:
             # Set the Firestore bookrecord
-            ref = db.collection('bookrecords').document(b.bookrecord_id(uid))
-            batch.set(ref, b.bookrecord_data(uid, filename, location), merge=True)
+            ref = db.collection('books').document(place.id+':'+b.book.isbn)
+            batch.set(ref, b.book_data(photo, place), merge=True)
             print(b.book.isbn, b.book.title, b.book.authors)
             #print(b['contour'])
 
@@ -707,42 +669,9 @@ def add_user_books_from_image_sub(event, context, cursor):
         batch.commit()
 
         # Update status to completed and keep number of recognized books
-        db.collection('shelves').document(shelf_id).update({'status': RecognitionStatus.completed,
+        db.collection('photos').document(photo_id).update({'status': 'recognized',
                                                             'total': len(recognized_blocks) + len(unrecognized_blocks),
                                                             'recognized': len(recognized_blocks)})
-
-        # Send a notification to the user about added books (FCM)
-        # This registration token comes from the client FCM SDKs.
-
-        if notification and len(recognized_blocks) > 0:
-            try:
-                doc = db.collection('users').document(uid).get().to_dict()
-                print(u'User token: {}'.format(doc['token']))
-
-                # See documentation on defining a message payload.
-                message = messaging.Message(
-                    notification=messaging.Notification(
-                        title='Books recognized',
-                        body='%d books added from photo' % len(recognized_blocks)
-                    ),
-                    data={
-                        'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-                        'event': 'books_recognized',
-                        'count': '%d' % len(recognized_blocks),
-                    },
-                    token=doc['token'],
-                )
-
-                # Send a message to the device corresponding to the provided
-                # registration token.
-                response = messaging.send(message)
-                # Response is a message ID string.
-                print('Successfully sent message:', response)
-
-            except exceptions.NotFound:
-                print(u'User not found %s. Notification skipped!' % uid)
-            except Exception as e:
-                print('Exception on notification, notification skipped:', type(e))
 
         if not already_recognized:
             # Build JSON with results of the recognition
@@ -754,6 +683,8 @@ def add_user_books_from_image_sub(event, context, cursor):
             data = {
                     'uid': uid,
                     'uri': filename,
+                    'height': photo.height,
+                    'width': photo.width,
                     'recognized': recognized_blocks,
                     'unrecognized': unrecognized_blocks,
                     # 'cloud_vision_response': response
@@ -763,9 +694,10 @@ def add_user_books_from_image_sub(event, context, cursor):
             result_blob.upload_from_string(json.dumps(data, cls=JsonEncoder).encode('utf8'), 'application/json')
 
     except Exception as e:
-        print(u'Exception happend: %s' % type(e))
+        print(u'Exception happened: %s' % type(e))
         print(u'Exception during image recognition: %s' % e)
-        db.collection('shelves').document(shelf_id).update({'status': RecognitionStatus.failed})
+        traceback.print_exc()
+        db.collection('photos').document(photo_id).update({'status': 'failed'})
 
 
 class Line:
@@ -1056,80 +988,39 @@ class Block(Box):
                 elif trace:
                     print('BOOK FOUND:', book.authors, book.title)
 
-            if book is None:
-                # Search in google
-                books = search_google_by_titleauthor(bookspine, cursor, trace=trace)
-                books = [b for b in books if is_same_book(b.catalog_title(), bookspine, trace=False)]
-                if books is not None and len(books) > 0:
-                    book = books[0]
-
-                if book is None and has_cyrillic(bookspine):
-                    # If cyrillic symbols search in RSL
-                    books = search_rsl_by_titleauthor(bookspine, cursor, trace=trace)
-                    books = [b for b in books if is_same_book(b.catalog_title(), bookspine, trace=False)]
-                    if books is not None and len(books) > 0:
-                        book = books[0]
-
-                if book is None:
-                    # If not cyrillic search in google books API, Goodreads and Abebooks
-                    book, match = lookup_abebooks(bookspine, cursor, trace=trace)
-
-                if book is not None:
-                    if trace:
-                        print('BOOK CANDIDATE FOUND ON WEB:', book.isbn, book.title)
-
-                    corrected = False
-                    for w in [w for w in self.matches.union(self.unmatched) if w.lexem() not in book.keys]:
-                        if len(w.lexem()) > 0:
-                            if len(self.keys) > 0:
-                                ratio = process.extractOne(w.lexem(), book.keys, scorer=fuzz.ratio)
-                                if ratio[1] > threshold and w.confidence > 0.30:
-                                    if trace:
-                                        print('%s (%s, %.2f, %.2f) => %s' % (
-                                        w.correct, w.orig, ratio[1], w.confidence, ratio[0]))
-                                    w.correct = ratio[0]
-                                    corrected = True
-
-                    if corrected:
-                        bookspine = self.read(trace=False)
-                        match = is_same_book(book.catalog_title(), bookspine, trace=False)
-
-                        if not match:
-                            book = None
-                        elif trace:
-                            print('BOOK FOUND ON WEB:', book.isbn, book.title)
 
             if book is not None:
                 self.book = book
                 self.refresh_keys()
                 self.refresh_words()
 
-    def bookrecord_id(self, uid):
+    def bookrecord_id(self, place_id):
         assert self.book is not None, 'Only recognized blocks can be stored in Firestore'
-        return 'b:%s:%s' % (uid, self.book.isbn)
+        return '%s:%s' % (place_id, self.book.isbn)
 
 
-    def bookrecord_data(self, uid, uri, location=None):
+    def book_data(self, photo, place):
         assert self.book is not None, 'Only recognized blocks can be stored in Firestore'
-        return {
-                'id': self.bookrecord_id(uid),
-                'ownerId': uid,
-                'holderId': uid,
-                'users': [uid],
+        data = {
+                'id': self.bookrecord_id(place.id),
                 'authors': self.book.authors.split(sep=';'),
                 'title': self.book.title,
                 'isbn': self.book.isbn,
-                'image': self.book.image,
-                'confirmed': False,
-                'lent': False,
-                'matched': False,
-                'transit': False,
-                'wish': False,
-                'keys': self.book.keys,
-                'location': location,
-                #'outline': self.box.tolist(),
-                'shelf_image': uri
+                'cover': self.book.image,
+                'location': photo.location,
+                'outline': [{'x': v[0], 'y': v[1]} for v in np.array(self.box).tolist()],
+                'spine': [{'x': v[0], 'y': v[1]} for v in spine_rectangle(np.array(self.box)).tolist()],
+                'place_for_cover': [{'x': v[0], 'y': v[1]} for v in place_for_cover(photo.width, photo.height, np.array(self.box)).tolist()],
+                'photo': photo.url,
+                'photo_id': photo.id,
+                'photo_width': photo.width,
+                'photo_height': photo.height,
+                'bookplace': photo.bookplace,
+                'place_name': place.name,
+                'place_contact': place.contact()
                }
+
+        return data
 
 
 # Distance from one block to another
