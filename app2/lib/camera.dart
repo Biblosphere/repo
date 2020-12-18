@@ -139,6 +139,8 @@ class _CameraPanelState extends State<CameraPanel> {
     // TODO: Make a code to do it only once at first call afer initState
     context.bloc<FilterCubit>().setSearchController(_controller);
 
+    print('!!!DEBUG Listener added 1!');
+
     super.didChangeDependencies();
   }
 

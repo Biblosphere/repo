@@ -1013,11 +1013,15 @@ class FilterCubit extends Cubit<FilterState> {
   }
 
   void emitInitial() async {
+    print('!!!DEBUG emitInitial before emit!');
+
     // Confirm that user is subscribed
     emit(state.copyWith(
       status: LoginStatus.subscribed,
       view: ViewType.map,
     ));
+
+    print('!!!DEBUG before setting link callback!');
 
     // Set a call back for the deep link
     // TODO: Do I need to cancel/unsubscribe from onLink listener?
@@ -1040,6 +1044,8 @@ class FilterCubit extends Cubit<FilterState> {
       });
     });
 
+    print('!!!DEBUG before geting deep link!');
+
     // Check if app is started by dynamic link
     final PendingDynamicLinkData data =
         await FirebaseDynamicLinks.instance.getInitialLink();
@@ -1060,8 +1066,12 @@ class FilterCubit extends Cubit<FilterState> {
         }
       }
 
+      print('!!!DEBUG going to get current location!');
+
       // Get current location and initial markers
       LatLng center = await currentLatLng();
+
+      print('!!!DEBUG after getting current location!');
 
       List<Book> books = [];
       List<Place> places = [];
@@ -1100,8 +1110,10 @@ class FilterCubit extends Cubit<FilterState> {
   Future<void> init() async {
     FirebaseAuth.instance.authStateChanges().listen((User user) async {
       if (user == null) {
+        print('!!!DEBUG Login USER IS NULL');
         emit(state.copyWith(status: LoginStatus.unauthorized));
       } else {
+        print('!!!DEBUG Login user $user');
         // Update user name in the Firebase profile
         if (state.name != null && state.name.isNotEmpty) {
           await user.updateProfile(displayName: state.name);
@@ -1130,9 +1142,13 @@ class FilterCubit extends Cubit<FilterState> {
           ref.set(currentUser.toJson());
         }
 */
+        // !!!DEBUG FOR IOS TESTING (Does not support Purchase on Simulator)
+        emitInitial();
+        return;
 
         try {
           // Register user in Purchases
+          print('!!!DEBUG User Id ${user.uid}');
           PurchaserInfo purchaser = await Purchases.identify(user.uid);
 
           // Check if user already subscribed and skip the purchase screen
@@ -1145,7 +1161,7 @@ class FilterCubit extends Cubit<FilterState> {
           Offerings offerings = await Purchases.getOfferings();
 
           if (offerings == null || offerings.current == null)
-            throw Exception('Offerings are missing');
+            throw Exception('Offerings are missing $offerings');
 
           // Add listener for the successful purchase
           Purchases.addPurchaserInfoUpdateListener((info) async {
@@ -1652,6 +1668,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     print('!!!DEBUG Add a listener to TextController');
     _searchController.addListener(_onSearchChanged);
+    print('!!!DEBUG Listener added!');
   }
 
   // MAP VIEW

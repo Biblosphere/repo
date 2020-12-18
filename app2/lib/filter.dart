@@ -216,6 +216,8 @@ class _SearchPanelState extends State<SearchPanel> {
     // TODO: Make a code to do it only once at first call afer initState
     context.bloc<FilterCubit>().setSearchController(_controller);
 
+    print('!!!DEBUG Listener added 2!');
+
     super.didChangeDependencies();
   }
 
@@ -235,7 +237,9 @@ class _SearchPanelState extends State<SearchPanel> {
 
   @override
   Widget build(BuildContext context) {
+    print('!!!DEBUG build search panel!');
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
+      print('!!!DEBUG search panel bloc build!');
       Panel position = state.panel;
       double width = MediaQuery.of(context).size.width;
 

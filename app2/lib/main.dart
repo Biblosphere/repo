@@ -64,6 +64,7 @@ part 'secret.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   cameras = await availableCameras();
+  print('!!!DEBUG Available Cameras: $cameras');
   await Firebase.initializeApp();
 
   runApp(MyApp());
@@ -205,6 +206,8 @@ class TripleButtonState extends State<TripleButton>
   void initState() {
     super.initState();
 
+    print('!!!DEBUG triple button init!');
+
     _animationController =
         AnimationController(vsync: this, duration: Duration(milliseconds: 500));
 
@@ -237,6 +240,8 @@ class TripleButtonState extends State<TripleButton>
   Widget build(BuildContext context) {
     // Radius of rotation
     final double rR = rMin / cos(pi / 6.0);
+
+    print('!!!DEBUG triple button build!');
 
     return AnimatedBuilder(
         animation: _animationController,
@@ -325,19 +330,22 @@ class _MainPageState extends State<MainPage>
 
   @override
   void initState() {
+    print('!!!DEBUG: $cameras');
     super.initState();
     // Always choose a front camera
-    cameraCtrl = CameraController(
-        cameras[0],
-        //.where((c) => c.lensDirection == CameraLensDirection.front)
-        //.toList()[0],
-        ResolutionPreset.ultraHigh,
-        enableAudio: false);
-    cameraCtrl.initialize().then((_) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
+    if (cameras != null && cameras.length > 0) {
+      cameraCtrl = CameraController(
+          cameras[0],
+          //.where((c) => c.lensDirection == CameraLensDirection.front)
+          //.toList()[0],
+          ResolutionPreset.ultraHigh,
+          enableAudio: false);
+      cameraCtrl.initialize().then((_) {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+    }
 
     // Animation for camera taken picture
     _animationController =
@@ -359,7 +367,7 @@ class _MainPageState extends State<MainPage>
 
   @override
   void dispose() {
-    cameraCtrl?.dispose();
+    if (cameraCtrl != null) cameraCtrl?.dispose();
     super.dispose();
   }
 
@@ -449,7 +457,8 @@ class _MainPageState extends State<MainPage>
                                       width: width,
                                       height: height,
                                       child: child))),
-                          if (!_animationController.isAnimating ||
+                          if (cameraCtrl != null &&
+                                  !_animationController.isAnimating ||
                               _animationController.value < 0.05)
                             SingleChildScrollView(
                                 child: AspectRatio(
@@ -517,7 +526,8 @@ class _MainPageState extends State<MainPage>
                           },
                           // onPressedSelected for CAMERA
                           () async {
-                            if (!cameraCtrl.value.isInitialized) {
+                            if (cameraCtrl == null ||
+                                !cameraCtrl.value.isInitialized) {
                               //TODO: do exceptional processing for not initialized camera
                               //showInSnackBar('Error: select a camera first.');
                               print(
@@ -525,7 +535,8 @@ class _MainPageState extends State<MainPage>
                               return;
                             }
 
-                            if (cameraCtrl.value.isTakingPicture) {
+                            if (cameraCtrl != null &&
+                                cameraCtrl.value.isTakingPicture) {
                               // A capture is already pending, do nothing.
                               print(
                                   'EXCEPTION: Camera controller in pogress (taking picture)');
