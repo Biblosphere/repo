@@ -447,7 +447,7 @@ class RecognitionStatus:
     none, upload, scan, outline, catalogs_lookup, rescan, completed, failed, store = range(0, 9)
 
 class Place:
-    def __init__(self, id, name, email, mobile):
+    def __init__(self, id, name, contact):
         self.id = id
         self.name = name
         self.contact = contact
@@ -1017,7 +1017,7 @@ class Block(Box):
                 'photo_height': photo.height,
                 'bookplace': photo.bookplace,
                 'place_name': place.name,
-                'place_contact': place.contact()
+                'place_contact': place.contact
                }
 
         return data
