@@ -1052,8 +1052,10 @@ class FilterCubit extends Cubit<FilterState> {
 
     final Uri deepLink = data?.link;
     if (deepLink != null) {
+      print('!!!DEBUG deep link is there $deepLink!');
       processDeepLink(deepLink);
     } else {
+      print('!!!DEBUG going to check a permission!');
       // Check the location permission
       if (!await Permission.locationWhenInUse.isGranted) {
         // Initiate contacts for a first time then permission is granted
@@ -1143,8 +1145,9 @@ class FilterCubit extends Cubit<FilterState> {
         }
 */
         // !!!DEBUG FOR IOS TESTING (Does not support Purchase on Simulator)
-        emitInitial();
-        return;
+        // Uncomment following lines to test on IPhone simulator
+        // emitInitial();
+        //  return;
 
         try {
           // Register user in Purchases
