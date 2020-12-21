@@ -43,7 +43,7 @@ Widget chipBuilderCamera(BuildContext context, Place place,
       // avatar: CircleAvatar(),
       selected: selected,
       onPressed: () {
-        context.bloc<FilterCubit>().setPlace(place);
+        context.watch<FilterCubit>().setPlace(place);
       },
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
@@ -93,7 +93,7 @@ Widget chipBuilderPrivacy(BuildContext context, Privacy privacy, bool selected,
                           : chipUnselectedTextStyle))
             ])),
     onPressed: () {
-      context.bloc<FilterCubit>().setPrivacy(privacy);
+      context.watch<FilterCubit>().setPrivacy(privacy);
     },
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
   );
@@ -137,7 +137,7 @@ class _CameraPanelState extends State<CameraPanel> {
   @override
   void didChangeDependencies() {
     // TODO: Make a code to do it only once at first call afer initState
-    context.bloc<FilterCubit>().setSearchController(_controller);
+    context.read<FilterCubit>().setSearchController(_controller);
 
     print('!!!DEBUG Listener added 1!');
 
@@ -184,7 +184,7 @@ class _CameraPanelState extends State<CameraPanel> {
                   children: <Widget>[
                     GestureDetector(
                         onTap: () {
-                          context.bloc<FilterCubit>().selectPlaceForPhoto();
+                          context.watch<FilterCubit>().selectPlaceForPhoto();
                         },
                         child: Container(
                             decoration: placeDecoration(),
@@ -250,7 +250,7 @@ class _CameraPanelState extends State<CameraPanel> {
                             controller: _controller,
                             onEditingComplete: () {
                               FocusScope.of(context).unfocus();
-                              context.bloc<FilterCubit>().searchEditComplete();
+                              context.watch<FilterCubit>().searchEditComplete();
                             },
                           ),
                         ),

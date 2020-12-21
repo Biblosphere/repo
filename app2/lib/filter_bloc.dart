@@ -1181,7 +1181,7 @@ class FilterCubit extends Cubit<FilterState> {
               offerings: offerings,
               package: offerings.current.monthly));
         } catch (e, stack) {
-          print('EXCEPTION: Purchases exception: $e');
+          print('EXCEPTION: Purchases exception: $e $stack');
           // TODO: Inform about failed sugn-in
           // TODO: Logg in crashalytic
           emit(state.copyWith(status: LoginStatus.unauthorized));
@@ -1309,7 +1309,7 @@ class FilterCubit extends Cubit<FilterState> {
     try {
       await Purchases.purchasePackage(state.package);
     } catch (e, stack) {
-      print('EXCEPTION: Purchase failed $e');
+      print('EXCEPTION: Purchase failed $e $stack');
       // TODO: Keep in crashalitics
       emit(state.copyWith(
         status: LoginStatus.unauthorized,
@@ -1870,6 +1870,7 @@ class FilterCubit extends Cubit<FilterState> {
     }
   }
 
+/*
   // LIST VIEW
   // - Set controller
   void setScrollController(ScrollController controller) {
@@ -1878,6 +1879,7 @@ class FilterCubit extends Cubit<FilterState> {
     // Keep scrolling controller
     _scrollController = controller;
   }
+*/
 
   // LIST VIEW
   // - Select book from the list

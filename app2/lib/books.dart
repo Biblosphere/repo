@@ -563,7 +563,7 @@ Widget coverImage(String url, {double width, bool bookmark = false}) {
                   errorWidget: (context, text, error) =>
                       bookImagePlaceholder()));
     } catch (e) {
-      print('Image loading exception: ${e}');
+      print('Image loading exception: $e');
       // TODO: Report exception to analytics
       image = Container(child: bookImagePlaceholder());
     }
@@ -604,7 +604,7 @@ class BookCard extends StatelessWidget {
       String distance = distanceString(filters.center, book.location);
       return GestureDetector(
           onTap: () {
-            context.bloc<FilterCubit>().selectBook(book: book);
+            context.watch<FilterCubit>().selectBook(book: book);
           },
           child: Card(
               color: background,
@@ -892,11 +892,11 @@ class _BookDetailsState extends State<BookDetails> {
                                     onPressed: () {
                                       if (filters.isUserBookmark(book)) {
                                         context
-                                            .bloc<FilterCubit>()
+                                            .watch<FilterCubit>()
                                             .removeUserBookmark(book);
                                       } else {
                                         context
-                                            .bloc<FilterCubit>()
+                                            .watch<FilterCubit>()
                                             .addUserBookmark(book);
                                       }
                                       // TODO: button state does not refrest without setState
@@ -915,7 +915,7 @@ class _BookDetailsState extends State<BookDetails> {
                                     icon: Icons.search,
                                     onPressed: () {
                                       context
-                                          .bloc<FilterCubit>()
+                                          .watch<FilterCubit>()
                                           .searchBookPressed(book);
                                     }),
                                 // Share button
@@ -1030,7 +1030,7 @@ class _BookDetailsState extends State<BookDetails> {
               right: 0.0,
               child: GestureDetector(
                 onTap: () {
-                  context.bloc<FilterCubit>().detailsClosed();
+                  context.watch<FilterCubit>().detailsClosed();
                 },
                 child: Align(
                   alignment: Alignment.topRight,
@@ -1058,20 +1058,20 @@ class ListWidget extends StatefulWidget {
 }
 
 class _ListWidgetState extends State<ListWidget> {
-  ScrollController _scrollController;
+  //ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
 
-    _scrollController = ScrollController(
-        initialScrollOffset: context.bloc<FilterCubit>().state.offset ?? 0.0);
+    //_scrollController = ScrollController(
+    //    initialScrollOffset: context.read<FilterCubit>().state.offset ?? 0.0);
   }
 
   @override
   void didChangeDependencies() {
     // TODO: Make a code to do it only once at first call afer initState
-    context.bloc<FilterCubit>().setScrollController(_scrollController);
+    // context.read<FilterCubit>().setScrollController(_scrollController);
 
     super.didChangeDependencies();
   }
@@ -1082,7 +1082,7 @@ class _ListWidgetState extends State<ListWidget> {
       return ListView(
           controller: ScrollController(
               initialScrollOffset:
-                  context.bloc<FilterCubit>().state.offset ?? 0.0),
+                  context.watch<FilterCubit>().state.offset ?? 0.0),
           children: [
             ...filters.books.map((b) {
               return Slidable(
@@ -1098,9 +1098,9 @@ class _ListWidgetState extends State<ListWidget> {
                         icon: Icons.bookmark,
                         onTap: () {
                           if (filters.isUserBookmark(b)) {
-                            context.bloc<FilterCubit>().removeUserBookmark(b);
+                            context.watch<FilterCubit>().removeUserBookmark(b);
                           } else {
-                            context.bloc<FilterCubit>().addUserBookmark(b);
+                            context.watch<FilterCubit>().addUserBookmark(b);
                           }
                           // TODO: button state does not refrest without setState
                           //setState(() {});
@@ -1171,7 +1171,7 @@ Future<String> buildLink(String query,
 
   final DynamicLinkParameters parameters = new DynamicLinkParameters(
     uriPrefix: 'https://biblosphere.org/link',
-    link: Uri.parse('https://biblosphere.org/${query}'),
+    link: Uri.parse('https://biblosphere.org/$query'),
     androidParameters: AndroidParameters(
       packageName: 'com.biblosphere.biblosphere',
       minimumVersion: 0,

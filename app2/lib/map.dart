@@ -119,7 +119,7 @@ Future<Set<Marker>> markersFor(
             // TODO: retrieve actual list of languages
             InfoWindow(title: '${d.size} books', snippet: 'RUS, ENG'),
         onTap: () {
-          context.bloc<FilterCubit>().markerPressed(d);
+          context.watch<FilterCubit>().markerPressed(d);
         }));
   }
 
@@ -161,7 +161,7 @@ class _MapWidgetState extends State<MapWidget> {
                   zoom: 5.0,
                 ),
                 onCameraIdle: () async {
-                  context.bloc<FilterCubit>().mapMoved(
+                  context.watch<FilterCubit>().mapMoved(
                       _position, await _controller.getVisibleRegion());
                 },
                 onCameraMove: (position) {
@@ -170,7 +170,7 @@ class _MapWidgetState extends State<MapWidget> {
                 onMapCreated: (GoogleMapController controller) {
                   //TODO: Keep controller to retrieve visible region
                   _controller = controller;
-                  context.bloc<FilterCubit>().setMapController(controller);
+                  context.watch<FilterCubit>().setMapController(controller);
                 },
                 markers: markers);
           });

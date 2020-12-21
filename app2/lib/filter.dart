@@ -2,15 +2,16 @@ part of 'main.dart';
 
 Widget chipBuilder(BuildContext context, Filter filter) {
   IconData icon;
-  Panel position = context.bloc<FilterCubit>().state.panel;
+  Panel position = context.watch<FilterCubit>().state.panel;
   Widget chip;
 
   if (filter.type == FilterType.place) {
     // TODO: Add leading avatar for people from the contact list
     //       with icon Icons.contact_phone
-    if (filter.place.type == 'personal')
+    if (filter.place.type == PlaceType.contact ||
+        filter.place.type == PlaceType.me)
       icon = Icons.person;
-    else if (filter.place.type == 'company')
+    else if (filter.place.type == PlaceType.place)
       icon = Icons.store;
     else
       icon = Icons.location_pin;
@@ -40,7 +41,7 @@ Widget chipBuilder(BuildContext context, Filter filter) {
       // TODO: Put book icon here
       // avatar: CircleAvatar(),
       onPressed: () {
-        context.bloc<FilterCubit>().toggleFilter(filter.type, filter);
+        context.watch<FilterCubit>().toggleFilter(filter.type, filter);
       },
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
@@ -61,7 +62,7 @@ Widget chipBuilder(BuildContext context, Filter filter) {
               : chipUnselectedTextStyle);
     else if (filter.type == FilterType.place && position == Panel.full) {
       // Add distance to location in FULL view
-      LatLng location = context.bloc<FilterCubit>().state.center;
+      LatLng location = context.watch<FilterCubit>().state.center;
       label = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(filter.value,
             style: filter.selected
@@ -106,12 +107,12 @@ Widget chipBuilder(BuildContext context, Filter filter) {
         // TODO: Put book icon here
         // avatar: CircleAvatar(),
         onDeleted: () {
-          context.bloc<FilterCubit>().deleteFilter(filter);
+          context.watch<FilterCubit>().deleteFilter(filter);
         },
         onPressed: () {
           if (!filter.selected)
             context
-                .bloc<FilterCubit>()
+                .watch<FilterCubit>()
                 .addFilter(filter.copyWith(selected: true));
         },
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -129,12 +130,12 @@ Widget chipBuilder(BuildContext context, Filter filter) {
         // TODO: Put book icon here
         // avatar: CircleAvatar(),
         onDeleted: () {
-          context.bloc<FilterCubit>().deleteFilter(filter);
+          context.watch<FilterCubit>().deleteFilter(filter);
         },
         onPressed: () {
           if (!filter.selected)
             context
-                .bloc<FilterCubit>()
+                .watch<FilterCubit>()
                 .addFilter(filter.copyWith(selected: true));
         },
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -181,7 +182,7 @@ class _SearchPanelState extends State<SearchPanel> {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           IconButton(
             onPressed: () {
-              context.bloc<FilterCubit>().groupSelectedForSearch(group);
+              context.watch<FilterCubit>().groupSelectedForSearch(group);
             },
             icon: groupIcon(group),
           ),
@@ -214,7 +215,7 @@ class _SearchPanelState extends State<SearchPanel> {
   @override
   void didChangeDependencies() {
     // TODO: Make a code to do it only once at first call afer initState
-    context.bloc<FilterCubit>().setSearchController(_controller);
+    context.read<FilterCubit>().setSearchController(_controller);
 
     print('!!!DEBUG Listener added 2!');
 
@@ -313,7 +314,7 @@ class _SearchPanelState extends State<SearchPanel> {
                             controller: _controller,
                             onEditingComplete: () {
                               FocusScope.of(context).unfocus();
-                              context.bloc<FilterCubit>().searchEditComplete();
+                              context.watch<FilterCubit>().searchEditComplete();
                             },
                           ),
                         ),
