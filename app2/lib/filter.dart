@@ -41,7 +41,7 @@ Widget chipBuilder(BuildContext context, Filter filter) {
       // TODO: Put book icon here
       // avatar: CircleAvatar(),
       onPressed: () {
-        context.watch<FilterCubit>().toggleFilter(filter.type, filter);
+        context.read<FilterCubit>().toggleFilter(filter.type, filter);
       },
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
@@ -107,12 +107,12 @@ Widget chipBuilder(BuildContext context, Filter filter) {
         // TODO: Put book icon here
         // avatar: CircleAvatar(),
         onDeleted: () {
-          context.watch<FilterCubit>().deleteFilter(filter);
+          context.read<FilterCubit>().deleteFilter(filter);
         },
         onPressed: () {
           if (!filter.selected)
             context
-                .watch<FilterCubit>()
+                .read<FilterCubit>()
                 .addFilter(filter.copyWith(selected: true));
         },
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -130,12 +130,12 @@ Widget chipBuilder(BuildContext context, Filter filter) {
         // TODO: Put book icon here
         // avatar: CircleAvatar(),
         onDeleted: () {
-          context.watch<FilterCubit>().deleteFilter(filter);
+          context.read<FilterCubit>().deleteFilter(filter);
         },
         onPressed: () {
           if (!filter.selected)
             context
-                .watch<FilterCubit>()
+                .read<FilterCubit>()
                 .addFilter(filter.copyWith(selected: true));
         },
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -182,7 +182,7 @@ class _SearchPanelState extends State<SearchPanel> {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           IconButton(
             onPressed: () {
-              context.watch<FilterCubit>().groupSelectedForSearch(group);
+              context.read<FilterCubit>().groupSelectedForSearch(group);
             },
             icon: groupIcon(group),
           ),
@@ -314,7 +314,7 @@ class _SearchPanelState extends State<SearchPanel> {
                             controller: _controller,
                             onEditingComplete: () {
                               FocusScope.of(context).unfocus();
-                              context.watch<FilterCubit>().searchEditComplete();
+                              context.read<FilterCubit>().searchEditComplete();
                             },
                           ),
                         ),

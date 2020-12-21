@@ -71,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
                                               print("New Country selected: " +
                                                   countryCode.toString());
                                               context
-                                                  .watch<FilterCubit>()
+                                                  .read<FilterCubit>()
                                                   .countryCodeEntered(
                                                       countryCode);
                                             },
@@ -125,7 +125,7 @@ class _LoginPageState extends State<LoginPage> {
                                             keyboardType: TextInputType.phone,
                                             onChanged: (value) {
                                               context
-                                                  .watch<FilterCubit>()
+                                                  .read<FilterCubit>()
                                                   .phoneEntered(value);
                                             }),
                                       )
@@ -169,7 +169,7 @@ class _LoginPageState extends State<LoginPage> {
                                             keyboardType: TextInputType.name,
                                             onChanged: (value) {
                                               context
-                                                  .watch<FilterCubit>()
+                                                  .read<FilterCubit>()
                                                   .nameEntered(value);
                                             }),
                                       )
@@ -188,7 +188,7 @@ class _LoginPageState extends State<LoginPage> {
                                         ? () {
                                             // TODO: Use actual phone number from text field
                                             context
-                                                .watch<FilterCubit>()
+                                                .read<FilterCubit>()
                                                 .signinPressed();
                                           }
                                         : null,
@@ -213,7 +213,7 @@ class _LoginPageState extends State<LoginPage> {
                                                 value: login.pp,
                                                 onChanged: (value) {
                                                   context
-                                                      .watch<FilterCubit>()
+                                                      .read<FilterCubit>()
                                                       .privacyPolicyEntered(
                                                           value);
                                                 })),
@@ -310,7 +310,7 @@ class _LoginPageState extends State<LoginPage> {
                                       keyboardType: TextInputType.number,
                                       onChanged: (value) {
                                         context
-                                            .watch<FilterCubit>()
+                                            .read<FilterCubit>()
                                             .codeEntered(value);
                                       },
                                     ))
@@ -329,7 +329,7 @@ class _LoginPageState extends State<LoginPage> {
                                     ? () {
                                         // TODO: Use actual code from text field or AUTO for Android
                                         context
-                                            .watch<FilterCubit>()
+                                            .read<FilterCubit>()
                                             .confirmPressed();
                                       }
                                     : null,
@@ -379,7 +379,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ? () {
                                     // TODO: Use actual code from text field or AUTO for Android
                                     context
-                                        .watch<FilterCubit>()
+                                        .read<FilterCubit>()
                                         .subscribePressed();
                                   }
                                 : null,
@@ -397,7 +397,7 @@ class _LoginPageState extends State<LoginPage> {
                                 value: login.tos,
                                 onChanged: (value) {
                                   context
-                                      .watch<FilterCubit>()
+                                      .read<FilterCubit>()
                                       .termsOfServiceEntered(value);
                                 }),
                             RichText(
@@ -544,7 +544,7 @@ class _LoginPageState extends State<LoginPage> {
       return Expanded(
           child: GestureDetector(
               onTap: () {
-                context.watch<FilterCubit>().planSelected(package);
+                context.read<FilterCubit>().planSelected(package);
               },
               child: Container(
                   child: Column(

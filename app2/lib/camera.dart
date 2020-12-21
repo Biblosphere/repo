@@ -43,7 +43,7 @@ Widget chipBuilderCamera(BuildContext context, Place place,
       // avatar: CircleAvatar(),
       selected: selected,
       onPressed: () {
-        context.watch<FilterCubit>().setPlace(place);
+        context.read<FilterCubit>().setPlace(place);
       },
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
@@ -93,7 +93,7 @@ Widget chipBuilderPrivacy(BuildContext context, Privacy privacy, bool selected,
                           : chipUnselectedTextStyle))
             ])),
     onPressed: () {
-      context.watch<FilterCubit>().setPrivacy(privacy);
+      context.read<FilterCubit>().setPrivacy(privacy);
     },
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
   );
@@ -184,7 +184,7 @@ class _CameraPanelState extends State<CameraPanel> {
                   children: <Widget>[
                     GestureDetector(
                         onTap: () {
-                          context.watch<FilterCubit>().selectPlaceForPhoto();
+                          context.read<FilterCubit>().selectPlaceForPhoto();
                         },
                         child: Container(
                             decoration: placeDecoration(),
@@ -250,7 +250,7 @@ class _CameraPanelState extends State<CameraPanel> {
                             controller: _controller,
                             onEditingComplete: () {
                               FocusScope.of(context).unfocus();
-                              context.watch<FilterCubit>().searchEditComplete();
+                              context.read<FilterCubit>().searchEditComplete();
                             },
                           ),
                         ),

@@ -604,7 +604,7 @@ class BookCard extends StatelessWidget {
       String distance = distanceString(filters.center, book.location);
       return GestureDetector(
           onTap: () {
-            context.watch<FilterCubit>().selectBook(book: book);
+            context.read<FilterCubit>().selectBook(book: book);
           },
           child: Card(
               color: background,
@@ -892,11 +892,11 @@ class _BookDetailsState extends State<BookDetails> {
                                     onPressed: () {
                                       if (filters.isUserBookmark(book)) {
                                         context
-                                            .watch<FilterCubit>()
+                                            .read<FilterCubit>()
                                             .removeUserBookmark(book);
                                       } else {
                                         context
-                                            .watch<FilterCubit>()
+                                            .read<FilterCubit>()
                                             .addUserBookmark(book);
                                       }
                                       // TODO: button state does not refrest without setState
@@ -915,7 +915,7 @@ class _BookDetailsState extends State<BookDetails> {
                                     icon: Icons.search,
                                     onPressed: () {
                                       context
-                                          .watch<FilterCubit>()
+                                          .read<FilterCubit>()
                                           .searchBookPressed(book);
                                     }),
                                 // Share button
@@ -1030,7 +1030,7 @@ class _BookDetailsState extends State<BookDetails> {
               right: 0.0,
               child: GestureDetector(
                 onTap: () {
-                  context.watch<FilterCubit>().detailsClosed();
+                  context.read<FilterCubit>().detailsClosed();
                 },
                 child: Align(
                   alignment: Alignment.topRight,
@@ -1098,9 +1098,9 @@ class _ListWidgetState extends State<ListWidget> {
                         icon: Icons.bookmark,
                         onTap: () {
                           if (filters.isUserBookmark(b)) {
-                            context.watch<FilterCubit>().removeUserBookmark(b);
+                            context.read<FilterCubit>().removeUserBookmark(b);
                           } else {
-                            context.watch<FilterCubit>().addUserBookmark(b);
+                            context.read<FilterCubit>().addUserBookmark(b);
                           }
                           // TODO: button state does not refrest without setState
                           //setState(() {});

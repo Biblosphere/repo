@@ -383,11 +383,11 @@ class _MainPageState extends State<MainPage>
               //    child: ),
               onSnapEnd: () {
                 if (_snapPosition < 10.0)
-                  context.watch<FilterCubit>().panelHiden();
+                  context.read<FilterCubit>().panelHiden();
                 else if (_snapPosition < 100.0)
-                  context.watch<FilterCubit>().panelMinimized();
+                  context.read<FilterCubit>().panelMinimized();
                 else if (_snapPosition < 240.0)
-                  context.watch<FilterCubit>().panelOpened();
+                  context.read<FilterCubit>().panelOpened();
 
                 setState(() {});
               },
@@ -498,7 +498,7 @@ class _MainPageState extends State<MainPage>
                             _controller.snapToPosition(SnapPosition(
                               positionPixel: 60.0,
                             ));
-                            context.watch<FilterCubit>().setView(ViewType.map);
+                            context.read<FilterCubit>().setView(ViewType.map);
                           },
                           //onPressed for CAMERA
                           () {
@@ -507,7 +507,7 @@ class _MainPageState extends State<MainPage>
                               positionPixel: 60.0,
                             ));
                             context
-                                .watch<FilterCubit>()
+                                .read<FilterCubit>()
                                 .setView(ViewType.camera);
                           },
                           //onPressed for LIST
@@ -516,13 +516,13 @@ class _MainPageState extends State<MainPage>
                             _controller.snapToPosition(SnapPosition(
                               positionPixel: 60.0,
                             ));
-                            context.watch<FilterCubit>().setView(ViewType.list);
+                            context.read<FilterCubit>().setView(ViewType.list);
                           }
                         ],
                         onPressedSelected: [
                           // onPressedSelected for MAP
                           () {
-                            context.watch<FilterCubit>().mapButtonPressed();
+                            context.read<FilterCubit>().mapButtonPressed();
                           },
                           // onPressedSelected for CAMERA
                           () async {
@@ -573,7 +573,7 @@ class _MainPageState extends State<MainPage>
                             _animationController.forward();
 
                             context
-                                .watch<FilterCubit>()
+                                .read<FilterCubit>()
                                 .cameraButtonPressed(file, fileName);
                           },
                           () {}
