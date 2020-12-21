@@ -92,47 +92,45 @@ class _MyAppState extends State<MyApp> {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-            // This is the theme of your application.
-            //
-            // Try running your application with "flutter run". You'll see the
-            // application has a blue toolbar. Then, without quitting the app, try
-            // changing the primarySwatch below to Colors.green and then invoke
-            // "hot reload" (press "r" in the console where you ran "flutter run",
-            // or simply save your changes to "hot reload" in a Flutter IDE).
-            // Notice that the counter didn't reset back to zero; the application
-            // is not restarted.
-            primarySwatch: Colors.blue,
-            // This makes the visual density adapt to the platform that you run
-            // the app on. For desktop platforms, the controls will be smaller and
-            // closer together (more dense) than on mobile platforms.
-            visualDensity: VisualDensity.adaptivePlatformDensity,
-            backgroundColor: Color(0xfff5f4f3),
-            textTheme: TextTheme(
-              button: TextStyle(
-                  fontSize: 14.0, fontFamily: 'Hind', color: Colors.white),
-            ),
-            buttonTheme: ButtonThemeData(
-              height: 50,
-              buttonColor: Color(0xff598a99),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(50.0),
-                  side: BorderSide(color: Colors.transparent)),
-            )),
-        home: Builder(builder: (context) {
-          return BlocProvider(
-              create: (BuildContext context) => FilterCubit(),
-              child: BlocBuilder<FilterCubit, FilterState>(
-                  builder: (context, state) {
-                if (state.status == LoginStatus.subscribed) {
-                  return MainPage();
-                } else {
-                  return LoginPage();
-                }
-              }));
-        }));
+    return BlocProvider(
+        create: (BuildContext context) => FilterCubit(),
+        child: MaterialApp(
+            title: 'Flutter Demo',
+            theme: ThemeData(
+                // This is the theme of your application.
+                //
+                // Try running your application with "flutter run". You'll see the
+                // application has a blue toolbar. Then, without quitting the app, try
+                // changing the primarySwatch below to Colors.green and then invoke
+                // "hot reload" (press "r" in the console where you ran "flutter run",
+                // or simply save your changes to "hot reload" in a Flutter IDE).
+                // Notice that the counter didn't reset back to zero; the application
+                // is not restarted.
+                primarySwatch: Colors.blue,
+                // This makes the visual density adapt to the platform that you run
+                // the app on. For desktop platforms, the controls will be smaller and
+                // closer together (more dense) than on mobile platforms.
+                visualDensity: VisualDensity.adaptivePlatformDensity,
+                backgroundColor: Color(0xfff5f4f3),
+                textTheme: TextTheme(
+                  button: TextStyle(
+                      fontSize: 14.0, fontFamily: 'Hind', color: Colors.white),
+                ),
+                buttonTheme: ButtonThemeData(
+                  height: 50,
+                  buttonColor: Color(0xff598a99),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50.0),
+                      side: BorderSide(color: Colors.transparent)),
+                )),
+            home: BlocBuilder<FilterCubit, FilterState>(
+                builder: (context, state) {
+              if (state.status == LoginStatus.subscribed) {
+                return MainPage();
+              } else {
+                return LoginPage();
+              }
+            })));
   }
 }
 
@@ -426,17 +424,18 @@ class _MainPageState extends State<MainPage>
                         : Container(),
                     builder: (context, child) {
                       // Usinf function to make a selection
+/*
                       if (filters.selected != null)
                         return DetailsPage();
-/*
                             return Positioned(
                                 child: DetailsPage(),
                                 left: 0.0,
                                 right: 0.0,
                                 top: 0.0,
                                 bottom: 0.0);
+                      else 
 */
-                      else if (filters.view == ViewType.list)
+                      if (filters.view == ViewType.list)
                         return ListWidget();
                       else if (filters.view == ViewType.camera) {
                         double width = MediaQuery.of(context).size.width *
@@ -469,122 +468,105 @@ class _MainPageState extends State<MainPage>
                         return Container();
                     })
               ]),
-              grabbingHeight: filters.selected == null
-                  ? MediaQuery.of(context).padding.bottom + 40
-                  : 0.0,
-              grabbing: filters.selected == null
-                  ? GrabSection()
-                  : Container(
-                      width: 0.0, height: 0.0), //Container(color: Colors.grey),
+              grabbingHeight: MediaQuery.of(context).padding.bottom + 40,
+              grabbing: GrabSection(),
               sheetBelow: SnappingSheetContent(
-                  child: filters.selected == null
-                      ? Container(
-                          decoration: boxDecoration(),
-                          child: filters.view == ViewType.camera
-                              ? CameraPanel()
-                              : SearchPanel())
-                      : Container(width: 0.0, height: 0.0)),
+                  child: Container(
+                      decoration: boxDecoration(),
+                      child: filters.view == ViewType.camera
+                          ? CameraPanel()
+                          : SearchPanel())),
             ),
             Positioned(
                 bottom: max(_snapPosition - 35.0, 10.0),
                 right: 5.0,
-                child: filters.selected == null
-                    ? TripleButton(
-                        selected: filters.view.index,
-                        onPressed: [
-                          //onPressed for MAP
-                          () {
-                            // TODO: remember a position and restore it
-                            _controller.snapToPosition(SnapPosition(
-                              positionPixel: 60.0,
-                            ));
-                            context.read<FilterCubit>().setView(ViewType.map);
-                          },
-                          //onPressed for CAMERA
-                          () {
-                            // TODO: Make it 0.0 position if place is already confirmed
-                            _controller.snapToPosition(SnapPosition(
-                              positionPixel: 60.0,
-                            ));
-                            context
-                                .read<FilterCubit>()
-                                .setView(ViewType.camera);
-                          },
-                          //onPressed for LIST
-                          () {
-                            // TODO: remember a position and restore it
-                            _controller.snapToPosition(SnapPosition(
-                              positionPixel: 60.0,
-                            ));
-                            context.read<FilterCubit>().setView(ViewType.list);
-                          }
-                        ],
-                        onPressedSelected: [
-                          // onPressedSelected for MAP
-                          () {
-                            context.read<FilterCubit>().mapButtonPressed();
-                          },
-                          // onPressedSelected for CAMERA
-                          () async {
-                            if (cameraCtrl == null ||
-                                !cameraCtrl.value.isInitialized) {
-                              //TODO: do exceptional processing for not initialized camera
-                              //showInSnackBar('Error: select a camera first.');
-                              print(
-                                  'EXCEPTION: Camera controller not initialized');
-                              return;
-                            }
+                child: TripleButton(
+                  selected: filters.view.index,
+                  onPressed: [
+                    //onPressed for MAP
+                    () {
+                      // TODO: remember a position and restore it
+                      _controller.snapToPosition(SnapPosition(
+                        positionPixel: 60.0,
+                      ));
+                      context.read<FilterCubit>().setView(ViewType.map);
+                    },
+                    //onPressed for CAMERA
+                    () {
+                      // TODO: Make it 0.0 position if place is already confirmed
+                      _controller.snapToPosition(SnapPosition(
+                        positionPixel: 60.0,
+                      ));
+                      context.read<FilterCubit>().setView(ViewType.camera);
+                    },
+                    //onPressed for LIST
+                    () {
+                      // TODO: remember a position and restore it
+                      _controller.snapToPosition(SnapPosition(
+                        positionPixel: 60.0,
+                      ));
+                      context.read<FilterCubit>().setView(ViewType.list);
+                    }
+                  ],
+                  onPressedSelected: [
+                    // onPressedSelected for MAP
+                    () {
+                      context.read<FilterCubit>().mapButtonPressed();
+                    },
+                    // onPressedSelected for CAMERA
+                    () async {
+                      if (cameraCtrl == null ||
+                          !cameraCtrl.value.isInitialized) {
+                        //TODO: do exceptional processing for not initialized camera
+                        //showInSnackBar('Error: select a camera first.');
+                        print('EXCEPTION: Camera controller not initialized');
+                        return;
+                      }
 
-                            if (cameraCtrl != null &&
-                                cameraCtrl.value.isTakingPicture) {
-                              // A capture is already pending, do nothing.
-                              print(
-                                  'EXCEPTION: Camera controller in pogress (taking picture)');
-                              return null;
-                            }
+                      if (cameraCtrl != null &&
+                          cameraCtrl.value.isTakingPicture) {
+                        // A capture is already pending, do nothing.
+                        print(
+                            'EXCEPTION: Camera controller in pogress (taking picture)');
+                        return null;
+                      }
 
-                            _animationController.reset();
+                      _animationController.reset();
 
-                            setState(() {
-                              _pictureFile = null;
-                            });
+                      setState(() {
+                        _pictureFile = null;
+                      });
 
-                            final Directory extDir =
-                                await getApplicationDocumentsDirectory();
-                            final String filePath =
-                                '${extDir.path}/Pictures/Biblosphere';
-                            await Directory(filePath).create(recursive: true);
-                            final String fileName = '${timestamp()}.jpg';
-                            final File file = File('$filePath/$fileName');
+                      final Directory extDir =
+                          await getApplicationDocumentsDirectory();
+                      final String filePath =
+                          '${extDir.path}/Pictures/Biblosphere';
+                      await Directory(filePath).create(recursive: true);
+                      final String fileName = '${timestamp()}.jpg';
+                      final File file = File('$filePath/$fileName');
 
-                            try {
-                              await cameraCtrl.takePicture(file.path);
-                            } on CameraException catch (e) {
-                              //TODO: Do exception processing for the camera;
-                              print(
-                                  'EXCEPTION: Camera controller exception: $e');
-                              return null;
-                            }
+                      try {
+                        await cameraCtrl.takePicture(file.path);
+                      } on CameraException catch (e) {
+                        //TODO: Do exception processing for the camera;
+                        print('EXCEPTION: Camera controller exception: $e');
+                        return null;
+                      }
 
-                            setState(() {
-                              _pictureFile = file;
-                            });
+                      setState(() {
+                        _pictureFile = file;
+                      });
 
-                            _animationController.forward();
+                      _animationController.forward();
 
-                            context
-                                .read<FilterCubit>()
-                                .cameraButtonPressed(file, fileName);
-                          },
-                          () {}
-                        ],
-                        icons: [
-                          Icons.location_pin,
-                          Icons.camera_alt,
-                          Icons.list_alt
-                        ],
-                      )
-                    : Container(width: 0.0, height: 0.0))
+                      context
+                          .read<FilterCubit>()
+                          .cameraButtonPressed(file, fileName);
+                    },
+                    () {}
+                  ],
+                  icons: [Icons.location_pin, Icons.camera_alt, Icons.list_alt],
+                ))
           ]);
         }));
   }
@@ -748,3 +730,5 @@ const Color closeCrossColor = Color(0xff598a99);
 const Color placeholderColor = Color(0x8f8f8993);
 
 const Color bookmarkListColor = Color(0xffc66747);
+
+const Color detailsAppBarBackgroung = Color(0xff598a99);

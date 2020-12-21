@@ -304,7 +304,7 @@ class FilterState extends Equatable {
   ];
 
   const FilterState({
-    this.status = LoginStatus.unknown,
+    this.status = LoginStatus.unauthorized,
     this.phone = '',
     this.name = '',
     this.country,
@@ -762,7 +762,7 @@ class FilterCubit extends Cubit<FilterState> {
   GoogleMapController _mapController;
   SnappingSheetController _snappingControler;
   TextEditingController _searchController;
-  ScrollController _scrollController;
+  // ScrollController _scrollController;
   GooglePlace googlePlace = GooglePlace(GooglePlaceKey);
 
   FilterCubit() : super(FilterState()) {
@@ -1819,6 +1819,7 @@ class FilterCubit extends Cubit<FilterState> {
       // Hide panel
       _snappingControler.snapToPosition(_snappingControler.snapPositions.first);
       emit(state.copyWith(
+        // TODO: Open as a separete window (Route)
         selected: () => (marker.points.first as Book),
         center: marker.position,
       ));
@@ -1889,7 +1890,7 @@ class FilterCubit extends Cubit<FilterState> {
     _snappingControler.snapToPosition(_snappingControler.snapPositions.first);
 
     emit(state.copyWith(
-      offset: _scrollController.hasClients ? _scrollController.offset : 0.0,
+      //offset: _scrollController.hasClients ? _scrollController.offset : 0.0,
       selected: () => book,
     ));
   }
@@ -1902,7 +1903,6 @@ class FilterCubit extends Cubit<FilterState> {
     ], isbns: [
       book.isbn
     ]);
-
     print('!!!DEBUG Search and show books by ISBN ${book.isbn}');
 
     // Search book globally

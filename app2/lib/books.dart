@@ -603,8 +603,14 @@ class BookCard extends StatelessWidget {
         builder: (context, filters) {
       String distance = distanceString(filters.center, book.location);
       return GestureDetector(
-          onTap: () {
+          onTap: () async {
             context.read<FilterCubit>().selectBook(book: book);
+
+            await Navigator.push(context,
+                MaterialPageRoute(builder: (context) => DetailsPage()));
+
+            print('!!!DEBUG Details closed');
+            context.read<FilterCubit>().detailsClosed();
           },
           child: Card(
               color: background,
@@ -685,7 +691,7 @@ class _BookDetailsState extends State<BookDetails> {
 
   Future<void> loadShelfImage() async {
     // Return if no shelf image
-    if (book.photo == null) {
+    if (book?.photo == null) {
       _imageProvider = null;
       return null;
     }
@@ -835,74 +841,74 @@ class _BookDetailsState extends State<BookDetails> {
         fullSize = Offset(width - 24, 596.0 * scale);
       }
 
-      return Card(
+      return /* Card(
           color: Colors.white.withOpacity(0.9),
-          child: Stack(children: [
-            Container(
-                margin: EdgeInsets.only(
-                    right: 8.0, left: 8.0, top: 8.0, bottom: 8.0),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Image of the shelf and book cover
-                      Stack(children: [
-                        // Shelf image as a background
-                        Container(
-                          // TODO: Find where these margins come from
-                          width: fullSize.dx,
-                          height: fullSize.dy,
-                          child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4.0),
-                              child: _imageProvider != null
-                                  ? Image(image: _imageProvider)
-                                  : Image.asset('lib/assets/bookshelf.jpg',
-                                      fit: BoxFit.fill)),
-                        ),
-                        // Add foggy layer if image is not available
-                        if (_imageProvider == null)
-                          Positioned.fill(
-                              child: Container(
-                                  color: Colors.grey.withOpacity(0.6))),
-                        Positioned(
-                            top: offset.dy,
-                            left: offset.dx,
-                            child: Container(
-                                height: coverSize.dy,
-                                width: coverSize.dx,
-                                child: Center(
-                                    child: Container(
-                                        decoration: placeDecoration(),
-                                        padding: EdgeInsets.all(16.0),
-                                        child: coverImage(book.cover,
-                                            bookmark:
-                                                filters.isUserBookmark(book),
-                                            width: min(
-                                                130, coverSize.dx * 0.5))))))
-                      ]),
-                      // Figma: buttons
+          child: Stack(children: [ */
+          Container(
+              margin:
+                  EdgeInsets.only(right: 8.0, left: 8.0, top: 8.0, bottom: 8.0),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Image of the shelf and book cover
+                    Stack(children: [
+                      // Shelf image as a background
                       Container(
-                          margin: EdgeInsets.only(top: 10.0, bottom: 16.0),
-                          child: Row(
-                              mainAxisSize: MainAxisSize.max,
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                // Bookmark button
-                                detailsButton(
-                                    icon: Icons.bookmark,
-                                    onPressed: () {
-                                      if (filters.isUserBookmark(book)) {
-                                        context
-                                            .read<FilterCubit>()
-                                            .removeUserBookmark(book);
-                                      } else {
-                                        context
-                                            .read<FilterCubit>()
-                                            .addUserBookmark(book);
-                                      }
-                                      // TODO: button state does not refrest without setState
-                                      setState(() {});
-                                    },
-                                    selected: filters.isUserBookmark(book)),
+                        // TODO: Find where these margins come from
+                        width: fullSize.dx,
+                        height: fullSize.dy,
+                        child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4.0),
+                            child: _imageProvider != null
+                                ? Image(image: _imageProvider)
+                                : Image.asset('lib/assets/bookshelf.jpg',
+                                    fit: BoxFit.fill)),
+                      ),
+                      // Add foggy layer if image is not available
+                      if (_imageProvider == null)
+                        Positioned.fill(
+                            child:
+                                Container(color: Colors.grey.withOpacity(0.6))),
+                      Positioned(
+                          top: offset.dy,
+                          left: offset.dx,
+                          child: Container(
+                              height: coverSize.dy,
+                              width: coverSize.dx,
+                              child: Center(
+                                  child: Container(
+                                      decoration: placeDecoration(),
+                                      padding: EdgeInsets.all(16.0),
+                                      child: coverImage(book.cover,
+                                          bookmark:
+                                              filters.isUserBookmark(book),
+                                          width:
+                                              min(130, coverSize.dx * 0.5))))))
+                    ]),
+                    // Figma: buttons
+                    Container(
+                        margin: EdgeInsets.only(top: 10.0, bottom: 16.0),
+                        child: Row(
+                            mainAxisSize: MainAxisSize.max,
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              // Bookmark button
+                              detailsButton(
+                                  icon: Icons.bookmark,
+                                  onPressed: () {
+                                    if (filters.isUserBookmark(book)) {
+                                      context
+                                          .read<FilterCubit>()
+                                          .removeUserBookmark(book);
+                                    } else {
+                                      context
+                                          .read<FilterCubit>()
+                                          .addUserBookmark(book);
+                                    }
+                                    // TODO: button state does not refrest without setState
+                                    setState(() {});
+                                  },
+                                  selected: filters.isUserBookmark(book)),
 /*
                                 // Problem button
                                 detailsButton(
@@ -910,28 +916,64 @@ class _BookDetailsState extends State<BookDetails> {
                                     onPressed: () {},
                                     selected: false),
 */
-                                // Search book button
-                                detailsButton(
-                                    icon: Icons.search,
-                                    onPressed: () {
-                                      context
-                                          .read<FilterCubit>()
-                                          .searchBookPressed(book);
-                                    }),
-                                // Share button
-                                detailsButton(
-                                    icon: Icons.share,
-                                    onPressed: () => shareBook(book),
-                                    selected: false),
-                                // Message button
-                                detailsButton(
-                                    icon: book.phone != null
-                                        ? Icons.phone
-                                        : Icons.email,
-                                    onPressed: () => contactBook(book),
-                                    selected: false),
-                              ])),
-                      // TODO: Add editing of the books
+                              // Search book button
+                              detailsButton(
+                                  icon: Icons.search,
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    print(
+                                        '!!!DEBUG 1 selected ${context.read<FilterCubit>().state.selected}');
+                                    context
+                                        .read<FilterCubit>()
+                                        .searchBookPressed(book);
+                                    print(
+                                        '!!!DEBUG 2 selected ${context.read<FilterCubit>().state.selected}');
+                                  }),
+                              // Share button
+                              detailsButton(
+                                  icon: Icons.share,
+                                  onPressed: () => shareBook(book),
+                                  selected: false),
+                              // Message button
+                              detailsButton(
+                                  icon: book.phone != null
+                                      ? Icons.phone
+                                      : Icons.email,
+                                  onPressed: () => contactBook(book),
+                                  selected: false),
+                            ])),
+                    // TODO: Add editing of the books
+                    Container(
+                        margin: EdgeInsets.only(
+                            bottom: 8.0, left: 24.0, right: 24.0),
+                        child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                  child: Text(book.authors.join(', '),
+                                      style: authorDetailsStyle)),
+                              Container(
+                                padding: EdgeInsets.only(left: 4.0),
+                                //child: Icon(Icons.edit, size: 18.0)
+                              )
+                            ])),
+                    Container(
+                        margin: EdgeInsets.only(
+                            bottom: 8.0, left: 24.0, right: 24.0),
+                        child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                  child: Text(book.title ?? '',
+                                      style: titleDetailsStyle)),
+                              Container(
+                                padding: EdgeInsets.only(left: 4.0),
+                                //child: Icon(Icons.edit, size: 18.0)
+                              )
+                            ])),
+                    if (book.genre != null && genres.containsKey(book.genre))
                       Container(
                           margin: EdgeInsets.only(
                               bottom: 8.0, left: 24.0, right: 24.0),
@@ -940,13 +982,15 @@ class _BookDetailsState extends State<BookDetails> {
                               mainAxisAlignment: MainAxisAlignment.start,
                               children: [
                                 Expanded(
-                                    child: Text(book.authors.join(', '),
-                                        style: authorDetailsStyle)),
+                                    child: Text('Genre: ' + genres[book.genre],
+                                        style: genreDetailsStyle)),
                                 Container(
                                   padding: EdgeInsets.only(left: 4.0),
                                   //child: Icon(Icons.edit, size: 18.0)
                                 )
                               ])),
+                    if (book.language != null &&
+                        languages.containsKey(book.language))
                       Container(
                           margin: EdgeInsets.only(
                               bottom: 8.0, left: 24.0, right: 24.0),
@@ -955,61 +999,26 @@ class _BookDetailsState extends State<BookDetails> {
                               mainAxisAlignment: MainAxisAlignment.start,
                               children: [
                                 Expanded(
-                                    child: Text(book.title ?? '',
-                                        style: titleDetailsStyle)),
+                                    child: Text(
+                                        'Language: ' + languages[book.language],
+                                        style: languageDetailsStyle)),
                                 Container(
                                   padding: EdgeInsets.only(left: 4.0),
                                   //child: Icon(Icons.edit, size: 18.0)
                                 )
                               ])),
-                      if (book.genre != null && genres.containsKey(book.genre))
-                        Container(
-                            margin: EdgeInsets.only(
-                                bottom: 8.0, left: 24.0, right: 24.0),
-                            child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                      child: Text(
-                                          'Genre: ' + genres[book.genre],
-                                          style: genreDetailsStyle)),
-                                  Container(
-                                    padding: EdgeInsets.only(left: 4.0),
-                                    //child: Icon(Icons.edit, size: 18.0)
-                                  )
-                                ])),
-                      if (book.language != null &&
-                          languages.containsKey(book.language))
-                        Container(
-                            margin: EdgeInsets.only(
-                                bottom: 8.0, left: 24.0, right: 24.0),
-                            child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                      child: Text(
-                                          'Language: ' +
-                                              languages[book.language],
-                                          style: languageDetailsStyle)),
-                                  Container(
-                                    padding: EdgeInsets.only(left: 4.0),
-                                    //child: Icon(Icons.edit, size: 18.0)
-                                  )
-                                ])),
-                      Container(
-                          margin: EdgeInsets.only(
-                              bottom: 8.0, left: 24.0, right: 24.0),
-                          child: Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Expanded(flex: 1, child: Text(distance)),
-                                Icon(Icons.location_pin),
-                                Expanded(flex: 4, child: Text(book.place))
-                              ]))
+                    Container(
+                        margin: EdgeInsets.only(
+                            bottom: 8.0, left: 24.0, right: 24.0),
+                        child: Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Expanded(flex: 1, child: Text(distance)),
+                              Icon(Icons.location_pin),
+                              Expanded(flex: 4, child: Text(book.place))
+                            ]))
 
-                      // Figma: Description
+                    // Figma: Description
 /*
                       Container(
                           margin: EdgeInsets.only(top: 15.0),
@@ -1023,9 +1032,10 @@ class _BookDetailsState extends State<BookDetails> {
                         return Chip(label: Text(tag));
                       }).toList()),
 */
-                      // TODO: Add last scan date
-                      //Text('Last scan 21.01.2020')
-                    ])),
+                    // TODO: Add last scan date
+                    //Text('Last scan 21.01.2020')
+                  ]));
+/*
             Positioned(
               right: 0.0,
               child: GestureDetector(
@@ -1045,7 +1055,9 @@ class _BookDetailsState extends State<BookDetails> {
                 ),
               ),
             ),
-          ]));
+          ])
+          );
+*/
     });
   }
 }
@@ -1144,20 +1156,25 @@ class _ListWidgetState extends State<ListWidget> {
 class DetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
-      double height = MediaQuery.of(context).size.height -
-          MediaQuery.of(context).padding.bottom -
-          MediaQuery.of(context).padding.top;
-      return SingleChildScrollView(
-          child: SafeArea(
-        child: Container(
-            constraints:
-                BoxConstraints(minHeight: height, maxHeight: double.infinity),
+    return Scaffold(
+        appBar: AppBar(backgroundColor: detailsAppBarBackgroung),
+        body: BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
+          //double height = MediaQuery.of(context).size.height -
+          //    MediaQuery.of(context).padding.bottom -
+          //    MediaQuery.of(context).padding.top;
+          return Container(
+              child: SingleChildScrollView(
+            //child: SafeArea(
+            //constraints:
+            //    BoxConstraints(minHeight: height, maxHeight: double.infinity),
+            child: BookDetails(book: state.selected),
+            /*
             child: state.selected != null
                 ? BookDetails(book: state.selected)
-                : Container()),
-      ));
-    });
+              : Container()),
+              */
+          ));
+        }));
   }
 }
 
