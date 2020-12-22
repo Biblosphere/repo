@@ -510,6 +510,21 @@ class FilterState extends Equatable {
     return hashes;
   }
 
+  List<String> isbnsFor(List<Filter> filters) {
+    List<String> isbns = [];
+
+    if (filters.any((f) => f.type == FilterType.wish && f.selected)) {
+      if (bookmarks != null) isbns.addAll(bookmarks);
+    }
+
+    filters.forEach((f) {
+      if (f.type == FilterType.title && f?.book?.isbn != null)
+        isbns.add(f?.book?.isbn);
+    });
+
+    return isbns;
+  }
+
   Future<List<Book>> booksFor(String geohash) async {
     String low = (geohash + '000000000').substring(0, 9);
     String high = (geohash + 'zzzzzzzzz').substring(0, 9);
@@ -1336,7 +1351,13 @@ class FilterCubit extends Cubit<FilterState> {
       filters = filters.where((f) => f != filter).toList();
     }
 
-    emit(state.copyWith(filters: filters));
+    List<String> isbns = state.isbns;
+    // Remove ISBN from isbn list
+    if (filter.type == FilterType.title || filter.type == FilterType.wish) {
+      isbns = state.isbnsFor(filters);
+    }
+
+    emit(state.copyWith(filters: filters, isbns: isbns));
   }
 
   // FILTER PANEL:
@@ -1384,7 +1405,10 @@ class FilterCubit extends Cubit<FilterState> {
     filters = [...filters, filter]
       ..sort((a, b) => a.type.index.compareTo(b.type.index));
 
-    emit(state.copyWith(filters: filters, filterSuggestions: suggestions));
+    List<String> isbns = state.isbnsFor(filters);
+
+    emit(state.copyWith(
+        filters: filters, isbns: isbns, filterSuggestions: suggestions));
   }
 
   // FILTER PANEL:
@@ -1475,6 +1499,8 @@ class FilterCubit extends Cubit<FilterState> {
     // Emit state with updated markers
     emit(state.copyWith(
         books: books, offset: 0.0, places: places, markers: markers));
+
+    // TODO: Should we emit "books" if search by places?
   }
 
   // FILTER PANEL:
@@ -1569,6 +1595,10 @@ class FilterCubit extends Cubit<FilterState> {
         await Future.forEach(state.geohashes, (hash) async {
           books.addAll(await state.booksFor(hash));
         });
+
+        // TODO: Temporary measure to identify duplication after search
+        //       of single book
+        books = books.toSet().toList();
 
         books.sort((a, b) => (distanceBetween(a.location, state.center) -
                 distanceBetween(b.location, state.center))

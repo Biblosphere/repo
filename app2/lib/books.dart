@@ -1091,12 +1091,17 @@ class _ListWidgetState extends State<ListWidget> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
+      print('!!!DEBUG LIST NUMBER ${filters.geohashes} ${filters.books}');
+      filters.books.forEach((b) {
+        print(b.title);
+      });
       return ListView(
           controller: ScrollController(
               initialScrollOffset:
                   context.watch<FilterCubit>().state.offset ?? 0.0),
           children: [
             ...filters.books.map((b) {
+              print('!!!DEBUG build for book card ${b.title}');
               return Slidable(
                 actionPane: SlidableDrawerActionPane(),
                 actionExtentRatio: 0.25,
