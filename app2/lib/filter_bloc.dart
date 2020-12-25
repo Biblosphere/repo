@@ -201,6 +201,8 @@ const List<String> PrivacyLabels = ['private', 'contacts', 'all'];
 
 typedef Book BookCallback();
 
+typedef LatLngBounds LatLngBoundsCallback();
+
 class FilterState extends Equatable {
   // LOGIN STATE
   final LoginStatus status;
@@ -356,7 +358,7 @@ class FilterState extends Equatable {
     Panel panel,
     FilterGroup group,
     LatLng center,
-    LatLngBounds bounds,
+    LatLngBoundsCallback bounds,
     ViewType view,
     Set<String> geohashes,
     double offset,
@@ -389,7 +391,7 @@ class FilterState extends Equatable {
       panel: panel ?? this.panel,
       group: group ?? this.group,
       center: center ?? this.center,
-      bounds: bounds ?? this.bounds,
+      bounds: bounds != null ? bounds() : this.bounds,
       view: view ?? this.view,
       geohashes: geohashes ?? this.geohashes,
       offset: offset ?? this.offset,
@@ -515,6 +517,7 @@ class FilterState extends Equatable {
 
     if (filters.any((f) => f.type == FilterType.wish && f.selected)) {
       if (bookmarks != null) isbns.addAll(bookmarks);
+      print('!!!DEBUG bookmarks [$bookmarks]');
     }
 
     filters.forEach((f) {
@@ -638,6 +641,8 @@ class FilterState extends Equatable {
         query = query.where('language', isEqualTo: langs.first);
       }
     } else {
+      print('!!!DEBUG Search by ISBNs $isbns');
+
       if (isbns.length > 10) {
         print('EXCEPTION: number of ISBNs in query more than 10.');
         // TODO: Report exception in analytic
@@ -657,8 +662,12 @@ class FilterState extends Equatable {
     List<Book> books =
         bookSnap.docs.map((doc) => Book.fromJson(doc.id, doc.data())).toList();
 
-    if (bounds != null)
+    print('!!!DEBUG books before bounds ${books.length}');
+
+    if (bounds != null) {
+      print('!!!DEBUG filter books by bounds');
       books = books.where((b) => bounds.contains(b.location)).toList();
+    }
 
     print('!!!DEBUG: booksFor reads ${books.length} books');
 
@@ -1145,9 +1154,15 @@ class FilterCubit extends Cubit<FilterState> {
             FirebaseFirestore.instance.collection('users').doc(user.uid);
 
         DocumentSnapshot doc = await ref.get();
-        if (doc.exists && doc.data().containsKey('bookmarks'))
+
+        print('!!!DEBUG User ${user.uid} exist=${doc.exists}');
+
+        if (doc.exists && doc.data().containsKey('bookmarks')) {
           emit(state.copyWith(
               bookmarks: List<String>.from(doc.data()['bookmarks'])));
+
+          print('!!!DEBUG [${doc.data()['bookmarks']}] [${state.bookmarks}]');
+        }
 
 /*
         AppUser currentUser;
@@ -1367,6 +1382,7 @@ class FilterCubit extends Cubit<FilterState> {
   // - Genre filter changed => FILTER
   void addFilter(Filter filter, {bool resetType = false}) async {
     List<Filter> filters = state.filters;
+    LatLngBounds bounds = state.bounds;
 
     // Do nothing if filter already there
     if (filters.contains(filter)) return;
@@ -1376,21 +1392,32 @@ class FilterCubit extends Cubit<FilterState> {
       filters = toggle(filters, FilterType.wish, false);
       // If title filter add drop genres filters
       filters = filters.where((f) => f.type != FilterType.genre).toList();
+      // Drop bounds if search by ISBNs
+      if (filter.selected) {
+        bounds = null;
+      }
     } else if (filter.type == FilterType.place) {
       // If place filter add unselect contacts filter
       filters = toggle(filters, FilterType.contacts, false);
     } else if (filter.type == FilterType.genre) {
       // If genre filter add drop title filters
       filters = filters.where((f) => f.type != FilterType.title).toList();
-    } else if (filter.type == FilterType.author &&
-        filters.any((f) => f.type == FilterType.author)) {
-      // If more than 1 author drop genres filters if more than 1 value
-      if (filters.where((f) => f.type == FilterType.genre).length > 1)
-        filters = filters.where((f) => f.type != FilterType.genre).toList();
+    } else if (filter.type == FilterType.author) {
+      // Drop bounds if search by author(s)
+      if (filter.selected) {
+        bounds = null;
+      }
 
-      // If more than 1 author drop language filters if more than 1 value
-      if (filters.where((f) => f.type == FilterType.language).length > 1)
-        filters = filters.where((f) => f.type != FilterType.language).toList();
+      if (filters.any((f) => f.type == FilterType.author)) {
+        // If more than 1 author drop genres filters if more than 1 value
+        if (filters.where((f) => f.type == FilterType.genre).length > 1)
+          filters = filters.where((f) => f.type != FilterType.genre).toList();
+
+        // If more than 1 author drop language filters if more than 1 value
+        if (filters.where((f) => f.type == FilterType.language).length > 1)
+          filters =
+              filters.where((f) => f.type != FilterType.language).toList();
+      }
     }
 
     // Remove this filter from suggestions
@@ -1407,8 +1434,13 @@ class FilterCubit extends Cubit<FilterState> {
 
     List<String> isbns = state.isbnsFor(filters);
 
+    print('!!!DEBUG ISBNs [${isbns.join(',')}]');
+
     emit(state.copyWith(
-        filters: filters, isbns: isbns, filterSuggestions: suggestions));
+        filters: filters,
+        isbns: isbns,
+        bounds: () => bounds,
+        filterSuggestions: suggestions));
   }
 
   // FILTER PANEL:
@@ -1448,9 +1480,19 @@ class FilterCubit extends Cubit<FilterState> {
 
     filters = toggle(filters, filter.type, !filter.selected);
 
-    emit(state.copyWith(
-      filters: filters,
-    ));
+    List<String> isbns = state.isbns;
+    LatLngBounds bounds = state.bounds;
+    if (filter.type == FilterType.wish) {
+      isbns = state.isbnsFor(filters);
+      print('!!!DEBUG ISBNs in toggle [${isbns.join(',')}]');
+      // Drop bounds if search by ISBNs (wish WAS not selected)
+      if (!filter.selected) {
+        print('!!!DEBUG Set bounds to NULL');
+        bounds = null;
+      }
+    }
+
+    emit(state.copyWith(filters: filters, isbns: isbns, bounds: () => bounds));
   }
 
   // FILTER PANEL:
@@ -1547,6 +1589,12 @@ class FilterCubit extends Cubit<FilterState> {
   // TRIPLE BUTTON
   // - Map button pressed (selected) => FILTER
   void mapButtonPressed() async {
+    searchAndShow(state);
+  }
+
+  // TRIPLE BUTTON
+  // - Map button pressed long (selected) => FILTER
+  void mapButtonLongPress() async {
     LatLng location = await currentLatLng();
 
     // Inform about new position if distance more than 50 meters
@@ -1558,11 +1606,6 @@ class FilterCubit extends Cubit<FilterState> {
 
     if (_mapController != null)
       _mapController.moveCamera(CameraUpdate.newLatLng(location));
-
-    // TODO: Check if zoom reset is a good thing. Do we need to
-    //       auto-calculate zoom to always contain some book search results.
-
-    // TODO: query books/places based on new location and current filters
   }
 
   // TRIPLE BUTTON
@@ -1796,7 +1839,7 @@ class FilterCubit extends Cubit<FilterState> {
     // Refresh suggestions if map moved once detailed place filters are open
     emit(state.copyWith(
         center: position != null ? position.target : state.center,
-        bounds: bounds != null ? bounds : state.bounds,
+        bounds: () => bounds != null ? bounds : state.bounds,
         geohashes: hashes,
         books: books,
         offset: 0.0,
@@ -1925,16 +1968,7 @@ class FilterCubit extends Cubit<FilterState> {
     ));
   }
 
-  void searchAndShowBook({Book book}) async {
-    FilterState newState = state.copyWith(filters: [
-      ...FilterState.empty,
-      Filter(
-          type: FilterType.title, value: book.title, book: book, selected: true)
-    ], isbns: [
-      book.isbn
-    ]);
-    print('!!!DEBUG Search and show books by ISBN ${book.isbn}');
-
+  void searchAndShow(FilterState newState) async {
     // Search book globally
     List<Book> books = await newState.booksFor('');
     Set<MarkerData> markers = await newState.markersFor(points: books);
@@ -1954,9 +1988,25 @@ class FilterCubit extends Cubit<FilterState> {
     if (books.length > 1) {
       LatLngBounds bounds = boundsFromPoints(books);
       _mapController.moveCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
+    } else if (books.length == 1) {
+      _mapController.moveCamera(CameraUpdate.newLatLng(books.first.location));
     } else {
-      _mapController.moveCamera(CameraUpdate.newLatLng(book.location));
+      // TODO: Show message that books not found. Encourage to add more books
+      print('EXCEPTION: No books found for given filters');
     }
+  }
+
+  void searchAndShowBook({Book book}) async {
+    FilterState newState = state.copyWith(filters: [
+      ...FilterState.empty,
+      Filter(
+          type: FilterType.title, value: book.title, book: book, selected: true)
+    ], isbns: [
+      book.isbn
+    ]);
+    print('!!!DEBUG Search and show books by ISBN ${book.isbn}');
+
+    searchAndShow(newState);
   }
 
   // DETAILS
@@ -1997,9 +2047,9 @@ class FilterCubit extends Cubit<FilterState> {
     await FirebaseFirestore.instance
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser.uid)
-        .update({
+        .set({
       'bookmarks': FieldValue.arrayUnion([book.isbn])
-    });
+    }, SetOptions(merge: true));
   }
 
   // DETAILS
@@ -2036,9 +2086,9 @@ class FilterCubit extends Cubit<FilterState> {
     await FirebaseFirestore.instance
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser.uid)
-        .update({
+        .set({
       'bookmarks': FieldValue.arrayRemove([book.isbn])
-    });
+    }, SetOptions(merge: true));
   }
 
   // DETAILS

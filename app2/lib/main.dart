@@ -140,16 +140,22 @@ class TripleButton extends StatefulWidget {
   final int selected;
   final List<VoidCallback> onPressed;
   final List<VoidCallback> onPressedSelected;
+  final List<VoidCallback> onLongPress;
   final List<IconData> icons;
 
   TripleButton(
-      {this.selected, this.onPressed, this.onPressedSelected, this.icons});
+      {this.selected,
+      this.onPressed,
+      this.onPressedSelected,
+      this.onLongPress,
+      this.icons});
 
   @override
   TripleButtonState createState() => TripleButtonState(
       selected: selected,
       onPressed: onPressed,
       onPressedSelected: onPressedSelected,
+      onLongPress: onLongPress,
       icons: icons);
 }
 
@@ -164,6 +170,7 @@ class TripleButtonState extends State<TripleButton>
 
   List<VoidCallback> onPressed;
   List<VoidCallback> onPressedSelected;
+  List<VoidCallback> onLongPress;
   List<IconData> icons;
 
   AnimationController _animationController;
@@ -174,7 +181,11 @@ class TripleButtonState extends State<TripleButton>
       _radiusTweenNew;
 
   TripleButtonState(
-      {this.selected, this.onPressed, this.onPressedSelected, this.icons}) {
+      {this.selected,
+      this.onPressed,
+      this.onPressedSelected,
+      this.onLongPress,
+      this.icons}) {
     oldSelected = selected;
   }
 
@@ -291,6 +302,10 @@ class TripleButtonState extends State<TripleButton>
                                 else {
                                   onPressed[i]();
                                 }
+                              },
+                              onLongPress: () {
+                                if (i == selected && onLongPress[i] != null)
+                                  onLongPress[i]();
                               },
                               color: color, //.transparent,
                               textColor: Colors.white,
@@ -563,6 +578,16 @@ class _MainPageState extends State<MainPage>
                           .read<FilterCubit>()
                           .cameraButtonPressed(file, fileName);
                     },
+                    () {}
+                  ],
+                  onLongPress: [
+                    //onLongPress for MAP
+                    () {
+                      context.read<FilterCubit>().mapButtonLongPress();
+                    },
+                    //onLongPress for CAMERA
+                    () {},
+                    //onLongPress for LIST
                     () {}
                   ],
                   icons: [Icons.location_pin, Icons.camera_alt, Icons.list_alt],
