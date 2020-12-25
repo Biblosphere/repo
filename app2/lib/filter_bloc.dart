@@ -1810,8 +1810,7 @@ class FilterCubit extends Cubit<FilterState> {
 
       // Make markers based on PLACES
     } else if (state.select == QueryType.places) {
-      print(
-          '!!!DEBUG Markers based on PLACES Filters: ${state.filters} Books: ${state.books}');
+      // print('!!!DEBUG Markers based on PLACES Filters: ${state.filters.length} Books: ${state.books.length}');
       // Add places only for missing areas
       await Future.forEach(extraHashes, (hash) async {
         places.addAll(await state.placesFor(hash));
