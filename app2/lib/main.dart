@@ -451,7 +451,7 @@ class _MainPageState extends State<MainPage>
                       else 
 */
                       if (filters.view == ViewType.list)
-                        return ListWidget();
+                        return BooksWidget();
                       else if (filters.view == ViewType.camera) {
                         double width = MediaQuery.of(context).size.width *
                             _imageWidthTween.value;

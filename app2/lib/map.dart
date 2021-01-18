@@ -76,7 +76,7 @@ Future<BitmapDescriptor> getBookIcon(double size) async {
 }
 */
 Future<Set<Marker>> markersFor(
-    BuildContext context, Set<MarkerData> data) async {
+    BuildContext context, List<MarkerData> data) async {
   if (data == null || data.length == 0) return Set();
 
   // Calculate sizes for cluster icons

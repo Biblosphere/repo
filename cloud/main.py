@@ -4,6 +4,7 @@ import cv2
 import traceback
 import numpy as np
 import mysql.connector
+import geohash2
 from math import pi, sin, cos, atan2, sqrt
 from fuzzywuzzy import process, fuzz
 from google.cloud import storage, pubsub, exceptions
@@ -22,6 +23,10 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 from firebase_admin import messaging
 
+# Image resize for the thumbnail
+from wand.image import Image
+
+client = storage.Client()
 
 # Use the application default credentials
 # TODO: Only initialize it for add_user_books(_from_image_sub) functions which use Firestore (Performance)
@@ -33,6 +38,44 @@ db = firestore.client()
 
 # TODO: Get the client only in function which needs it. Make empty global variable and check it (Performance)
 publisher = pubsub.PublisherClient()
+
+# Function to generate thumbnails for the book shelves
+# Deploy with:
+# gcloud functions deploy thumbnail_image --runtime python37 --trigger-bucket gs://biblosphere-210106.appspot.com --memory=512MB
+THUMBNAIL_PREFIX = "thumbnails/"
+
+def thumbnail_image(data, context):
+    #print('DEBUG: Image uploaded:', data)
+
+    # Don't generate a thumbnail for a thumbnail
+    if data['name'].startswith(THUMBNAIL_PREFIX):
+        return
+
+    # Only process images in image folder
+    if not data['name'].startswith('images/'):
+        return
+
+    # Only run for JPEG images
+    if data['name'][-4:] != '.jpg':
+        return
+
+    thumbnail_name = THUMBNAIL_PREFIX + data['name'][7:]
+
+    # Get the bucket which the image has been uploaded to
+    bucket = client.get_bucket(data['bucket'])
+
+    # Download the image and resize it
+    thumbnail = Image(blob=bucket.get_blob(data['name']).download_as_string())
+    thumbnail.resize(thumbnail.width // 5, thumbnail.height // 5)
+
+    #print('DEBUG: Image loaded')
+
+    # Upload the thumbnail with the filename prefix
+    thumbnail_blob = bucket.blob(thumbnail_name)
+    thumbnail_blob.upload_from_string(thumbnail.make_blob(), 'image/jpeg')
+    thumbnail_blob.make_public()
+
+    #print('DEBUG: Thumbnail stored %s' % thumbnail_name)
 
 
 # Function to send FCM notification message for new chat message
@@ -364,7 +407,7 @@ def add_cover(request):
         isbn = params['isbn']
         ocr = 'ocr' in params and params['ocr']
 
-        client = storage.Client()
+        #client = storage.Client()
         bucket = client.get_bucket('biblosphere-210106.appspot.com')
         blob = bucket.blob(filename)
 
@@ -422,7 +465,7 @@ def add_back(request):
         isbn = params['isbn']
         ocr = 'ocr' in params and params['ocr']
 
-        client = storage.Client()
+        #client = storage.Client()
         bucket = client.get_bucket('biblosphere-210106.appspot.com')
         blob = bucket.blob(filename)
 
@@ -447,14 +490,15 @@ class RecognitionStatus:
     none, upload, scan, outline, catalogs_lookup, rescan, completed, failed, store = range(0, 9)
 
 class Place:
-    def __init__(self, id, name, contact):
+    def __init__(self, id, name, contact, location):
         self.id = id
         self.name = name
         self.contact = contact
+        self.location = location
 
     @classmethod
     def from_json(cls, obj):
-        return cls(obj['id'], obj['name'], obj['contact'])
+        return cls(obj['id'], obj['name'], obj['contact'], obj.get('location', None))
 
 
 class Photo:
@@ -467,6 +511,10 @@ class Photo:
         self.reporter = reporter
         self.width = width
         self.height = height
+        # If geohash is missing generate it
+        if location['geohash'] is None or location['geohash'] == '':
+            self.location['geohash'] = geohash2.encode(location['geopoint'].latitude, location['geopoint'].longitude)[:9]
+            db.collection('photos').document(id).update({'location': self.location})
 
     @classmethod
     def from_json(cls, obj):
@@ -544,32 +592,43 @@ def photo_created(data, context, cursor):
     print('!!!DEBUG: Image: ', photo.photo)
     print('!!!DEBUG: User: ', photo.reporter)
     print('!!!DEBUG: Place: ', photo.bookplace)
+    print('!!!DEBUG: Location: ', photo.location)
 
     trace = False
     if 'trace' in rec:
         trace = rec['trace']
 
-    rec = db.collection('bookplaces').document(photo.bookplace).get().to_dict()
+    rec = db.collection('bookplaces').document(photo.bookplace).get()
+
     if rec is None:
         # TODO: Make proper error handling
         print('ERROR: bookplace record not found by id.', photo.bookplace)
         return
 
-    if not rec.keys() >= {'id', 'name', 'contact'}:
+    rec_data = rec.to_dict()
+    if not rec_data.keys() >= {'id', 'name', 'contact'}:
         # TODO: Make proper error handling
         print('ERROR: id/name/contact missing in bookplace record.', photo.bookplace)
         return
 
-    place = Place.from_json(rec)
+    place = Place.from_json(rec_data)
+
+    if place.id is None or place.id == '':
+        place.id = rec.id
+
+    if place.location is None or place.location['geohash'] is None or place.location['geohash'] == '':
+        place.location = photo.location
+
     print('!!!DEBUG: Place id: ', place.id)
     print('!!!DEBUG: Place Name: ', place.name)
+    print('!!!DEBUG: Place Location: ', place.location)
 
     try:
         filename = photo.photo
         uid = photo.reporter
         #place = photo.bookplace
 
-        client = storage.Client()
+        #client = storage.Client()
         bucket = client.get_bucket('biblosphere-210106.appspot.com')
 
         # Check if result JSON is available

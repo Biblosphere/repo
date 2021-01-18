@@ -12,3 +12,5 @@ python-Levenshtein
 gcsfs
 flask
 firebase-admin
+geohash2
+wand

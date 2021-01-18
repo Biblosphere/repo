@@ -1,39 +1,32 @@
 part of "main.dart";
 
-/*
-*******************************************
-***************** Events ******************
-*******************************************
+// Markers - can contain Place or Book
+// Keep markers as is, just create navigation by photo/books
+// Navigation in list view through Markers sorted by distance
+// currentMarker - highlight with RED color
+// nextMarker - equal to current unless at the last photo/book
+// prevMarker - equal to current unless at the first photo/book
+// Markers are connected in the loop after most distant one loop back to closest
+// currentPhoto, currentBook - functions in state
+// nextBook, nextPhoto, nextPhotoBook - functions in state
+// prevBook, prevPhoto, prevPhotoBook - functions in state
+// Next and Previous book/photo has to be always ready (fully download)
+// Marker could be:
+// - List of Books
+// - List of Places
+// For books:
+// - Iterate throug books get the photo of the book and all books for this photo
+// For places:
+// - Iterate throug photos of the places load all books for the photo
+// Apply Language/Genre filters to photos and books (in list view)
+// For books show 1/NN to know current position on the photo
+// If marker contains books scroll books to THE BOOK
 
-FILTER PANEL:
-- Author/title filter changed => FILTER
-- Places filter changed => FILTER (permission for Address Book if My Places)
-- Language filter changed => FILTER
-- Genre filter changed => FILTER
-- Filter panel opened => FILTER
-- Filter panel minimized => FILTER
-- Filter panel closed => FILTER
+// Keep places (not persons) in the MarkerData - to build a suggestions
 
-TRIPLE BUTTON
-- Map button pressed => FILTER
-- List button pressed => FILTER
-- Set view => FILTER
+// It could be markers with single book and markers with many places
 
-MAP VIEW
-- Map move => FILTER
-- Tap on Marker => FILTER
-
-DETAILS
-- Search button pressed => FILTER
-
-*******************************************
-***************** States ******************
-*******************************************
-
-FILTER => Map scale and position
-FILTER => Book filter changed
-
-*/
+// Use carousel_slider plugin for Photo/Books carousel
 
 enum LoginStatus {
   unknown, // Initial status
@@ -46,7 +39,7 @@ enum LoginStatus {
   subscribed // Subscribed
 }
 
-enum QueryType { books, places }
+enum QueryType { books, places, photos }
 
 enum FilterType { wish, title, author, contacts, place, genre, language }
 
@@ -102,6 +95,7 @@ class Filter extends Equatable {
   }
 }
 
+/*
 class AppUser extends Equatable {
   final String id;
 
@@ -168,6 +162,7 @@ class AppUser extends Equatable {
     );
   }
 }
+*/
 
 String up(String geohash) {
   int len = geohash.length;
@@ -184,9 +179,17 @@ class MarkerData extends Equatable {
   final String geohash;
   final LatLng position;
   final List<Point> points;
+  final Set<Place> places;
   final int size;
+  final LatLngBounds bounds;
 
-  MarkerData({this.geohash, this.position, this.size, this.points});
+  MarkerData(
+      {this.geohash,
+      this.position,
+      this.size,
+      this.points,
+      this.places,
+      this.bounds});
 
   @override
   List<Object> get props => [geohash, position, size];
@@ -240,22 +243,24 @@ class FilterState extends Equatable {
   final LatLngBounds bounds;
   // Current geohashes on the map
   final Set<String> geohashes;
-  // Offcet in List view
-  final double offset;
 
   // FILTERS SUGGESTIONS
-  // List of books for the list view
-  final List<Book> books;
-  // Currently selected book for details view
-  final Book selected;
-  // Corrent markers for map view
-  final Set<MarkerData> markers;
+  // Places for the markers
+  // final List<Place> places;
+  // List of photos for the list view
+  // final List<Photo> photos;
+  // Current markers for map view
+  final List<MarkerData> markers;
+  // Total number of shelves for current markers
+  final int maxShelves;
+  // List of shelves (photo + books)
+  final List<Shelf> shelfList;
+  // Current shelf to display
+  final int shelfIndex;
   // Suggestions for the filter edit for filters (MAP/VIEW)
   final List<Filter> filterSuggestions;
   // Suggestions for the filter edit for places (CAMERA)
   final List<Place> placeSuggestions;
-  // Places near the current location
-  final List<Place> places;
 
   // CAMERA STATE
   // Currently selected place (name, contact, privacy)
@@ -287,14 +292,13 @@ class FilterState extends Equatable {
         center,
         bounds,
         geohashes,
-        offset,
         view,
-        books,
-        selected,
         markers,
+        maxShelves,
+        shelfList,
+        shelfIndex,
         filterSuggestions,
         placeSuggestions,
-        places,
         place,
         privacy,
         candidates
@@ -324,14 +328,13 @@ class FilterState extends Equatable {
     this.center = const LatLng(49.8397, 24.0297),
     this.bounds,
     this.geohashes = const {'u8c5d'},
-    this.offset,
     this.view = ViewType.map,
-    this.books,
-    this.selected,
     this.markers,
+    this.maxShelves,
+    this.shelfList,
+    this.shelfIndex,
     this.filterSuggestions = const [],
     this.placeSuggestions = const [],
-    this.places,
     this.place,
     this.privacy = Privacy.all,
     this.candidates = const [],
@@ -361,13 +364,12 @@ class FilterState extends Equatable {
     LatLngBoundsCallback bounds,
     ViewType view,
     Set<String> geohashes,
-    double offset,
-    List<Book> books,
-    BookCallback selected,
-    Set<MarkerData> markers,
+    List<MarkerData> markers,
+    int maxShelves,
+    List<Shelf> shelfList,
+    int shelfIndex,
     List<Filter> filterSuggestions,
     List<Place> placeSuggestions,
-    List<Place> places,
     Place place,
     Privacy privacy,
     List<Place> candidates,
@@ -394,13 +396,12 @@ class FilterState extends Equatable {
       bounds: bounds != null ? bounds() : this.bounds,
       view: view ?? this.view,
       geohashes: geohashes ?? this.geohashes,
-      offset: offset ?? this.offset,
-      books: books ?? this.books,
-      selected: selected != null ? selected() : this.selected,
       markers: markers ?? this.markers,
+      maxShelves: maxShelves ?? this.maxShelves,
+      shelfList: shelfList ?? this.shelfList,
+      shelfIndex: shelfIndex ?? this.shelfIndex,
       filterSuggestions: filterSuggestions ?? this.filterSuggestions,
       placeSuggestions: placeSuggestions ?? this.placeSuggestions,
-      places: places ?? this.places,
       place: place ?? this.place,
       privacy: privacy ?? this.privacy,
       candidates: candidates ?? this.candidates,
@@ -528,7 +529,7 @@ class FilterState extends Equatable {
     return isbns;
   }
 
-  Future<List<Book>> booksFor(String geohash) async {
+  Future<Set<Book>> booksFor(String geohash) async {
     String low = (geohash + '000000000').substring(0, 9);
     String high = (geohash + 'zzzzzzzzz').substring(0, 9);
 
@@ -659,14 +660,14 @@ class FilterState extends Equatable {
     bookSnap = await query.get();
 
     // Group all books for geohash areas one level down
-    List<Book> books =
-        bookSnap.docs.map((doc) => Book.fromJson(doc.id, doc.data())).toList();
+    Set<Book> books =
+        bookSnap.docs.map((doc) => Book.fromJson(doc.id, doc.data())).toSet();
 
     print('!!!DEBUG books before bounds ${books.length}');
 
     if (bounds != null) {
       print('!!!DEBUG filter books by bounds');
-      books = books.where((b) => bounds.contains(b.location)).toList();
+      books = books.where((b) => bounds.contains(b.location)).toSet();
     }
 
     print('!!!DEBUG: booksFor reads ${books.length} books');
@@ -674,43 +675,54 @@ class FilterState extends Equatable {
     return books;
   }
 
-  Future<List<Place>> placesFor(String geohash) async {
+  Future<List<Photo>> photosFor(String geohash) async {
     String low = (geohash + '000000000').substring(0, 9);
     String high = (geohash + 'zzzzzzzzz').substring(0, 9);
 
-    QuerySnapshot placeSnap = await FirebaseFirestore.instance
-        .collection('bookplaces')
+    QuerySnapshot photoSnap = await FirebaseFirestore.instance
+        .collection('photos')
         .where('location.geohash', isGreaterThanOrEqualTo: low)
         .where('location.geohash', isLessThan: high)
         .limit(2000)
         .get();
 
-    // Group all books for geohash areas one level down
-    List<Place> places = placeSnap.docs
-        .map((doc) => Place.fromJson(doc.id, doc.data()))
+    // Group all photos for geohash areas one level down
+    List<Photo> photos = photoSnap.docs
+        .map((doc) => Photo.fromJson(doc.id, doc.data()))
         .toList();
 
-    print('!!!DEBUG: placesFor reads ${places.length} places');
+    print('!!!DEBUG: photosFor reads ${photos.length} photos');
 
-    return places;
+    return photos;
   }
 
   // Group points (Books or Places) into clusters based on the geo-hash
-  Future<Set<MarkerData>> markersFor(
-      {List<Point> points, LatLngBounds bounds, Set<String> hashes}) async {
+  Future<List<MarkerData>> markersFor(
+      {List<MarkerData> markers,
+      Set<Point> points,
+      LatLngBounds bounds,
+      Set<String> hashes}) async {
     // Two levels down compare to hashes of the state
     int level = 9;
+    points = Set<Point>.from(points);
     if (hashes != null && hashes.length > 0)
       level = min(hashes.first.length + 1, 9);
 
-    Set<MarkerData> markers = Set();
+    // Add points from previous markers to the list
+    if (markers != null)
+      markers.forEach((m) {
+        points.addAll(m.points);
+      });
+
+    // Refresh markers
+    markers = [];
 
     if (points != null && points.length > 0) {
       // Group points which are visible on the screen based on geohashes
       // 2 level down
 
       if (bounds != null) {
-        points = points.where((p) => bounds.contains(p.location)).toList();
+        points = points.where((p) => bounds.contains(p.location)).toSet();
       }
 
       Map<String, List<Point>> clusters =
@@ -734,18 +746,25 @@ class FilterState extends Equatable {
           count = value.length;
         else
           value.forEach((p) {
-            count += (p is Place) ? p.count ?? 1 : 1;
+            count += (p is Photo) ? p.count ?? 1 : 1;
           });
+
+        Set<Place> places = value
+            .where((p) => (p is Photo) && p.type == PlaceType.place)
+            .map((p) => (p as Photo).place)
+            .toSet();
 
         markers.add(MarkerData(
             geohash: key,
             position: LatLng(lat, lng),
             size: count,
-            points: value));
+            points: List<Point>.from(value),
+            bounds: boundsFromPoints(value),
+            places: places));
       });
     }
 
-    return markers;
+    return markers.toList();
   }
 }
 
@@ -780,6 +799,37 @@ String distanceString(LatLng p1, LatLng p2) {
   return d < 1000
       ? d.toStringAsFixed(0) + " m"
       : (d / 1000).toStringAsFixed(0) + " km";
+}
+
+LatLngBounds boundsFromPoints(List<Point> points) {
+  assert(points.isNotEmpty);
+
+  double north = points.first.location.latitude;
+  double south = points.first.location.latitude;
+
+  for (var i = 0; i < points.length; i++) {
+    if (points[i].location.latitude > north)
+      north = points[i].location.latitude;
+    else if (points[i].location.latitude < south)
+      south = points[i].location.latitude;
+  }
+
+  List<double> lng = points.map((p) => p.location.longitude).toList();
+  lng.sort();
+
+  double gap = lng.first - lng.last + 360.0;
+  double west = lng.first, east = lng.last;
+
+  for (var i = 1; i < lng.length - 1; i++) {
+    if (lng[i] - lng[i - 1] > gap) {
+      gap = lng[i] - lng[i - 1];
+      east = lng[i - 1];
+      west = lng[i];
+    }
+  }
+
+  return LatLngBounds(
+      northeast: LatLng(north, east), southwest: LatLng(south, west));
 }
 
 class FilterCubit extends Cubit<FilterState> {
@@ -877,23 +927,18 @@ class FilterCubit extends Cubit<FilterState> {
     // Query bookplaces in a radius of 5 km (same hash length 5) to current
     // location. Sort it by distance ascending (closest places first).
 
-    // TODO: Take care about locations near equator and 0/180 longitude.
-    List<Place> places = state.places;
+    // TODO: Performance profiling for below code
+    Set<Place> placesSet;
 
-    // Query places if it's empty
-    // TODO: Make a procedure for that
-    if (places == null || places.length == 0) {
-      places = [];
-      await Future.forEach(state.geohashes, (hash) async {
-        places.addAll(await state.placesFor(hash));
-      });
+    state.markers.forEach((m) {
+      if (m.places != null) placesSet.addAll(m.places);
+    });
 
-      places.sort((a, b) => (distanceBetween(a.location, state.center) -
-              distanceBetween(b.location, state.center))
-          .round());
+    List<Place> places = placesSet.toList();
 
-      emit(state.copyWith(places: places));
-    }
+    places.sort((a, b) => (distanceBetween(a.location, state.center) -
+            distanceBetween(b.location, state.center))
+        .round());
 
     if (query.length == 0) {
       places = places.take(15).toList();
@@ -1099,9 +1144,7 @@ class FilterCubit extends Cubit<FilterState> {
 
       print('!!!DEBUG after getting current location!');
 
-      List<Book> books = [];
-      List<Place> places = [];
-      Set<MarkerData> markers = {};
+      Set<Photo> photos = Set();
 
       // Get geohash of the current location and neighbours ~ 60 km
       String geohash = GeoHasher().encode(center.longitude, center.latitude);
@@ -1112,17 +1155,16 @@ class FilterCubit extends Cubit<FilterState> {
       Set<String> geohashes = [geohash, ...neighbors.values].toSet();
 
       await Future.forEach(geohashes, (hash) async {
-        places.addAll(await state.placesFor(hash));
+        photos.addAll(await state.photosFor(hash));
       });
 
-      markers = await state.markersFor(points: places, hashes: geohashes);
+      List<MarkerData> markers =
+          await state.markersFor(points: photos, hashes: geohashes);
 
       emit(state.copyWith(
         geohashes: geohashes,
         location: center,
         center: center,
-        places: places,
-        books: books,
         markers: markers,
       ));
 
@@ -1501,21 +1543,18 @@ class FilterCubit extends Cubit<FilterState> {
     _searchController.text = '';
     _snappingControler.snapToPosition(_snappingControler.snapPositions.last);
 
-    List<Book> books = [];
-    List<Place> places = [];
-    Set<MarkerData> markers = Set();
+    List<MarkerData> markers = [];
+
+    // TODO: Reuse below code as a function (used the same in several places)
 
     // Make markers based on BOOKS
     if (state.select == QueryType.books) {
+      Set<Book> books = Set();
+
       // Add books only for missing areas
       await Future.forEach(state.geohashes, (hash) async {
         books.addAll(await state.booksFor(hash));
       });
-
-      // Sort books based on distance to center of screen
-      books.sort((a, b) => (distanceBetween(a.location, state.center) -
-              distanceBetween(b.location, state.center))
-          .round());
 
       // Calculate markers based on the books
       markers = await state.markersFor(
@@ -1523,24 +1562,24 @@ class FilterCubit extends Cubit<FilterState> {
 
       // Make markers based on PLACES
     } else if (state.select == QueryType.places) {
+      Set<Photo> photos = Set();
       // Add places only for missing areas
       await Future.forEach(state.geohashes, (hash) async {
-        places.addAll(await state.placesFor(hash));
+        photos.addAll(await state.photosFor(hash));
       });
-
-      // Sort places based on distance to center of screen
-      places.sort((a, b) => (distanceBetween(a.location, state.center) -
-              distanceBetween(b.location, state.center))
-          .round());
 
       // Calculate markers based on the places
       markers = await state.markersFor(
-          points: places, bounds: state.bounds, hashes: state.geohashes);
+          points: photos, bounds: state.bounds, hashes: state.geohashes);
     }
 
+    // Sort markers by distance
+    markers.sort((a, b) => (distanceBetween(a.position, state.center) -
+            distanceBetween(b.position, state.center))
+        .round());
+
     // Emit state with updated markers
-    emit(state.copyWith(
-        books: books, offset: 0.0, places: places, markers: markers));
+    emit(state.copyWith(markers: markers));
 
     // TODO: Should we emit "books" if search by places?
   }
@@ -1621,36 +1660,10 @@ class FilterCubit extends Cubit<FilterState> {
       // Switch to list view immediately and then build the list of books
       print('!!!DEBUG Are we here at all???');
 
-      // Keep state select prior to switch
-      QueryType select = state.select;
-
       // Switch view to unblock UI
       emit(state.copyWith(
         view: view,
       ));
-
-      List<Book> books = [];
-      if (select == QueryType.books)
-        // Use preselected books
-        books = state.books;
-      else if (select == QueryType.places) {
-        // TODO: Query any 100 books if terettory is too big
-        await Future.forEach(state.geohashes, (hash) async {
-          books.addAll(await state.booksFor(hash));
-        });
-
-        // TODO: Temporary measure to identify duplication after search
-        //       of single book
-        books = books.toSet().toList();
-
-        books.sort((a, b) => (distanceBetween(a.location, state.center) -
-                distanceBetween(b.location, state.center))
-            .round());
-      }
-
-      print('!!!DEBUG books [${books.length}] sorted around ${state.center}');
-
-      emit(state.copyWith(books: books, offset: 0.0, view: view));
     } else if (view == ViewType.camera) {
       emit(state.copyWith(
         view: view,
@@ -1782,210 +1795,156 @@ class FilterCubit extends Cubit<FilterState> {
     print('!!!DEBUG new hashes: ${extraHashes.join(', ')}');
     print('!!!DEBUG odd hashes: ${oddHashes.join(', ')}');
 
-    List<Book> books = state.books ?? [];
-    List<Place> places = state.places ?? [];
-    Set<MarkerData> markers = state.markers ?? Set();
+    List<MarkerData> markers = state.markers ?? [];
 
-    // Make markers based on BOOKS
+    // Remove markers from odd hashes and duplicates
+    if (oldLevel <= newLevel)
+      markers = markers
+          .where((m) => !oddHashes.contains(m.geohash.substring(0, oldLevel)))
+          .toList();
+
+    // TODO: Reuse below code
     if (state.select == QueryType.books) {
+      // Make markers based on BOOKS
+      Set<Book> books = Set();
+
       // Add books only for missing areas
       await Future.forEach(extraHashes, (hash) async {
         books.addAll(await state.booksFor(hash));
       });
 
-      // Remove books from odd hashes and duplicates
-      books = books
-          .where((b) => !oddHashes.contains(b.geohash.substring(0, oldLevel)))
-          .toSet()
-          .toList();
-
-      // Sort books based on distance to center of screen
-      books.sort((a, b) => (distanceBetween(a.location, state.center) -
-              distanceBetween(b.location, state.center))
-          .round());
-
       // Calculate markers based on the books
-      markers =
-          await state.markersFor(points: books, bounds: bounds, hashes: hashes);
-
-      // Make markers based on PLACES
+      markers = await state.markersFor(
+          markers: markers, points: books, bounds: bounds, hashes: hashes);
     } else if (state.select == QueryType.places) {
+      // Make markers based on PLACES
+      Set<Photo> photos = Set();
+
       // print('!!!DEBUG Markers based on PLACES Filters: ${state.filters.length} Books: ${state.books.length}');
       // Add places only for missing areas
       await Future.forEach(extraHashes, (hash) async {
-        places.addAll(await state.placesFor(hash));
+        photos.addAll(await state.photosFor(hash));
       });
-
-      // Remove places from odd hashes and duplicates
-      places = places
-          .where((p) =>
-              extraHashes.contains(p.geohash.substring(0, newLevel)) ||
-              !oddHashes.contains(p.geohash.substring(0, oldLevel)))
-          .toSet()
-          .toList();
-
-      // Sort places based on distance to center of screen
-      places.sort((a, b) => (distanceBetween(a.location, state.center) -
-              distanceBetween(b.location, state.center))
-          .round());
 
       // Calculate markers based on the places
       markers = await state.markersFor(
-          points: places, bounds: bounds, hashes: hashes);
+          markers: markers, points: photos, bounds: bounds, hashes: hashes);
     }
+
+    // Sort markers by distance
+    markers.sort((a, b) => (distanceBetween(a.position, state.center) -
+            distanceBetween(b.position, state.center))
+        .round());
 
     // Emit state with updated markers
     // Refresh suggestions if map moved once detailed place filters are open
     emit(state.copyWith(
-        center: position != null ? position.target : state.center,
-        bounds: () => bounds != null ? bounds : state.bounds,
-        geohashes: hashes,
-        books: books,
-        offset: 0.0,
-        places: places,
-        filterSuggestions:
-            (state.panel == Panel.full && state.group == FilterGroup.place)
-                ? await findSugestions('', state.group)
-                : null,
-        markers: markers));
+      center: position != null ? position.target : state.center,
+      bounds: () => bounds != null ? bounds : state.bounds,
+      geohashes: hashes,
+      filterSuggestions:
+          (state.panel == Panel.full && state.group == FilterGroup.place)
+              ? await findSugestions('', state.group)
+              : null,
+      markers: markers,
+      // Emit total number of shelves and empty shelf list
+      maxShelves: markers.fold(0, (t, e) => t + e.points.length),
+      shelfList: [],
+      shelfIndex: 0,
+    ));
+
+    // Fetch first 3 shelves and emit
+    fetchShelves(markers: markers, start: 0, count: 3);
   }
 
-  LatLngBounds boundsFromPoints(List<Point> points) {
-    assert(points.isNotEmpty);
-
-    double north = points.first.location.latitude;
-    double south = points.first.location.latitude;
-
-    for (var i = 0; i < points.length; i++) {
-      if (points[i].location.latitude > north)
-        north = points[i].location.latitude;
-      else if (points[i].location.latitude < south)
-        south = points[i].location.latitude;
+  void fetchShelves({List<MarkerData> markers, int start, int count}) async {
+    // Ignore if requesting shelves abothe max count
+    if (start >= state.maxShelves) {
+      print('EXCEPTION: Request shelves above max number of items');
+      return;
     }
 
-    List<double> lng = points.map((p) => p.location.longitude).toList();
-    lng.sort();
+    List<Shelf> shelves = state.shelfList ?? [];
 
-    double gap = lng.first - lng.last + 360.0;
-    double west = lng.first, east = lng.last;
+    // Reduce count if not enough shelves left
+    if (start + count > state.maxShelves) count = state.maxShelves - start;
 
-    for (var i = 1; i < lng.length - 1; i++) {
-      if (lng[i] - lng[i - 1] > gap) {
-        gap = lng[i] - lng[i - 1];
-        east = lng[i - 1];
-        west = lng[i];
+    // Skip markers till start position within the marker
+    int skipped = 0, m = 0;
+    while (skipped + markers[m].points.length <= start && m < markers.length) {
+      m += 1;
+      skipped += markers[m].points.length;
+    }
+
+    // Set index to the first requested point (book/photo)
+    int index = start - skipped;
+
+    // Iterate through markers and create shelves
+    while (count > 0 && m < markers.length) {
+      Point point = markers[m].points[index];
+      if (point is Book) {
+        Shelf s = await Shelf.fromBook(point);
+        if (s != null) {
+          shelves.add(s);
+          count--;
+        }
+      } else if (point is Photo) {
+        Shelf s = await Shelf.fromPhoto(point);
+        if (s != null) {
+          shelves.add(s);
+          count--;
+        }
+      }
+
+      // Iterate to the next item
+      index += 1;
+      if (index >= markers[m].points.length) {
+        index -= markers[m].points.length;
+        m += 1;
       }
     }
 
-    return LatLngBounds(
-        northeast: LatLng(north, east), southwest: LatLng(south, west));
+    emit(state.copyWith(
+      shelfList: shelves,
+    ));
   }
 
   // MAP VIEW
   // - Tap on Marker => FILTER
   void markerPressed(MarkerData marker) async {
-    print('!!!DEBUG Marker pressed ${marker.position} size: ${marker.size} ');
-    print('!!!DEBUG Marker points ${marker.points.first.runtimeType}');
-    if (marker.points.length == 1 && marker.points.first is Book) {
-      // Open detailes screen if marker is for one book
-      // Hide panel
-      _snappingControler.snapToPosition(_snappingControler.snapPositions.first);
-      emit(state.copyWith(
-        // TODO: Open as a separete window (Route)
-        selected: () => (marker.points.first as Book),
-        center: marker.position,
-      ));
-    } else if (marker.points.length > 1 && marker.points.first is Book) {
-      print('!!!DEBUG marker with books');
-      List<Book> books = List<Book>.from(marker.points);
-      books.sort((a, b) => (distanceBetween(a.location, marker.position) -
-              distanceBetween(b.location, marker.position))
-          .round());
-      // Zoom in if marker has too many books
-      emit(state.copyWith(
-        books: books,
-        offset: 0.0,
-        view: ViewType.list,
-        center: marker.position,
-      ));
-    } else if (marker.points.length == 1 && marker.points.first is Place) {
-      // TODO: Open books of the place in the List view
-      // Set filter by place id
-      print('!!!DEBUG Marker for single Place ${marker.points.first}');
-      Place place = marker.points.first;
-      addFilter(
-          Filter(
-              type: FilterType.place,
-              value: place.name,
-              place: place,
-              selected: true),
-          resetType: true);
-
-      // Reset List view offset
-      emit(state.copyWith(offset: 0.0));
-
-      // Get books for this place (filters)
-      print('!!!DEBUG filters: ${state.filters}');
-      List<Book> books = [];
-      await Future.forEach(state.geohashes, (hash) async {
-        books.addAll(await state.booksFor(hash));
-        emit(state.copyWith(
-          books: books,
-          view: ViewType.list,
-        ));
-      });
-
-      // Change view to LIST
-    } else if (marker.points.length > 1 && marker.points.first is Place) {
-      // Zoom to the places
-      LatLngBounds bounds = boundsFromPoints(marker.points);
-      _mapController.moveCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
+    if (marker.points.length > 1 &&
+        distanceBetween(marker.bounds.northeast, marker.bounds.southwest) >
+            200.0) {
+      // Zoom in if more than one book/photo inside marker and they are
+      // more than 200m apart
+      _mapController
+          .moveCamera(CameraUpdate.newLatLngBounds(marker.bounds, 100.0));
+    } else {
+      // Otherwise just move camera to the marker
+      _mapController.moveCamera(CameraUpdate.newLatLng(marker.position));
     }
-  }
 
-/*
-  // LIST VIEW
-  // - Set controller
-  void setScrollController(ScrollController controller) {
-    print('!!!DEBUG: ****************** SCROLL CONTROLLER *******************');
-
-    // Keep scrolling controller
-    _scrollController = controller;
-  }
-*/
-
-  // LIST VIEW
-  // - Select book from the list
-  void selectBook({Book book}) async {
-    print('!!!DEBUG Book selected ${book.title}');
-    // Hide panel
-    _snappingControler.snapToPosition(_snappingControler.snapPositions.first);
-
-    emit(state.copyWith(
-      //offset: _scrollController.hasClients ? _scrollController.offset : 0.0,
-      selected: () => book,
-    ));
+    // Shelf list will be rearanged automaticaly after camera move
   }
 
   void searchAndShow(FilterState newState) async {
     // Search book globally
-    List<Book> books = await newState.booksFor('');
-    Set<MarkerData> markers = await newState.markersFor(points: books);
-
+    Set<Book> books = await newState.booksFor('');
+    List<MarkerData> markers = await newState.markersFor(points: books);
     print('!!!DEBUG ${books.length} books found');
+
+    // Markers will be sorted after the move
 
     // Emit a NEW state with books and map view
     emit(newState.copyWith(
-      books: books,
       markers: markers,
-      offset: 0.0,
       view: ViewType.map,
     ));
 
     // Move map view to given bounds
     // Set a bounds of the map to all found books (if more than 1)
     if (books.length > 1) {
-      LatLngBounds bounds = boundsFromPoints(books);
+      LatLngBounds bounds = boundsFromPoints(books.toList());
       _mapController.moveCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
     } else if (books.length == 1) {
       _mapController.moveCamera(CameraUpdate.newLatLng(books.first.location));
@@ -1993,6 +1952,8 @@ class FilterCubit extends Cubit<FilterState> {
       // TODO: Show message that books not found. Encourage to add more books
       print('EXCEPTION: No books found for given filters');
     }
+
+    // Shelf list will be updated as part of the camera move
   }
 
   void searchAndShowBook({Book book}) async {
@@ -2088,18 +2049,6 @@ class FilterCubit extends Cubit<FilterState> {
         .set({
       'bookmarks': FieldValue.arrayRemove([book.isbn])
     }, SetOptions(merge: true));
-  }
-
-  // DETAILS
-  // - Close button pressed => FILTER
-  void detailsClosed() async {
-    // TODO: Restore previous view MAP or LIST
-
-    // _scrollController.jumpTo(state.offset);
-
-    emit(state.copyWith(
-      selected: () => null,
-    ));
   }
 
   // CAMERA PANEL
@@ -2310,8 +2259,15 @@ class FilterCubit extends Cubit<FilterState> {
           }
         }
 
-        ref.set(place.toJson());
+        if (place.geohash == null || place.geohash.isEmpty) {
+          print('EXCEPTION: geohash is empty. Investigate!');
+          place = place.copyWith(
+              geohash: GeoHasher()
+                  .encode(place.location.longitude, place.location.latitude));
+        }
+
         place = place.copyWith(id: ref.id);
+        ref.set(place.toJson());
       }
     } else if (place.type == PlaceType.contact) {
       // If place is a contact search by phones and emails
