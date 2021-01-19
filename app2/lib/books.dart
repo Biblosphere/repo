@@ -873,7 +873,22 @@ class _BooksWidgetState extends State<BooksWidget> {
           height: height,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
+            physics: PageScrollPhysics(),
+            itemCount: state.maxShelves,
+            cacheExtent: 2 * width,
             itemBuilder: (context, item) {
+              // If last element is requested then fetch more items
+              if (item == state.shelfList.length - 1) {
+                print('!!!DEBUG last shelf fetched $item');
+                BlocProvider.of<FilterCubit>(context).shelvesFetched();
+              }
+
+              if (item >= state.shelfList.length) {
+                print(
+                    '!!!DEBUG shelf outside range requested $item, ${state.shelfList.length}');
+                return Container();
+              }
+
               Shelf shelf = state.shelfList[item];
               String distance =
                   distanceString(state.center, shelf.photo.location);

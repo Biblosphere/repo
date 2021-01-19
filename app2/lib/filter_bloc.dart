@@ -1857,6 +1857,14 @@ class FilterCubit extends Cubit<FilterState> {
     fetchShelves(markers: markers, start: 0, count: 3);
   }
 
+  Future<void> shelvesFetched() async {
+    print('!!!DEBUG Extra shelves requested');
+    print(
+        '!!!DEBUG Shelves = ${state.shelfList.length} ,Markers = [${state.markers.map((m) => m.points.length).join(',')}]');
+    fetchShelves(
+        markers: state.markers, start: state.shelfList.length, count: 3);
+  }
+
   void fetchShelves({List<MarkerData> markers, int start, int count}) async {
     // Ignore if requesting shelves abothe max count
     if (start >= state.maxShelves) {
@@ -1871,9 +1879,9 @@ class FilterCubit extends Cubit<FilterState> {
 
     // Skip markers till start position within the marker
     int skipped = 0, m = 0;
-    while (skipped + markers[m].points.length <= start && m < markers.length) {
-      m += 1;
+    while (m < markers.length && start - skipped >= markers[m].points.length) {
       skipped += markers[m].points.length;
+      m += 1;
     }
 
     // Set index to the first requested point (book/photo)
@@ -1881,24 +1889,33 @@ class FilterCubit extends Cubit<FilterState> {
 
     // Iterate through markers and create shelves
     while (count > 0 && m < markers.length) {
+      if (shelves.length > skipped + index) {
+        count--;
+        print('EXCEPTION: shelf re-read: skipped = $skipped, index = $index');
+        continue;
+      }
+
       Point point = markers[m].points[index];
+      Shelf s;
       if (point is Book) {
-        Shelf s = await Shelf.fromBook(point);
-        if (s != null) {
-          shelves.add(s);
-          count--;
-        }
+        s = await Shelf.fromBook(point);
       } else if (point is Photo) {
-        Shelf s = await Shelf.fromPhoto(point);
-        if (s != null) {
+        s = await Shelf.fromPhoto(point);
+      }
+
+      if (s != null) {
+        if (shelves.length > skipped + index) {
+          print('EXCEPTION: shelf re-read: skipped = $skipped, index = $index');
+        } else {
           shelves.add(s);
-          count--;
         }
+        count--;
       }
 
       // Iterate to the next item
       index += 1;
       if (index >= markers[m].points.length) {
+        skipped += markers[m].points.length;
         index -= markers[m].points.length;
         m += 1;
       }
