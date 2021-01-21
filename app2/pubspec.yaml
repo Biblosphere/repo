@@ -51,7 +51,7 @@ dependencies:
   snapping_sheet: ^2.0.1
 
   # Camera plugin
-  camera: ^0.5.8+9
+  camera: ^0.7.0
 
   # Plugin to compare objects by content
   equatable: ^1.2.5

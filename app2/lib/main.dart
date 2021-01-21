@@ -475,9 +475,10 @@ class _MainPageState extends State<MainPage>
                                   !_animationController.isAnimating ||
                               _animationController.value < 0.05)
                             SingleChildScrollView(
-                                child: AspectRatio(
-                                    aspectRatio: cameraCtrl.value.aspectRatio,
-                                    child: CameraPreview(cameraCtrl)))
+                                //child: AspectRatio(
+                                //    aspectRatio: 1/cameraCtrl.value.aspectRatio,
+                                    child: CameraPreview(cameraCtrl))
+                                //  )
                         ]);
                       } else
                         return Container();
@@ -558,10 +559,10 @@ class _MainPageState extends State<MainPage>
                           '${extDir.path}/Pictures/Biblosphere';
                       await Directory(filePath).create(recursive: true);
                       final String fileName = '${timestamp()}.jpg';
-                      final File file = File('$filePath/$fileName');
+                      File file;
 
                       try {
-                        await cameraCtrl.takePicture(file.path);
+                        file = File((await cameraCtrl.takePicture()).path);
                       } on CameraException catch (e) {
                         //TODO: Do exception processing for the camera;
                         print('EXCEPTION: Camera controller exception: $e');

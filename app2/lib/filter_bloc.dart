@@ -2429,8 +2429,10 @@ class FilterCubit extends Cubit<FilterState> {
 
     // Upload picture to GCS
     Reference ref = await uploadPicture(file, 'images/${place.id}/$fileName');
-
     print('!!!DEBUG Image uploaded: images/${place.id}/$fileName');
+
+    String thumbnail = 'https://storage.googleapis.com/biblosphere-210106.appspot.com/thumbnails/${place.id}/$fileName';
+    print('!!!DEBUG Thumbnail reference: $thumbnail');
 
     // Create a photo record for the given place and uploaded image
     DocumentReference doc =
@@ -2445,6 +2447,7 @@ class FilterCubit extends Cubit<FilterState> {
       },
       'photo': ref.fullPath,
       'url': await ref.getDownloadURL(),
+      'thumbnail': thumbnail,
       'reporter': FirebaseAuth.instance.currentUser.uid
     });
 

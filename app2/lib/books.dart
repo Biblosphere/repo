@@ -883,7 +883,12 @@ class _BooksWidgetState extends State<BooksWidget> {
 
       // List view with horizontal scrolling
       return SafeArea(
-          child: Container(
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) { 
+          
+          double height = constraints.maxHeight;
+          double width = constraints.maxWidth;
+          return Container(
               width: width,
               height: height,
               child: ListView.builder(
@@ -909,6 +914,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                       distanceString(state.center, shelf.photo.location);
 
                   // TODO: Add scroll controller to scroll list to selected item
+                  print('DEBUG!!! ${shelf.photo.id} ${shelf.photo.thumbnail}');
 
                   // Build a card with a photo and a book list
                   return Container(
@@ -919,7 +925,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                           // Photo card
                           Container(
                               width: width,
-                              height: 0.45 * height,
+                              height: 0.5 * height,
                               padding: EdgeInsets.only(
                                   right: 8.0, left: 8.0, top: 2.0, bottom: 4.0),
                               child: Container(
@@ -927,7 +933,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                                   color: Colors.white.withOpacity(0.85),
                                   child: Stack(children: [
                                     Container(
-                                        height: 0.45 * height - 10.0,
+                                        height: 0.5 * height - 10.0,
                                         width: width - 20.0,
                                         child: CachedNetworkImage(
                                             fit: BoxFit.cover,
@@ -944,7 +950,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                           // Book cards
                           Container(
                               width: width,
-                              height: 0.45 * height,
+                              height: 0.5 * height,
                               child: ListView(
                                   scrollDirection: Axis.horizontal,
                                   physics: PageScrollPhysics(),
@@ -952,7 +958,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                                     // Build a card for the book
                                     return Container(
                                         width: width,
-                                        height: 0.45 * height,
+                                        height: 0.5 * height,
                                         padding: EdgeInsets.only(
                                             right: 8.0,
                                             left: 8.0,
@@ -1070,7 +1076,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                         ],
                       ));
                 },
-              )));
+              ));}));
     });
   }
 
