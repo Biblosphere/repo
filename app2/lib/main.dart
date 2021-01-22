@@ -451,7 +451,7 @@ class _MainPageState extends State<MainPage>
                       else 
 */
                       if (filters.view == ViewType.list)
-                        return ListWidget();
+                        return BooksWidget();
                       else if (filters.view == ViewType.camera) {
                         double width = MediaQuery.of(context).size.width *
                             _imageWidthTween.value;
@@ -693,8 +693,12 @@ InputDecoration inputDecoration(String label) {
 Widget detailsButton(
     {IconData icon, VoidCallback onPressed, bool selected = false}) {
   return Container(
-      width: 50.0,
+      width: 45.0,
+      height: 45.0,
+      //margin: EdgeInsets.all(2.0),
+      padding: EdgeInsets.all(2.0),
       child: MaterialButton(
+        elevation: 0.0,
         onPressed: onPressed,
         color: selected ? buttonSelectedBackground : buttonUnselectedBackground,
         textColor: selected ? buttonSelectedText : buttonUnselectedText,
@@ -703,7 +707,10 @@ Widget detailsButton(
           size: 20,
         ),
         padding: EdgeInsets.all(0.0),
-        shape: CircleBorder(),
+        shape: CircleBorder(
+            side: BorderSide(
+                color: selected ? buttonSelectedBorder : buttonBorder,
+                width: 2.0)),
       ));
 }
 
@@ -732,19 +739,27 @@ const TextStyle inputLabelStyle = TextStyle(color: Color(0xff598a99));
 const Color buttonSelectedBackground = Color(0xffc66747);
 const Color buttonSelectedText = Colors.white;
 
-const Color buttonUnselectedBackground = Color(0xffd3e9ef);
+const Color buttonUnselectedBackground = Color(0xb0ffffff);
 const Color buttonUnselectedText = Color(0xff598a99);
+const Color buttonSelectedBorder = Color(0xffc66747);
+const Color buttonBorder = Color(0xff598a99);
 
 const TextStyle authorDetailsStyle =
     TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
 
 const TextStyle titleDetailsStyle = TextStyle(
-    color: Color(0xff483b50), fontSize: 18.0, fontWeight: FontWeight.bold);
+    color: Color(0xff483b50), fontSize: 22.0, fontWeight: FontWeight.bold);
 
 const TextStyle genreDetailsStyle =
     TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
 
 const TextStyle languageDetailsStyle =
+    TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
+
+const TextStyle distanceDetailsStyle =
+    TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
+
+const TextStyle placeDetailsStyle =
     TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
 
 const TextStyle suggestionsDetailsStyle = TextStyle(

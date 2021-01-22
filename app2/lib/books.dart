@@ -376,6 +376,177 @@ class Book extends Point {
       bookplaceContact != null && bookplaceContact.startsWith('http')
           ? bookplaceContact
           : null;
+
+  String get genreText =>
+      genre != null && genres.containsKey(genre) ? genres[genre] : '  ...  ';
+
+  String get languageText => language != null && languages.containsKey(language)
+      ? languages[language]
+      : '  ...  ';
+}
+
+// TODO: Clean photo from unused properties (inherited from place??)
+
+class Photo extends Point {
+  final String id;
+  final String thumbnail;
+  final String name;
+  final String contact;
+  final Privacy privacy;
+  final PlaceType type;
+  // Fields for contacts
+  final List<String> emails;
+  final List<String> phones;
+  // Field for Google Places
+  final String placeId;
+  // Users of this bookplace (contacts for person, contributors for orgs)
+  final List<String> users;
+  // Books count
+  final int count;
+  // Books counts per language
+  final Map<String, int> languages;
+  // Books counts per genre
+  final Map<String, int> genres;
+
+  const Photo(
+      {this.id,
+      this.thumbnail,
+      this.name,
+      this.contact,
+      this.emails,
+      this.phones,
+      this.placeId,
+      this.privacy = Privacy.contacts,
+      this.type,
+      location,
+      geohash,
+      this.users,
+      this.count,
+      this.languages,
+      this.genres})
+      : super(location: location, geohash: geohash);
+
+  Photo.fromJson(this.id, Map json)
+      : name = json['name'],
+        thumbnail = json['thumbnail'],
+        contact = json['contact'],
+        emails = List<String>.from(json['emails'] ?? []),
+        phones = List<String>.from(json['phones'] ?? []),
+        placeId = json['placeId'],
+        privacy = json['privacy'] == 'private'
+            ? Privacy.private
+            : json['privacy'] == 'contacts'
+                ? Privacy.contacts
+                : Privacy.all,
+        type = json['type'] == 'contact' ? PlaceType.contact : PlaceType.place,
+        users = List<String>.from(json['users'] ?? []),
+        count = json['count'],
+        languages = Map<String, int>.from(json['languages'] ?? {}),
+        genres = Map<String, int>.from(json['genres'] ?? {}),
+        super(
+            location: LatLng(
+                (json['location']['geopoint'] as GeoPoint).latitude,
+                (json['location']['geopoint'] as GeoPoint).longitude),
+            geohash: json['location']['geohash']);
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'thumbnail': thumbnail,
+      'name': name,
+      'contact': contact,
+      'emails': emails,
+      'phones': phones,
+      'placeId': placeId,
+      'privacy': PrivacyLabels[privacy.index],
+      'type': PlaceTypeLabels[type.index],
+      'users': users,
+      'count': count,
+      'languages': languages,
+      'genres': genres,
+      'location': {
+        'geopoint': GeoPoint(location.latitude, location.longitude),
+        'geohash': geohash
+      }
+    };
+  }
+
+  Photo copyWith(
+      {String id,
+      String thumbnail,
+      String name,
+      String contact,
+      LatLng location,
+      String geohash,
+      Privacy privacy,
+      PlaceType type,
+      List<String> emails,
+      List<String> phones,
+      String placeId,
+      List<String> users,
+      int count,
+      Map<String, int> languages,
+      Map<String, int> genres}) {
+    return Photo(
+        id: id ?? this.id,
+        thumbnail: thumbnail ?? this.thumbnail,
+        name: name ?? this.name,
+        contact: contact ?? this.contact,
+        privacy: privacy ?? this.privacy,
+        location: location ?? this.location,
+        geohash: geohash ?? this.geohash,
+        type: type ?? this.type,
+        emails: emails ?? this.emails,
+        phones: phones ?? this.phones,
+        placeId: placeId ?? this.placeId,
+        users: users ?? this.users,
+        count: count ?? this.count,
+        languages: languages ?? this.languages,
+        genres: genres ?? this.genres);
+  }
+
+  // Return place object for the photo
+  Place get place => Place(
+      id: this.id,
+      name: this.name,
+      contact: this.contact,
+      privacy: this.privacy,
+      location: this.location,
+      geohash: this.geohash,
+      type: this.type,
+      emails: this.emails,
+      phones: this.phones,
+      placeId: this.placeId,
+      users: this.users,
+      count: this.count,
+      languages: this.languages,
+      genres: this.genres);
+
+  @override
+  List<Object> get props => [
+        id,
+        thumbnail,
+        name,
+        contact,
+        emails,
+        phones,
+        placeId,
+        privacy,
+        type,
+        location,
+        geohash,
+        users,
+        count,
+        languages,
+        genres
+      ];
+  String get phone =>
+      contact != null && contact.startsWith('+') ? contact : null;
+
+  String get email => contact != null && contact.contains('@') ? contact : null;
+
+  String get web =>
+      contact != null && contact.startsWith('http') ? contact : null;
 }
 
 enum PlaceType { me, place, contact }
@@ -511,6 +682,9 @@ class Place extends Point {
       users: users?.toSet()?.union(other?.users?.toSet() ?? Set())?.toList() ??
           other.users,
       count: count ?? other.count,
+      // TODO: Copy either both or none of location/geohash
+      location: location ?? other.location,
+      geohash: geohash ?? other.geohash,
       languages: {...languages ?? {}, ...other.languages ?? {}},
       genres: {...genres ?? {}, ...other.genres ?? {}},
     );
@@ -533,6 +707,75 @@ class Place extends Point {
         languages,
         genres
       ];
+}
+
+class Shelf {
+  // Photo of the shelf
+  Photo photo;
+  // List of books
+  List<Book> books;
+  // Keep current book while switching between shelves
+  int cursor;
+  // Index of the selected book. Used for shelves created from Book record.
+  int selected;
+
+  Shelf._({this.photo, this.books, this.cursor, this.selected});
+
+  static Future<Shelf> fromBook(Book book) async {
+    if (book.photoId == null || book.photoId.isEmpty) {
+      // TODO: Report an exception
+      print('EXCEPTION: Book ${book.id} does not refer to the photo');
+      return null;
+    }
+
+    // Read photo
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('photos')
+        .doc(book.photoId)
+        .get();
+
+    if (!doc.exists) {
+      // TODO: Report an exception
+      print('EXCEPTION: No photo for book ${book.id}');
+      return null;
+    }
+
+    Photo photo = Photo.fromJson(doc.id, doc.data());
+
+    // Read books
+    List<Book> books = await getBooks(photo);
+
+    int selected = books.indexWhere((b) => b.isbn == book.isbn);
+
+    if (selected == -1) {
+      // TODO: Report an exception
+      print('EXCEPTION: Book ${book.id} is not in the book list for its photo');
+    }
+
+    return Shelf._(photo: photo, books: books, cursor: 0, selected: selected);
+  }
+
+  static Future<Shelf> fromPhoto(Photo photo) async {
+    // Read books
+    List<Book> books = await getBooks(photo);
+
+    return Shelf._(photo: photo, books: books, cursor: 0, selected: -1);
+  }
+
+  static Future<List<Book>> getBooks(Photo photo) async {
+    // Read books from Firestore reference to the given photo
+    Query query = FirebaseFirestore.instance
+        .collection('books')
+        .where('photo_id', isEqualTo: photo.id);
+
+    QuerySnapshot snap = await query.get();
+
+    // Group all books for geohash areas one level down
+    List<Book> books =
+        snap.docs.map((doc) => Book.fromJson(doc.id, doc.data())).toList();
+
+    return books;
+  }
 }
 
 Widget bookImagePlaceholder() {
@@ -591,68 +834,6 @@ Widget coverImage(String url, {double width, bool bookmark = false}) {
   ]);
 }
 
-class BookCard extends StatelessWidget {
-  final Book book;
-
-  BookCard({Key key, this.book}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterState>(
-        // buildWhen: (previous, current) => previous.center != current.center,
-        builder: (context, filters) {
-      String distance = distanceString(filters.center, book.location);
-      return GestureDetector(
-          onTap: () async {
-            context.read<FilterCubit>().selectBook(book: book);
-
-            await Navigator.push(context,
-                MaterialPageRoute(builder: (context) => DetailsPage()));
-
-            print('!!!DEBUG Details closed');
-            context.read<FilterCubit>().detailsClosed();
-          },
-          child: Card(
-              color: background,
-              child: Container(
-                  margin: EdgeInsets.only(top: 4.0, bottom: 4.0),
-                  padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
-                  child: Row(children: [
-/*                    ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minWidth: 100,
-                          minHeight: 100,
-                          maxWidth: 120,
-                          maxHeight: 100,
-                        ),
-*/
-                    Container(
-                        width: 100,
-                        padding: EdgeInsets.all(8.0),
-                        child: coverImage(book.cover,
-                            bookmark: filters.isUserBookmark(book))),
-                    Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Text(book.authors.join(', '), style: authorStyle),
-                          Text(book.title ?? '', style: titleStyle),
-                          Container(
-                              margin: EdgeInsets.only(bottom: 8.0),
-                              child: Text(book.genre ?? '', style: genreStyle)),
-                          Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Expanded(flex: 1, child: Text(distance)),
-                                Icon(Icons.location_pin),
-                                Expanded(flex: 4, child: Text(book.place))
-                              ])
-                        ]))
-                  ]))));
-    });
-  }
-}
-
 class ImagePainter extends CustomPainter {
   ImagePainter({
     this.image,
@@ -671,137 +852,230 @@ class ImagePainter extends CustomPainter {
   }
 }
 
-class BookDetails extends StatefulWidget {
-  final Book book;
-  final List<String> bookmarks;
-
-  BookDetails({Key key, this.book, this.bookmarks}) : super(key: key);
+class BooksWidget extends StatefulWidget {
+  BooksWidget({Key key}) : super(key: key);
 
   @override
-  _BookDetailsState createState() => _BookDetailsState(book: book);
+  _BooksWidgetState createState() => _BooksWidgetState();
 }
 
-class _BookDetailsState extends State<BookDetails> {
-  Book book;
-  ImageProvider _imageProvider;
-  double imageHeight;
-  double imageWidth;
-
-  _BookDetailsState({this.book});
-
-  Future<void> loadShelfImage() async {
-    // Return if no shelf image
-    if (book?.photo == null) {
-      _imageProvider = null;
-      return null;
-    }
-
-    // Get image data and decode it
-    // TODO: Use Network Cached Image
-    ImageProvider provider = CachedNetworkImageProvider(book.photo);
-    //ImageProvider provider = NetworkImage(book.photo);
-
-    Completer<ImageInfo> completer = Completer();
-    provider
-        .resolve(ImageConfiguration())
-        .addListener(ImageStreamListener((ImageInfo info, bool _) {
-      completer.complete(info);
-    }));
-
-    ImageInfo imageInfo = await completer.future;
-    ui.Image image = imageInfo.image;
-
-    imageWidth = image.width.toDouble();
-    imageHeight = image.height.toDouble();
-
-    if (book.bookspine == null || book.bookspine.isEmpty) {
-      print('EXCEPTION: bookspine contour missing. Book id: ${book.id}');
-      // TODO: Report exception
-      return;
-    }
-
-    if (book.coverPlace == null || book.coverPlace.isEmpty) {
-      print('EXCEPTION: cover space contour missing. Book id: ${book.id}');
-      // TODO: Report exception
-      return;
-    }
-
-    final pictureRecorder = ui.PictureRecorder();
-    final canvas = Canvas(pictureRecorder);
-
-    canvas.drawImage(image, Offset.zero, Paint());
-
-/*
-    // TODO: Highlihth bookspine LATER once recognition is good
-    Paint paint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = image.width / 200;
-
-    Path path = Path();
-    path.addPolygon(book.bookspine, true);
-    canvas.drawPath(path, paint);
-*/
-    Offset centerBook = book.bookspine.reduce((a, b) => a + b) /
-        book.bookspine.length.toDouble();
-
-    Offset centerCover = book.coverPlace.reduce((a, b) => a + b) /
-        book.coverPlace.length.toDouble();
-
-    Paint paint = Paint()
-      ..color = Colors.white //.withOpacity(0.6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = image.width / 15
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawLine(centerCover, centerBook, paint);
-
-    final picture = pictureRecorder.endRecording();
-
-    // TODO: Try to make it smaller and see if it's scaled
-    image = await picture.toImage(image.width, image.height);
-    ByteData bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-
-    _imageProvider = MemoryImage(bytes.buffer.asUint8List());
-
-    return;
-  }
+class _BooksWidgetState extends State<BooksWidget> {
+  _BooksWidgetState();
 
   @override
   void initState() {
     super.initState();
-
-    loadShelfImage().then((value) {
-      if (mounted) setState(() {});
-    });
   }
 
   @override
-  void didUpdateWidget(covariant BookDetails oldWidget) {
+  void didUpdateWidget(covariant BooksWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    if (oldWidget.book != widget.book) {
-      book = widget.book;
-      _imageProvider = null;
-      loadShelfImage().then((value) {
-        if (mounted) setState(() {});
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(
         // buildWhen: (previous, current) => previous.center != current.center,
-        builder: (context, filters) {
-      // Not in detail mode
-      if (filters.selected == null) {
-        return Container(height: 0.0, width: 0.0);
-      }
-
-      String distance = distanceString(filters.center, book.location);
+        builder: (context, state) {
       double width = MediaQuery.of(context).size.width;
+      double height = MediaQuery.of(context).size.height;
+      // TODO: Add scroll controller to scroll list to selected shelf
 
+      // List view with horizontal scrolling
+      return SafeArea(
+          child: Container(
+              width: width,
+              height: height,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: PageScrollPhysics(),
+                itemCount: state.maxShelves,
+                cacheExtent: 2 * width,
+                itemBuilder: (context, item) {
+                  // If last element is requested then fetch more items
+                  if (item == state.shelfList.length - 1) {
+                    print('!!!DEBUG last shelf fetched $item');
+                    BlocProvider.of<FilterCubit>(context).shelvesFetched();
+                  }
+
+                  if (item >= state.shelfList.length) {
+                    print(
+                        '!!!DEBUG shelf outside range requested $item, ${state.shelfList.length}');
+                    return Container();
+                  }
+
+                  Shelf shelf = state.shelfList[item];
+                  String distance =
+                      distanceString(state.center, shelf.photo.location);
+
+                  // TODO: Add scroll controller to scroll list to selected item
+
+                  // Build a card with a photo and a book list
+                  return Container(
+                      width: width,
+                      height: height,
+                      child: Column(
+                        children: [
+                          // Photo card
+                          Container(
+                              width: width,
+                              height: 0.45 * height,
+                              padding: EdgeInsets.only(
+                                  right: 8.0, left: 8.0, top: 2.0, bottom: 4.0),
+                              child: Container(
+                                  padding: EdgeInsets.all(2.0),
+                                  color: Colors.white.withOpacity(0.85),
+                                  child: Stack(children: [
+                                    Container(
+                                        height: 0.45 * height - 10.0,
+                                        width: width - 20.0,
+                                        child: CachedNetworkImage(
+                                            fit: BoxFit.cover,
+                                            imageUrl: shelf.photo.thumbnail)),
+                                    Positioned.fill(
+                                        right: 0.0,
+                                        bottom: 0.0,
+                                        child: Container(
+                                            margin:
+                                                EdgeInsets.only(bottom: 2.0),
+                                            child: photoButtons(
+                                                context, state, shelf.photo)))
+                                  ]))),
+                          // Book cards
+                          Container(
+                              width: width,
+                              height: 0.45 * height,
+                              child: ListView(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: PageScrollPhysics(),
+                                  children: shelf.books.map((b) {
+                                    // Build a card for the book
+                                    return Container(
+                                        width: width,
+                                        height: 0.45 * height,
+                                        padding: EdgeInsets.only(
+                                            right: 8.0,
+                                            left: 8.0,
+                                            top: 4.0,
+                                            bottom: 8.0),
+                                        child: Container(
+                                            color:
+                                                Colors.white.withOpacity(0.85),
+                                            child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  //CachedNetworkImage(imageUrl: b.cover)
+                                                  Row(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        coverImage(b.cover,
+                                                            bookmark: state
+                                                                .isUserBookmark(
+                                                                    b),
+                                                            width: 80),
+                                                        Expanded(
+                                                            child: Column(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+                                                                children: [
+                                                              Container(
+                                                                  margin:
+                                                                      EdgeInsets
+                                                                          .all(
+                                                                              2.0),
+                                                                  child:
+                                                                      bookButtons(
+                                                                          context,
+                                                                          state,
+                                                                          b)),
+                                                              Container(
+                                                                  margin: EdgeInsets.only(
+                                                                      top: 4.0,
+                                                                      bottom:
+                                                                          2.0,
+                                                                      left:
+                                                                          4.0),
+                                                                  child: Text(
+                                                                      'Genre: ' +
+                                                                          b.genreText,
+                                                                      style: genreDetailsStyle)),
+                                                              Container(
+                                                                  margin: EdgeInsets.only(
+                                                                      bottom:
+                                                                          2.0,
+                                                                      left:
+                                                                          4.0),
+                                                                  child: Text(
+                                                                      'Language: ' +
+                                                                          b.languageText,
+                                                                      style: languageDetailsStyle)),
+                                                              Container(
+                                                                  margin: EdgeInsets.only(
+                                                                      left: 4.0,
+                                                                      bottom:
+                                                                          2.0),
+                                                                  child: Row(
+                                                                      mainAxisAlignment:
+                                                                          MainAxisAlignment
+                                                                              .start,
+                                                                      children: [
+                                                                        Flexible(
+                                                                            flex:
+                                                                                1,
+                                                                            child:
+                                                                                Text(distance, style: distanceDetailsStyle)),
+                                                                        Icon(Icons
+                                                                            .location_pin),
+                                                                        Flexible(
+                                                                            flex:
+                                                                                3,
+                                                                            child:
+                                                                                Text(b.place, style: placeDetailsStyle))
+                                                                      ]))
+                                                            ]))
+                                                      ]),
+                                                  Flexible(
+                                                      flex: 1,
+                                                      child: Container(
+                                                          padding:
+                                                              EdgeInsets.only(
+                                                                  bottom: 4.0,
+                                                                  left: 8.0,
+                                                                  right: 16.0,
+                                                                  top: 8.0),
+                                                          child: Text(
+                                                              b.authors
+                                                                  .join(', '),
+                                                              style:
+                                                                  authorDetailsStyle))),
+                                                  Flexible(
+                                                      flex: 3,
+                                                      child: Container(
+                                                          margin:
+                                                              EdgeInsets.only(
+                                                                  bottom: 8.0,
+                                                                  left: 8.0,
+                                                                  right: 16.0,
+                                                                  top: 4.0),
+                                                          child: Text(
+                                                              b.title ?? '',
+                                                              style:
+                                                                  titleDetailsStyle))),
+                                                ])));
+                                  }).toList()))
+                        ],
+                      ));
+                },
+              )));
+    });
+  }
+
+  // TODO: Highlight book on the photo
+  /*
       // Calculate position of cover space
       double scale;
       Offset offset;
@@ -885,30 +1159,58 @@ class _BookDetailsState extends State<BookDetails> {
                                           width:
                                               min(130, coverSize.dx * 0.5))))))
                     ]),
-                    // Figma: buttons
-                    Container(
-                        margin: EdgeInsets.only(top: 10.0, bottom: 16.0),
-                        child: Row(
-                            mainAxisSize: MainAxisSize.max,
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              // Bookmark button
-                              detailsButton(
-                                  icon: Icons.bookmark,
-                                  onPressed: () {
-                                    if (filters.isUserBookmark(book)) {
-                                      context
-                                          .read<FilterCubit>()
-                                          .removeUserBookmark(book);
-                                    } else {
-                                      context
-                                          .read<FilterCubit>()
-                                          .addUserBookmark(book);
-                                    }
-                                    // TODO: button state does not refrest without setState
-                                    setState(() {});
-                                  },
-                                  selected: filters.isUserBookmark(book)),
+  */
+
+  Widget photoButtons(BuildContext context, FilterState state, Photo photo) {
+    return Container(
+        alignment: Alignment.bottomRight,
+        child: Container(
+            child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+              // Problem button
+              detailsButton(
+                  icon: Icons.report_problem,
+                  onPressed: () {},
+                  selected: false),
+              // Message button
+              detailsButton(
+                  icon: Icons
+                      .phone, // book.phone != null ? Icons.phone : Icons.email,
+                  onPressed: () => contactHost(photo),
+                  selected: false),
+              // Share button
+              detailsButton(
+                  icon: Icons.share,
+                  onPressed: () => sharePhoto(photo),
+                  selected: false),
+            ])));
+  }
+
+  Widget bookButtons(BuildContext context, FilterState state, Book book) {
+    return Container(
+        alignment: Alignment.topRight,
+        child: Container(
+            child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+              // Bookmark button
+              detailsButton(
+                  icon: Icons.bookmark,
+                  onPressed: () {
+                    if (state.isUserBookmark(book)) {
+                      BlocProvider.of<FilterCubit>(context)
+                          .removeUserBookmark(book);
+                    } else {
+                      BlocProvider.of<FilterCubit>(context)
+                          .addUserBookmark(book);
+                    }
+                    // TODO: button state does not refrest without setState
+                    setState(() {});
+                  },
+                  selected: state.isUserBookmark(book)),
 /*
                                 // Problem button
                                 detailsButton(
@@ -916,265 +1218,19 @@ class _BookDetailsState extends State<BookDetails> {
                                     onPressed: () {},
                                     selected: false),
 */
-                              // Search book button
-                              detailsButton(
-                                  icon: Icons.search,
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    print(
-                                        '!!!DEBUG 1 selected ${context.read<FilterCubit>().state.selected}');
-                                    context
-                                        .read<FilterCubit>()
-                                        .searchBookPressed(book);
-                                    print(
-                                        '!!!DEBUG 2 selected ${context.read<FilterCubit>().state.selected}');
-                                  }),
-                              // Share button
-                              detailsButton(
-                                  icon: Icons.share,
-                                  onPressed: () => shareBook(book),
-                                  selected: false),
-                              // Message button
-                              detailsButton(
-                                  icon: book.phone != null
-                                      ? Icons.phone
-                                      : Icons.email,
-                                  onPressed: () => contactBook(book),
-                                  selected: false),
-                            ])),
-                    // TODO: Add editing of the books
-                    Container(
-                        margin: EdgeInsets.only(
-                            bottom: 8.0, left: 24.0, right: 24.0),
-                        child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                  child: Text(book.authors.join(', '),
-                                      style: authorDetailsStyle)),
-                              Container(
-                                padding: EdgeInsets.only(left: 4.0),
-                                //child: Icon(Icons.edit, size: 18.0)
-                              )
-                            ])),
-                    Container(
-                        margin: EdgeInsets.only(
-                            bottom: 8.0, left: 24.0, right: 24.0),
-                        child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                  child: Text(book.title ?? '',
-                                      style: titleDetailsStyle)),
-                              Container(
-                                padding: EdgeInsets.only(left: 4.0),
-                                //child: Icon(Icons.edit, size: 18.0)
-                              )
-                            ])),
-                    if (book.genre != null && genres.containsKey(book.genre))
-                      Container(
-                          margin: EdgeInsets.only(
-                              bottom: 8.0, left: 24.0, right: 24.0),
-                          child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                    child: Text('Genre: ' + genres[book.genre],
-                                        style: genreDetailsStyle)),
-                                Container(
-                                  padding: EdgeInsets.only(left: 4.0),
-                                  //child: Icon(Icons.edit, size: 18.0)
-                                )
-                              ])),
-                    if (book.language != null &&
-                        languages.containsKey(book.language))
-                      Container(
-                          margin: EdgeInsets.only(
-                              bottom: 8.0, left: 24.0, right: 24.0),
-                          child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                    child: Text(
-                                        'Language: ' + languages[book.language],
-                                        style: languageDetailsStyle)),
-                                Container(
-                                  padding: EdgeInsets.only(left: 4.0),
-                                  //child: Icon(Icons.edit, size: 18.0)
-                                )
-                              ])),
-                    Container(
-                        margin: EdgeInsets.only(
-                            bottom: 8.0, left: 24.0, right: 24.0),
-                        child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Expanded(flex: 1, child: Text(distance)),
-                              Icon(Icons.location_pin),
-                              Expanded(flex: 4, child: Text(book.place))
-                            ]))
-
-                    // Figma: Description
-/*
-                      Container(
-                          margin: EdgeInsets.only(top: 15.0),
-                          child: Text('DESCRIPTION')),
-                      Text(book.description ?? ''),
-                      Container(
-                          margin: EdgeInsets.only(top: 15.0),
-                          child: Text('TAGS')),
-                      Wrap(
-                          children: book.tags.map((tag) {
-                        return Chip(label: Text(tag));
-                      }).toList()),
-*/
-                    // TODO: Add last scan date
-                    //Text('Last scan 21.01.2020')
-                  ]));
-/*
-            Positioned(
-              right: 0.0,
-              child: GestureDetector(
-                onTap: () {
-                  context.read<FilterCubit>().detailsClosed();
-                },
-                child: Align(
-                  alignment: Alignment.topRight,
-                  child: Container(
-                    margin: EdgeInsets.only(right: 3.0, top: 3.0),
-                    child: CircleAvatar(
-                      radius: 14.0,
-                      backgroundColor: closeCrossColor,
-                      child: Icon(Icons.close, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ])
-          );
-*/
-    });
-  }
-}
-
-class ListWidget extends StatefulWidget {
-  ListWidget({Key key}) : super(key: key);
-
-  @override
-  _ListWidgetState createState() => _ListWidgetState();
-}
-
-class _ListWidgetState extends State<ListWidget> {
-  //ScrollController _scrollController;
-
-  @override
-  void initState() {
-    super.initState();
-
-    //_scrollController = ScrollController(
-    //    initialScrollOffset: context.read<FilterCubit>().state.offset ?? 0.0);
-  }
-
-  @override
-  void didChangeDependencies() {
-    // TODO: Make a code to do it only once at first call afer initState
-    // context.read<FilterCubit>().setScrollController(_scrollController);
-
-    super.didChangeDependencies();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
-      return ListView(
-          controller: ScrollController(
-              initialScrollOffset:
-                  context.watch<FilterCubit>().state.offset ?? 0.0),
-          children: [
-            ...filters.books.map((b) {
-              return Slidable(
-                actionPane: SlidableDrawerActionPane(),
-                actionExtentRatio: 0.25,
-                child: BookCard(book: b),
-                actions: <Widget>[
-                  Container(
-                      margin: EdgeInsets.only(top: 6.0, bottom: 6.0),
-                      child: IconSlideAction(
-                        caption: 'Favorite',
-                        color: Colors.red,
-                        icon: Icons.bookmark,
-                        onTap: () {
-                          if (filters.isUserBookmark(b)) {
-                            context.read<FilterCubit>().removeUserBookmark(b);
-                          } else {
-                            context.read<FilterCubit>().addUserBookmark(b);
-                          }
-                          // TODO: button state does not refrest without setState
-                          //setState(() {});
-                        },
-                      )),
-/*
-    IconSlideAction(
-      caption: 'Share',
-      color: Colors.indigo,
-      icon: Icons.share,
-      //onTap: () => _showSnackBar('Share'),
-    ),
-*/
-                ],
-                secondaryActions: <Widget>[
-                  Container(
-                      margin: EdgeInsets.only(top: 6.0, bottom: 6.0),
-                      child: IconSlideAction(
-                        caption: 'Share',
-                        color: Colors.indigo,
-                        icon: Icons.share,
-                        onTap: () => shareBook(b),
-                      )),
-                  Container(
-                      margin: EdgeInsets.only(top: 6.0, bottom: 6.0),
-                      child: IconSlideAction(
-                        caption: 'Contact',
-                        color: Colors.blue,
-                        icon: b.phone != null ? Icons.phone : Icons.email,
-                        onTap: () => contactBook(b),
-                      )),
-                ],
-              );
-            }).toList(),
-            Container(height: 265)
-          ]);
-    });
-  }
-}
-
-class DetailsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(backgroundColor: detailsAppBarBackgroung),
-        body: BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
-          //double height = MediaQuery.of(context).size.height -
-          //    MediaQuery.of(context).padding.bottom -
-          //    MediaQuery.of(context).padding.top;
-          return Container(
-              child: SingleChildScrollView(
-            //child: SafeArea(
-            //constraints:
-            //    BoxConstraints(minHeight: height, maxHeight: double.infinity),
-            child: BookDetails(book: state.selected),
-            /*
-            child: state.selected != null
-                ? BookDetails(book: state.selected)
-              : Container()),
-              */
-          ));
-        }));
+              // Search book button
+              detailsButton(
+                  icon: Icons.search,
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.read<FilterCubit>().searchBookPressed(book);
+                  }),
+              // Share button
+              detailsButton(
+                  icon: Icons.share,
+                  onPressed: () => shareBook(book),
+                  selected: false),
+            ])));
   }
 }
 
@@ -1217,14 +1273,21 @@ void shareBook(Book book) async {
   Share.share(link, subject: '"${book.title}" on Biblosphere');
 }
 
-void contactBook(Book book) async {
+void sharePhoto(Photo photo) async {
+  // TODO: include picture into the photo's link
+  String link = await buildLink('book?isbn=${photo.id}&title=${photo.name}');
+
+  Share.share(link, subject: '"${photo.name}" on Biblosphere');
+}
+
+void contactHost(Photo photo) async {
   String url;
-  if (book.phone != null)
-    url = 'tel:${book.phone}';
-  else if (book.email != null)
-    url = 'mailto:${book.email}';
-  else if (book.web != null)
-    url = '${book.email}';
+  if (photo.phone != null)
+    url = 'tel:${photo.phone}';
+  else if (photo.email != null)
+    url = 'mailto:${photo.email}';
+  else if (photo.web != null)
+    url = '${photo.email}';
   else {
     print('EXCEPTION: Book does not have none of mobile, email or web');
     // TODO: Log an exception
