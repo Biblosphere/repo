@@ -49,10 +49,22 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>This app does not use music.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>This app does not use calendar.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera to take pictures of the bookshlves.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>This app uses your contacts to show their books.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app does not use always location.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to location when open.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>This app does not use motion detection.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>This app does not need speech recognition.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -60,8 +72,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
