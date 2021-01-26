@@ -7,6 +7,7 @@ import 'dart:ui' as ui;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import "package:collection/collection.dart";
+import 'package:flutter/services.dart';
 
 // HTTP requests for API calls
 import 'package:http/http.dart';
@@ -51,6 +52,8 @@ import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 // Share the book link to others
 import 'package:share/share.dart';
+// Fuulscree image view
+import 'package:photo_view/photo_view.dart';
 
 part 'login.dart';
 part 'camera.dart';
@@ -354,6 +357,7 @@ class _MainPageState extends State<MainPage>
           ResolutionPreset.ultraHigh,
           enableAudio: false);
       cameraCtrl.initialize().then((_) {
+        cameraCtrl.lockCaptureOrientation(DeviceOrientation.portraitUp);
         if (mounted) {
           setState(() {});
         }
@@ -474,10 +478,11 @@ class _MainPageState extends State<MainPage>
                           if (cameraCtrl != null &&
                                   !_animationController.isAnimating ||
                               _animationController.value < 0.05)
-                            SingleChildScrollView(
+                            Container(color: Colors.white.withOpacity(0.8),
+                              child: Center(child: SingleChildScrollView(
                                 //child: AspectRatio(
                                 //    aspectRatio: 1/cameraCtrl.value.aspectRatio,
-                                    child: CameraPreview(cameraCtrl))
+                                    child: CameraPreview(cameraCtrl))))
                                 //  )
                         ]);
                       } else
@@ -562,7 +567,9 @@ class _MainPageState extends State<MainPage>
                       File file;
 
                       try {
+                        await cameraCtrl.unlockCaptureOrientation();
                         file = File((await cameraCtrl.takePicture()).path);
+                        cameraCtrl.lockCaptureOrientation(DeviceOrientation.portraitUp);
                       } on CameraException catch (e) {
                         //TODO: Do exception processing for the camera;
                         print('EXCEPTION: Camera controller exception: $e');

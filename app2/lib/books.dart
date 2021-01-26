@@ -389,6 +389,7 @@ class Book extends Point {
 
 class Photo extends Point {
   final String id;
+  final String url;
   final String thumbnail;
   final String name;
   final String contact;
@@ -410,6 +411,7 @@ class Photo extends Point {
 
   const Photo(
       {this.id,
+      this.url,
       this.thumbnail,
       this.name,
       this.contact,
@@ -428,6 +430,7 @@ class Photo extends Point {
 
   Photo.fromJson(this.id, Map json)
       : name = json['name'],
+        url = json['url'],
         thumbnail = json['thumbnail'],
         contact = json['contact'],
         emails = List<String>.from(json['emails'] ?? []),
@@ -452,6 +455,7 @@ class Photo extends Point {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'url': url,
       'thumbnail': thumbnail,
       'name': name,
       'contact': contact,
@@ -473,6 +477,7 @@ class Photo extends Point {
 
   Photo copyWith(
       {String id,
+      String url,
       String thumbnail,
       String name,
       String contact,
@@ -489,6 +494,7 @@ class Photo extends Point {
       Map<String, int> genres}) {
     return Photo(
         id: id ?? this.id,
+        url: url ?? this.url,
         thumbnail: thumbnail ?? this.thumbnail,
         name: name ?? this.name,
         contact: contact ?? this.contact,
@@ -525,6 +531,7 @@ class Photo extends Point {
   @override
   List<Object> get props => [
         id,
+        url,
         thumbnail,
         name,
         contact,
@@ -935,9 +942,24 @@ class _BooksWidgetState extends State<BooksWidget> {
                                     Container(
                                         height: 0.5 * height - 10.0,
                                         width: width - 20.0,
+                                        child: GestureDetector(
+                                          onDoubleTap: () {
+                                            Navigator.push(context, 
+                                            
+                                            new MaterialPageRoute(
+                                        builder: (context) {
+                                          return Scaffold(
+                                            appBar: AppBar(),
+                                            body: PhotoView(minScale: 0.1,
+      imageProvider: CachedNetworkImageProvider(shelf.photo.url),
+    ));
+                                        }
+                                            
+                                            ));
+                                          },
                                         child: CachedNetworkImage(
                                             fit: BoxFit.cover,
-                                            imageUrl: shelf.photo.thumbnail)),
+                                            imageUrl: shelf.photo.thumbnail))),
                                     Positioned.fill(
                                         right: 0.0,
                                         bottom: 0.0,

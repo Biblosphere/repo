@@ -2142,7 +2142,7 @@ class FilterCubit extends Cubit<FilterState> {
         distanceBetween(location, state.location) > 50.0) {
       // Get all places from Google places in a radius of 50 meters
       NearBySearchResponse result = await googlePlace.search.getNearBySearch(
-          Location(lat: location.latitude, lng: location.longitude), 100);
+          Location(lat: location.latitude, lng: location.longitude), 300);
 
       print(
           '!!!DEBUG places query result: ${result.status}, number ${result.results.length}');

@@ -121,7 +121,7 @@ class _LoginPageState extends State<LoginPage> {
                                         child: TextField(
                                             decoration: InputDecoration(
                                                 border: InputBorder.none,
-                                                hintText: '480 228 8007'),
+                                                hintText: 'Enter your phone'),
                                             keyboardType: TextInputType.phone,
                                             onChanged: (value) {
                                               context
@@ -165,7 +165,7 @@ class _LoginPageState extends State<LoginPage> {
                                         child: TextField(
                                             decoration: InputDecoration(
                                                 border: InputBorder.none,
-                                                hintText: 'John Peterson'),
+                                                hintText: 'Enter your name'),
                                             keyboardType: TextInputType.name,
                                             onChanged: (value) {
                                               context
