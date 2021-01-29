@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
+//import 'dart:typed_data';
 //import 'dart:ui';
 import 'dart:ui' as ui;
 import 'dart:convert';
@@ -18,7 +18,7 @@ import 'package:country_code_picker/country_code_picker.dart';
 // Google map
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 // Import slidable actions for book card
-import 'package:flutter_slidable/flutter_slidable.dart';
+//import 'package:flutter_slidable/flutter_slidable.dart';
 // Cached network images
 import 'package:cached_network_image/cached_network_image.dart';
 // Panel widget for filters and camera
