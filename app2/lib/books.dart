@@ -884,8 +884,8 @@ class _BooksWidgetState extends State<BooksWidget> {
     return BlocBuilder<FilterCubit, FilterState>(
         // buildWhen: (previous, current) => previous.center != current.center,
         builder: (context, state) {
-      double width = MediaQuery.of(context).size.width;
-      double height = MediaQuery.of(context).size.height;
+      // double width = MediaQuery.of(context).size.width;
+      // double height = MediaQuery.of(context).size.height;
       // TODO: Add scroll controller to scroll list to selected shelf
 
       // List view with horizontal scrolling
@@ -1250,7 +1250,6 @@ class _BooksWidgetState extends State<BooksWidget> {
               detailsButton(
                   icon: Icons.search,
                   onPressed: () {
-                    Navigator.pop(context);
                     context.read<FilterCubit>().searchBookPressed(book);
                   }),
               // Share button
@@ -1303,7 +1302,8 @@ void shareBook(Book book) async {
 
 void sharePhoto(Photo photo) async {
   // TODO: include picture into the photo's link
-  String link = await buildLink('book?isbn=${photo.id}&title=${photo.name}');
+  String link = await buildLink('photo?id=${photo.id}&name=${photo.name}',
+  image: photo.thumbnail, title: 'Biblosphere', description: 'Look at these books');
 
   Share.share(link, subject: '"${photo.name}" on Biblosphere');
 }
