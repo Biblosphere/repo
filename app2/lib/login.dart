@@ -199,8 +199,9 @@ class _LoginPageState extends State<LoginPage> {
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(5, 0, 0, 0),
                                 child: Container(
+                                  width: MediaQuery.of(context).size.width * .7,
                                   margin:
-                                      EdgeInsets.only(left: 25.0, right: 20.0),
+                                      EdgeInsets.only(left: 5.0, right: 5.0),
                                   child:
                                       // Figma: Privacy Policy
                                       Row(
@@ -306,7 +307,7 @@ class _LoginPageState extends State<LoginPage> {
                                         child: TextField(
                                       decoration: InputDecoration(
                                           border: InputBorder.none,
-                                          hintText: 'XXXX'),
+                                          hintText: 'XXXXXX'),
                                       keyboardType: TextInputType.number,
                                       onChanged: (value) {
                                         context

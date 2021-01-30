@@ -98,7 +98,8 @@ class _MyAppState extends State<MyApp> {
     return BlocProvider(
         create: (BuildContext context) => FilterCubit(),
         child: MaterialApp(
-            title: 'Flutter Demo',
+            debugShowCheckedModeBanner: false,
+            title: 'Biblosphere',
             theme: ThemeData(
                 // This is the theme of your application.
                 //

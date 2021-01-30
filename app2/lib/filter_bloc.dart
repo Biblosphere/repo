@@ -1241,7 +1241,7 @@ class FilterCubit extends Cubit<FilterState> {
         // !!!DEBUG FOR IOS TESTING (Does not support Purchase on Simulator)
         // Uncomment following lines to test on IPhone simulator
         // emitInitial();
-        //  return;
+        // return;
 
         try {
           // Register user in Purchases
