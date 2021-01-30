@@ -723,6 +723,8 @@ Widget detailsButton(
       ));
 }
 
+
+const Color progressIndicatorColor = Color(0xff598a99);
 const Color background = Colors.white;
 const TextStyle authorStyle =
     TextStyle(color: Color(0xff8f8993), fontSize: 12.0);

@@ -434,18 +434,18 @@ class _LoginPageState extends State<LoginPage> {
                     Expanded(child: Container())
                   ]);
             } else {
-              return Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Expanded(
-                        flex: 8,
-                        child: Center(
-                            child: Image.asset('lib/assets/biblio.png',
-                                height: 90.0))),
-
-                    // Button (Sign-In or Confirm)
-                    Expanded(child: Container())
-                  ]);
+              return Center(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                    Image.asset('lib/assets/biblio.png', height: 90.0),
+                    Container(
+                        width: MediaQuery.of(context).size.width * .6,
+                        child: LinearProgressIndicator(
+                            minHeight: 2.0,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                progressIndicatorColor)))
+                  ]));
             }
           }),
         )));

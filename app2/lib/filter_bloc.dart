@@ -310,7 +310,7 @@ class FilterState extends Equatable {
   ];
 
   const FilterState({
-    this.status = LoginStatus.unauthorized,
+    this.status = LoginStatus.unknown,
     this.phone = '',
     this.name = '',
     this.country,
@@ -1400,6 +1400,7 @@ class FilterCubit extends Cubit<FilterState> {
 
   // Press Subscribe button => LOGIN
   void subscribePressed() async {
+    emit(state.copyWith(status: LoginStatus.subscriptionInProgress));
     try {
       await Purchases.purchasePackage(state.package);
     } catch (e, stack) {
@@ -1409,9 +1410,6 @@ class FilterCubit extends Cubit<FilterState> {
         status: LoginStatus.unauthorized,
       ));
     }
-
-    // TODO: Try not to emit this as suspect that cause the hanging of screen
-    //emit(state.copyWith(status: LoginStatus.subscriptionInProgress));
   }
 
   // FILTER PANEL:
