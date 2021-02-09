@@ -51,7 +51,7 @@ dependencies:
   snapping_sheet: ^2.0.1
 
   # Camera plugin
-  camera: ^0.5.8+9
+  camera: ^0.7.0
 
   # Plugin to compare objects by content
   equatable: ^1.2.5
@@ -86,6 +86,9 @@ dependencies:
 
   # Share link to the book via social apps
   share: ^0.6.5+4
+
+  # Full screen viewer
+  photo_view: ^0.10.3
 
 dev_dependencies:
   flutter_test:

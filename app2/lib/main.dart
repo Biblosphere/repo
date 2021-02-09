@@ -1,12 +1,13 @@
 import 'dart:math';
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
+//import 'dart:typed_data';
 //import 'dart:ui';
 import 'dart:ui' as ui;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import "package:collection/collection.dart";
+import 'package:flutter/services.dart';
 
 // HTTP requests for API calls
 import 'package:http/http.dart';
@@ -17,7 +18,7 @@ import 'package:country_code_picker/country_code_picker.dart';
 // Google map
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 // Import slidable actions for book card
-import 'package:flutter_slidable/flutter_slidable.dart';
+//import 'package:flutter_slidable/flutter_slidable.dart';
 // Cached network images
 import 'package:cached_network_image/cached_network_image.dart';
 // Panel widget for filters and camera
@@ -51,6 +52,8 @@ import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 // Share the book link to others
 import 'package:share/share.dart';
+// Fuulscree image view
+import 'package:photo_view/photo_view.dart';
 
 part 'login.dart';
 part 'camera.dart';
@@ -95,7 +98,8 @@ class _MyAppState extends State<MyApp> {
     return BlocProvider(
         create: (BuildContext context) => FilterCubit(),
         child: MaterialApp(
-            title: 'Flutter Demo',
+            debugShowCheckedModeBanner: false,
+            title: 'Biblosphere',
             theme: ThemeData(
                 // This is the theme of your application.
                 //
@@ -354,6 +358,7 @@ class _MainPageState extends State<MainPage>
           ResolutionPreset.ultraHigh,
           enableAudio: false);
       cameraCtrl.initialize().then((_) {
+        cameraCtrl.lockCaptureOrientation(DeviceOrientation.portraitUp);
         if (mounted) {
           setState(() {});
         }
@@ -474,10 +479,12 @@ class _MainPageState extends State<MainPage>
                           if (cameraCtrl != null &&
                                   !_animationController.isAnimating ||
                               _animationController.value < 0.05)
-                            SingleChildScrollView(
-                                child: AspectRatio(
-                                    aspectRatio: cameraCtrl.value.aspectRatio,
-                                    child: CameraPreview(cameraCtrl)))
+                            Container(color: Colors.white.withOpacity(0.8),
+                              child: Center(child: SingleChildScrollView(
+                                //child: AspectRatio(
+                                //    aspectRatio: 1/cameraCtrl.value.aspectRatio,
+                                    child: CameraPreview(cameraCtrl))))
+                                //  )
                         ]);
                       } else
                         return Container();
@@ -558,10 +565,12 @@ class _MainPageState extends State<MainPage>
                           '${extDir.path}/Pictures/Biblosphere';
                       await Directory(filePath).create(recursive: true);
                       final String fileName = '${timestamp()}.jpg';
-                      final File file = File('$filePath/$fileName');
+                      File file;
 
                       try {
-                        await cameraCtrl.takePicture(file.path);
+                        await cameraCtrl.unlockCaptureOrientation();
+                        file = File((await cameraCtrl.takePicture()).path);
+                        cameraCtrl.lockCaptureOrientation(DeviceOrientation.portraitUp);
                       } on CameraException catch (e) {
                         //TODO: Do exception processing for the camera;
                         print('EXCEPTION: Camera controller exception: $e');
@@ -714,6 +723,8 @@ Widget detailsButton(
       ));
 }
 
+
+const Color progressIndicatorColor = Color(0xff598a99);
 const Color background = Colors.white;
 const TextStyle authorStyle =
     TextStyle(color: Color(0xff8f8993), fontSize: 12.0);

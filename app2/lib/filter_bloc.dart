@@ -310,7 +310,7 @@ class FilterState extends Equatable {
   ];
 
   const FilterState({
-    this.status = LoginStatus.unauthorized,
+    this.status = LoginStatus.unknown,
     this.phone = '',
     this.name = '',
     this.country,
@@ -1078,6 +1078,28 @@ class FilterCubit extends Cubit<FilterState> {
         // Search all books with this ISBN and show on map
         searchAndShowBook(book: Book(isbn: isbn, title: title));
       }
+    } else if (deepLink.path == "/photo") {
+      String id = deepLink.queryParameters['id'];
+      //String name = deepLink.queryParameters['name'];
+
+      print('!!!DEBUG deep link parameters ${deepLink.path}');
+      print('!!!DEBUG deep link parameters ${deepLink.queryParameters}');
+
+      if (id == null || id.isEmpty) {
+        print('EXCEPTION: Id or Title is empty in a deep link');
+        // TODO: Report an exception
+      } else {
+        DocumentSnapshot doc =
+            await FirebaseFirestore.instance.collection('photos').doc(id).get();
+
+        if (!doc.exists) {
+          // TODO: Report an exception
+          print('EXCEPTION: No photo for deep link id = $id');
+        } else {
+          // Search all books with this ISBN and show on map
+          getAndShowPhoto(photo: Photo.fromJson(doc.id, doc.data()));
+        }
+      }
     }
   }
 
@@ -1219,7 +1241,7 @@ class FilterCubit extends Cubit<FilterState> {
         // !!!DEBUG FOR IOS TESTING (Does not support Purchase on Simulator)
         // Uncomment following lines to test on IPhone simulator
         // emitInitial();
-        //  return;
+        // return;
 
         try {
           // Register user in Purchases
@@ -1378,6 +1400,7 @@ class FilterCubit extends Cubit<FilterState> {
 
   // Press Subscribe button => LOGIN
   void subscribePressed() async {
+    emit(state.copyWith(status: LoginStatus.subscriptionInProgress));
     try {
       await Purchases.purchasePackage(state.package);
     } catch (e, stack) {
@@ -1387,9 +1410,6 @@ class FilterCubit extends Cubit<FilterState> {
         status: LoginStatus.unauthorized,
       ));
     }
-
-    // TODO: Try not to emit this as suspect that cause the hanging of screen
-    //emit(state.copyWith(status: LoginStatus.subscriptionInProgress));
   }
 
   // FILTER PANEL:
@@ -1962,8 +1982,10 @@ class FilterCubit extends Cubit<FilterState> {
     // Set a bounds of the map to all found books (if more than 1)
     if (books.length > 1) {
       LatLngBounds bounds = boundsFromPoints(books.toList());
+      print('!!!DEBUG move camera to bounds $bounds');
       _mapController.moveCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
     } else if (books.length == 1) {
+      print('!!!DEBUG move camera to location ${books.first.location}');
       _mapController.moveCamera(CameraUpdate.newLatLng(books.first.location));
     } else {
       // TODO: Show message that books not found. Encourage to add more books
@@ -1984,6 +2006,22 @@ class FilterCubit extends Cubit<FilterState> {
     print('!!!DEBUG Search and show books by ISBN ${book.isbn}');
 
     searchAndShow(newState);
+  }
+
+  void getAndShowPhoto({Photo photo}) async {
+    print('!!!DEBUG Search and show photo ${photo.name}');
+
+    List<MarkerData> markers = await state.markersFor(points: [photo].toSet());
+
+    // Emit a NEW state with one shelf to display
+    emit(state.copyWith(
+      filters: FilterState.empty,
+      markers: markers,
+      maxShelves: 1,
+      shelfList: [await Shelf.fromPhoto(photo)],
+      shelfIndex: 0,
+      view: ViewType.list,
+    ));
   }
 
   // DETAILS
@@ -2142,7 +2180,7 @@ class FilterCubit extends Cubit<FilterState> {
         distanceBetween(location, state.location) > 50.0) {
       // Get all places from Google places in a radius of 50 meters
       NearBySearchResponse result = await googlePlace.search.getNearBySearch(
-          Location(lat: location.latitude, lng: location.longitude), 100);
+          Location(lat: location.latitude, lng: location.longitude), 300);
 
       print(
           '!!!DEBUG places query result: ${result.status}, number ${result.results.length}');
@@ -2429,8 +2467,11 @@ class FilterCubit extends Cubit<FilterState> {
 
     // Upload picture to GCS
     Reference ref = await uploadPicture(file, 'images/${place.id}/$fileName');
-
     print('!!!DEBUG Image uploaded: images/${place.id}/$fileName');
+
+    String thumbnail =
+        'https://storage.googleapis.com/biblosphere-210106.appspot.com/thumbnails/${place.id}/$fileName';
+    print('!!!DEBUG Thumbnail reference: $thumbnail');
 
     // Create a photo record for the given place and uploaded image
     DocumentReference doc =
@@ -2445,6 +2486,7 @@ class FilterCubit extends Cubit<FilterState> {
       },
       'photo': ref.fullPath,
       'url': await ref.getDownloadURL(),
+      'thumbnail': thumbnail,
       'reporter': FirebaseAuth.instance.currentUser.uid
     });
 

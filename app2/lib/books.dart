@@ -389,6 +389,7 @@ class Book extends Point {
 
 class Photo extends Point {
   final String id;
+  final String url;
   final String thumbnail;
   final String name;
   final String contact;
@@ -410,6 +411,7 @@ class Photo extends Point {
 
   const Photo(
       {this.id,
+      this.url,
       this.thumbnail,
       this.name,
       this.contact,
@@ -428,6 +430,7 @@ class Photo extends Point {
 
   Photo.fromJson(this.id, Map json)
       : name = json['name'],
+        url = json['url'],
         thumbnail = json['thumbnail'],
         contact = json['contact'],
         emails = List<String>.from(json['emails'] ?? []),
@@ -452,6 +455,7 @@ class Photo extends Point {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'url': url,
       'thumbnail': thumbnail,
       'name': name,
       'contact': contact,
@@ -473,6 +477,7 @@ class Photo extends Point {
 
   Photo copyWith(
       {String id,
+      String url,
       String thumbnail,
       String name,
       String contact,
@@ -489,6 +494,7 @@ class Photo extends Point {
       Map<String, int> genres}) {
     return Photo(
         id: id ?? this.id,
+        url: url ?? this.url,
         thumbnail: thumbnail ?? this.thumbnail,
         name: name ?? this.name,
         contact: contact ?? this.contact,
@@ -525,6 +531,7 @@ class Photo extends Point {
   @override
   List<Object> get props => [
         id,
+        url,
         thumbnail,
         name,
         contact,
@@ -877,13 +884,18 @@ class _BooksWidgetState extends State<BooksWidget> {
     return BlocBuilder<FilterCubit, FilterState>(
         // buildWhen: (previous, current) => previous.center != current.center,
         builder: (context, state) {
-      double width = MediaQuery.of(context).size.width;
-      double height = MediaQuery.of(context).size.height;
+      // double width = MediaQuery.of(context).size.width;
+      // double height = MediaQuery.of(context).size.height;
       // TODO: Add scroll controller to scroll list to selected shelf
 
       // List view with horizontal scrolling
       return SafeArea(
-          child: Container(
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) { 
+          
+          double height = constraints.maxHeight;
+          double width = constraints.maxWidth;
+          return Container(
               width: width,
               height: height,
               child: ListView.builder(
@@ -909,6 +921,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                       distanceString(state.center, shelf.photo.location);
 
                   // TODO: Add scroll controller to scroll list to selected item
+                  print('DEBUG!!! ${shelf.photo.id} ${shelf.photo.thumbnail}');
 
                   // Build a card with a photo and a book list
                   return Container(
@@ -919,7 +932,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                           // Photo card
                           Container(
                               width: width,
-                              height: 0.45 * height,
+                              height: 0.5 * height,
                               padding: EdgeInsets.only(
                                   right: 8.0, left: 8.0, top: 2.0, bottom: 4.0),
                               child: Container(
@@ -927,11 +940,26 @@ class _BooksWidgetState extends State<BooksWidget> {
                                   color: Colors.white.withOpacity(0.85),
                                   child: Stack(children: [
                                     Container(
-                                        height: 0.45 * height - 10.0,
+                                        height: 0.5 * height - 10.0,
                                         width: width - 20.0,
+                                        child: GestureDetector(
+                                          onDoubleTap: () {
+                                            Navigator.push(context, 
+                                            
+                                            new MaterialPageRoute(
+                                        builder: (context) {
+                                          return Scaffold(
+                                            appBar: AppBar(),
+                                            body: PhotoView(minScale: 0.1,
+      imageProvider: CachedNetworkImageProvider(shelf.photo.url),
+    ));
+                                        }
+                                            
+                                            ));
+                                          },
                                         child: CachedNetworkImage(
                                             fit: BoxFit.cover,
-                                            imageUrl: shelf.photo.thumbnail)),
+                                            imageUrl: shelf.photo.thumbnail))),
                                     Positioned.fill(
                                         right: 0.0,
                                         bottom: 0.0,
@@ -944,7 +972,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                           // Book cards
                           Container(
                               width: width,
-                              height: 0.45 * height,
+                              height: 0.5 * height,
                               child: ListView(
                                   scrollDirection: Axis.horizontal,
                                   physics: PageScrollPhysics(),
@@ -952,7 +980,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                                     // Build a card for the book
                                     return Container(
                                         width: width,
-                                        height: 0.45 * height,
+                                        height: 0.5 * height,
                                         padding: EdgeInsets.only(
                                             right: 8.0,
                                             left: 8.0,
@@ -1070,7 +1098,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                         ],
                       ));
                 },
-              )));
+              ));}));
     });
   }
 
@@ -1222,7 +1250,6 @@ class _BooksWidgetState extends State<BooksWidget> {
               detailsButton(
                   icon: Icons.search,
                   onPressed: () {
-                    Navigator.pop(context);
                     context.read<FilterCubit>().searchBookPressed(book);
                   }),
               // Share button
@@ -1275,7 +1302,8 @@ void shareBook(Book book) async {
 
 void sharePhoto(Photo photo) async {
   // TODO: include picture into the photo's link
-  String link = await buildLink('book?isbn=${photo.id}&title=${photo.name}');
+  String link = await buildLink('photo?id=${photo.id}&name=${photo.name}',
+  image: photo.thumbnail, title: 'Biblosphere', description: 'Look at these books');
 
   Share.share(link, subject: '"${photo.name}" on Biblosphere');
 }
