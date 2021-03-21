@@ -118,8 +118,6 @@ String up(String geohash) {
   }
 }
 
-const List<String> PrivacyLabels = ['private', 'contacts', 'all'];
-
 typedef Book BookCallback();
 
 typedef LatLngBounds LatLngBoundsCallback();
@@ -129,35 +127,4 @@ int lcp(String s1, String s2) {
   for (int i = 0; i <= min(s1.length, s2.length); i++)
     if (s1.codeUnitAt(i) != s2.codeUnitAt(i)) return i;
   return min(s1.length, s2.length);
-}
-
-LatLngBounds boundsFromPoints(List<Point> points) {
-  assert(points.isNotEmpty);
-
-  double north = points.first.location.latitude;
-  double south = points.first.location.latitude;
-
-  for (var i = 0; i < points.length; i++) {
-    if (points[i].location.latitude > north)
-      north = points[i].location.latitude;
-    else if (points[i].location.latitude < south)
-      south = points[i].location.latitude;
-  }
-
-  List<double> lng = points.map((p) => p.location.longitude).toList();
-  lng.sort();
-
-  double gap = lng.first - lng.last + 360.0;
-  double west = lng.first, east = lng.last;
-
-  for (var i = 1; i < lng.length - 1; i++) {
-    if (lng[i] - lng[i - 1] > gap) {
-      gap = lng[i] - lng[i - 1];
-      east = lng[i - 1];
-      west = lng[i];
-    }
-  }
-
-  return LatLngBounds(
-      northeast: LatLng(north, east), southwest: LatLng(south, west));
 }

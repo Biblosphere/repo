@@ -1,10 +1,9 @@
 import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/FilterState.dart';
-import 'package:biblosphere/model/Panel.dart';
 import 'package:biblosphere/model/Place.dart';
-import 'package:biblosphere/model/PlaceType.dart';
 import 'package:biblosphere/model/Privacy.dart';
 import 'package:biblosphere/util/Colors.dart';
+import 'package:biblosphere/util/Enums.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -108,41 +107,4 @@ Widget chipBuilderPrivacy(BuildContext context, Privacy privacy, bool selected,
 
   return Container(
       padding: EdgeInsets.only(left: 2.0, right: 2.0), child: chip);
-}
-
-Widget shaderScroll(Widget child) {
-  return ShaderMask(
-      shaderCallback: (Rect rect) {
-        return LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [
-            Colors.purple,
-            Colors.transparent,
-            Colors.transparent,
-            Colors.purple
-          ],
-          stops: [
-            0.0,
-            0.1,
-            0.985,
-            1.0
-          ], // 10% purple, 80% transparent, 10% purple
-        ).createShader(rect);
-      },
-      blendMode: BlendMode.dstOut,
-      child: child);
-}
-
-InputDecoration inputDecoration(String label) {
-  // TODO: Get rid of '\n' need a better way to locate the labelText
-  //       it's either too high or too low
-
-  return InputDecoration(
-      labelText: label + '\n',
-      labelStyle: inputLabelStyle,
-      border: OutlineInputBorder(borderSide: BorderSide.none),
-      isCollapsed: true,
-//        isDense: true,
-      floatingLabelBehavior: FloatingLabelBehavior.always);
 }

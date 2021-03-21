@@ -1,14 +1,10 @@
-import 'package:biblosphere/filter_bloc.dart';
-import 'package:biblosphere/main.dart';
-import 'package:biblosphere/main.dart';
 import 'package:biblosphere/model/Photo.dart';
-import 'package:biblosphere/model/PlaceType.dart';
 import 'package:biblosphere/model/Point.dart';
 import 'package:biblosphere/model/Privacy.dart';
+import 'package:biblosphere/util/Consts.dart';
+import 'package:biblosphere/util/Enums.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-
-import '../main.dart';
 
 class Place extends Point {
   final String id;
@@ -38,19 +34,19 @@ class Place extends Point {
 
   const Place(
       {this.id,
-        this.name,
-        this.contact,
-        this.emails,
-        this.phones,
-        this.placeId,
-        this.privacy = Privacy.contacts,
-        this.type,
-        location,
-        geohash,
-        this.users,
-        this.count,
-        this.languages,
-        this.genres})
+      this.name,
+      this.contact,
+      this.emails,
+      this.phones,
+      this.placeId,
+      this.privacy = Privacy.contacts,
+      this.type,
+      location,
+      geohash,
+      this.users,
+      this.count,
+      this.languages,
+      this.genres})
       : super(location: location, geohash: geohash);
 
   Place.fromJson(this.id, Map json)
@@ -62,18 +58,18 @@ class Place extends Point {
         privacy = json['privacy'] == 'private'
             ? Privacy.private
             : json['privacy'] == 'contacts'
-            ? Privacy.contacts
-            : Privacy.all,
+                ? Privacy.contacts
+                : Privacy.all,
         type = json['type'] == 'contact' ? PlaceType.contact : PlaceType.place,
         users = List<String>.from(json['users'] ?? []),
         count = json['count'],
         languages = Map<String, int>.from(json['languages'] ?? {}),
         genres = Map<String, int>.from(json['genres'] ?? {}),
         super(
-          location: LatLng(
-              (json['location']['geopoint'] as GeoPoint).latitude,
-              (json['location']['geopoint'] as GeoPoint).longitude),
-          geohash: json['location']['geohash']);
+            location: LatLng(
+                (json['location']['geopoint'] as GeoPoint).latitude,
+                (json['location']['geopoint'] as GeoPoint).longitude),
+            geohash: json['location']['geohash']);
 
   Map<String, dynamic> toJson() {
     return {
@@ -98,19 +94,19 @@ class Place extends Point {
 
   Place copyWith(
       {String id,
-        String name,
-        String contact,
-        LatLng location,
-        String geohash,
-        Privacy privacy,
-        PlaceType type,
-        List<String> emails,
-        List<String> phones,
-        String placeId,
-        List<String> users,
-        int count,
-        Map<String, int> languages,
-        Map<String, int> genres}) {
+      String name,
+      String contact,
+      LatLng location,
+      String geohash,
+      Privacy privacy,
+      PlaceType type,
+      List<String> emails,
+      List<String> phones,
+      String placeId,
+      List<String> users,
+      int count,
+      Map<String, int> languages,
+      Map<String, int> genres}) {
     return Place(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -137,11 +133,11 @@ class Place extends Point {
       privacy: privacy ?? other.privacy,
       type: type ?? other.type,
       emails:
-      emails?.toSet()?.union(other?.emails?.toSet() ?? Set())?.toList() ??
-          other.emails,
+          emails?.toSet()?.union(other?.emails?.toSet() ?? Set())?.toList() ??
+              other.emails,
       phones:
-      phones?.toSet()?.union(other?.phones?.toSet() ?? Set())?.toList() ??
-          other.phones,
+          phones?.toSet()?.union(other?.phones?.toSet() ?? Set())?.toList() ??
+              other.phones,
       placeId: placeId ?? other.placeId,
       users: users?.toSet()?.union(other?.users?.toSet() ?? Set())?.toList() ??
           other.users,
@@ -156,19 +152,19 @@ class Place extends Point {
 
   @override
   List<Object> get props => [
-    id,
-    name,
-    contact,
-    emails,
-    phones,
-    placeId,
-    privacy,
-    type,
-    location,
-    geohash,
-    users,
-    count,
-    languages,
-    genres
-  ];
+        id,
+        name,
+        contact,
+        emails,
+        phones,
+        placeId,
+        privacy,
+        type,
+        location,
+        geohash,
+        users,
+        count,
+        languages,
+        genres
+      ];
 }

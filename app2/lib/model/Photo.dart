@@ -1,8 +1,8 @@
-import 'package:biblosphere/main.dart';
 import 'package:biblosphere/model/Place.dart';
-import 'package:biblosphere/model/PlaceType.dart';
 import 'package:biblosphere/model/Point.dart';
 import 'package:biblosphere/model/Privacy.dart';
+import 'package:biblosphere/util/Consts.dart';
+import 'package:biblosphere/util/Enums.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';

@@ -2,18 +2,30 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:biblosphere/catalog.dart';
 import 'package:biblosphere/model/Book.dart';
 import 'package:biblosphere/model/Filter.dart';
 import 'package:biblosphere/model/FilterState.dart';
+import 'package:biblosphere/model/MarkerData.dart';
+import 'package:biblosphere/model/Panel.dart';
+import 'package:biblosphere/model/Photo.dart' as Photo;
 import 'package:biblosphere/model/Place.dart';
+import 'package:biblosphere/model/Point.dart';
+import 'package:biblosphere/model/Privacy.dart';
+import 'package:biblosphere/model/Shelf.dart';
 import 'package:biblosphere/model/ViewType.dart';
 import 'package:biblosphere/secret.dart';
+import 'package:biblosphere/util/Consts.dart';
 import 'package:biblosphere/util/Enums.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:contacts_service/contacts_service.dart';
 
 // Pick a git phone code
 import 'package:country_code_picker/country_code_picker.dart';
+import 'package:dart_geohash/dart_geohash.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 // BLoC patterns
@@ -23,6 +35,7 @@ import 'package:geolocator/geolocator.dart';
 // Google map
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_place/google_place.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 // Plugin for subscriptions
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -296,7 +309,7 @@ class FilterCubit extends Cubit<FilterState> {
           print('EXCEPTION: No photo for deep link id = $id');
         } else {
           // Search all books with this ISBN and show on map
-          getAndShowPhoto(photo: Photo.fromJson(doc.id, doc.data()));
+          getAndShowPhoto(photo: Photo.Photo.fromJson(doc.id, doc.data()));
         }
       }
     }
@@ -365,7 +378,7 @@ class FilterCubit extends Cubit<FilterState> {
 
       print('!!!DEBUG after getting current location!');
 
-      Set<Photo> photos = Set();
+      Set<Photo.Photo> photos = Set();
 
       // Get geohash of the current location and neighbours ~ 60 km
       String geohash = GeoHasher().encode(center.longitude, center.latitude);
@@ -781,7 +794,7 @@ class FilterCubit extends Cubit<FilterState> {
 
       // Make markers based on PLACES
     } else if (state.select == QueryType.places) {
-      Set<Photo> photos = Set();
+      Set<Photo.Photo> photos = Set();
       // Add places only for missing areas
       await Future.forEach(state.geohashes, (hash) async {
         photos.addAll(await state.photosFor(hash));
@@ -1037,7 +1050,7 @@ class FilterCubit extends Cubit<FilterState> {
           markers: markers, points: books, bounds: bounds, hashes: hashes);
     } else if (state.select == QueryType.places) {
       // Make markers based on PLACES
-      Set<Photo> photos = Set();
+      Set<Photo.Photo> photos = Set();
 
       // print('!!!DEBUG Markers based on PLACES Filters: ${state.filters.length} Books: ${state.books.length}');
       // Add places only for missing areas
@@ -1118,7 +1131,7 @@ class FilterCubit extends Cubit<FilterState> {
       Shelf s;
       if (point is Book) {
         s = await Shelf.fromBook(point);
-      } else if (point is Photo) {
+      } else if (point is Photo.Photo) {
         s = await Shelf.fromPhoto(point);
       }
 
@@ -1207,7 +1220,7 @@ class FilterCubit extends Cubit<FilterState> {
     searchAndShow(newState);
   }
 
-  void getAndShowPhoto({Photo photo}) async {
+  void getAndShowPhoto({Photo.Photo photo}) async {
     print('!!!DEBUG Search and show photo ${photo.name}');
 
     List<MarkerData> markers = await state.markersFor(points: [photo].toSet());
@@ -1718,4 +1731,35 @@ String distanceString(LatLng p1, LatLng p2) {
   return d < 1000
       ? d.toStringAsFixed(0) + " m"
       : (d / 1000).toStringAsFixed(0) + " km";
+}
+
+LatLngBounds boundsFromPoints(List<Point> points) {
+  assert(points.isNotEmpty);
+
+  double north = points.first.location.latitude;
+  double south = points.first.location.latitude;
+
+  for (var i = 0; i < points.length; i++) {
+    if (points[i].location.latitude > north)
+      north = points[i].location.latitude;
+    else if (points[i].location.latitude < south)
+      south = points[i].location.latitude;
+  }
+
+  List<double> lng = points.map((p) => p.location.longitude).toList();
+  lng.sort();
+
+  double gap = lng.first - lng.last + 360.0;
+  double west = lng.first, east = lng.last;
+
+  for (var i = 1; i < lng.length - 1; i++) {
+    if (lng[i] - lng[i - 1] > gap) {
+      gap = lng[i] - lng[i - 1];
+      east = lng[i - 1];
+      west = lng[i];
+    }
+  }
+
+  return LatLngBounds(
+      northeast: LatLng(north, east), southwest: LatLng(south, west));
 }

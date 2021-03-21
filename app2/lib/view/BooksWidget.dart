@@ -1,10 +1,10 @@
-import 'package:biblosphere/main.dart';
-import 'package:biblosphere/main.dart';
+import 'package:biblosphere/books.dart';
 import 'package:biblosphere/model/Book.dart';
 import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/FilterState.dart';
 import 'package:biblosphere/model/Photo.dart';
 import 'package:biblosphere/model/Shelf.dart';
+import 'package:biblosphere/util/Colors.dart';
 import 'package:biblosphere/util/TextStyle.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -367,4 +367,84 @@ class _BooksWidgetState extends State<BooksWidget> {
 
     Share.share(link, subject: '"${book.title}" on Biblosphere');
   }
+}
+
+Widget coverImage(String url, {double width, bool bookmark = false}) {
+  Widget image;
+  if (url != null && url.isNotEmpty)
+    try {
+      image = ClipRRect(
+          borderRadius: BorderRadius.circular(4.0),
+          child: width != null
+//              ? Image.network(url, fit: BoxFit.fitWidth, width: width)
+//              : Image.network(url));
+              ? CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.fitWidth,
+                  width: width,
+                  placeholder: (context, text) => bookImagePlaceholder(),
+                  errorWidget: (context, text, error) => bookImagePlaceholder())
+              : CachedNetworkImage(
+                  imageUrl: url,
+                  placeholder: (context, text) => bookImagePlaceholder(),
+                  errorWidget: (context, text, error) =>
+                      bookImagePlaceholder()));
+    } catch (e) {
+      print('Image loading exception: $e');
+      // TODO: Report exception to analytics
+      image = Container(child: bookImagePlaceholder());
+    }
+  else
+    image = Container(child: bookImagePlaceholder());
+
+  return Stack(children: [
+    Container(padding: EdgeInsets.all(4.0), child: image),
+    if (bookmark)
+      Positioned(
+        left: 0.0,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.7),
+              borderRadius: BorderRadius.all(
+                Radius.circular(8.0),
+              ),
+            ),
+            child: Icon(Icons.bookmark, color: bookmarkListColor),
+          ),
+        ),
+      ),
+  ]);
+}
+
+Widget bookImagePlaceholder() {
+  return Container(
+      height: 110.0,
+      width: 110.0 * 2 / 3,
+      child: Icon(Icons.menu_book, size: 50.0, color: placeholderColor));
+}
+
+Widget detailsButton(
+    {IconData icon, VoidCallback onPressed, bool selected = false}) {
+  return Container(
+      width: 45.0,
+      height: 45.0,
+      //margin: EdgeInsets.all(2.0),
+      padding: EdgeInsets.all(2.0),
+      child: MaterialButton(
+        elevation: 0.0,
+        onPressed: onPressed,
+        color: selected ? buttonSelectedBackground : buttonUnselectedBackground,
+        textColor: selected ? buttonSelectedText : buttonUnselectedText,
+        child: Icon(
+          icon,
+          size: 20,
+        ),
+        padding: EdgeInsets.all(0.0),
+        shape: CircleBorder(
+            side: BorderSide(
+                color: selected ? buttonSelectedBorder : buttonBorder,
+                width: 2.0)),
+      ));
 }

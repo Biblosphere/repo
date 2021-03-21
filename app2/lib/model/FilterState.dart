@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:biblosphere/filter_bloc.dart';
 import 'package:biblosphere/model/Book.dart';
 import 'package:biblosphere/model/Filter.dart';
+import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/MarkerData.dart';
 import 'package:biblosphere/model/Panel.dart';
 import 'package:biblosphere/model/Photo.dart';
@@ -13,12 +15,23 @@ import 'package:biblosphere/model/Shelf.dart';
 import 'package:biblosphere/model/ViewType.dart';
 import 'package:biblosphere/util/Enums.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import "package:collection/collection.dart";
 import 'package:country_code_picker/country_code.dart';
+import 'package:country_code_picker/country_code_picker.dart';
+
+// Geo hashes
 import 'package:dart_geohash/dart_geohash.dart';
+
+// Compare objects by content
 import 'package:equatable/equatable.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+// Google places
 import 'package:purchases_flutter/offerings_wrapper.dart';
 import 'package:purchases_flutter/package_wrapper.dart';
+
+// Plugin for subscriptions
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 class FilterState extends Equatable {
   // LOGIN STATE

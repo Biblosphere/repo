@@ -1,63 +1,7 @@
-import 'package:biblosphere/util/Colors.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:ui' as ui;
+
 import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 import 'package:flutter/material.dart';
-
-Widget bookImagePlaceholder() {
-  return Container(
-      height: 110.0,
-      width: 110.0 * 2 / 3,
-      child: Icon(Icons.menu_book, size: 50.0, color: placeholderColor));
-}
-
-Widget coverImage(String url, {double width, bool bookmark = false}) {
-  Widget image;
-  if (url != null && url.isNotEmpty)
-    try {
-      image = ClipRRect(
-          borderRadius: BorderRadius.circular(4.0),
-          child: width != null
-//              ? Image.network(url, fit: BoxFit.fitWidth, width: width)
-//              : Image.network(url));
-              ? CachedNetworkImage(
-                  imageUrl: url,
-                  fit: BoxFit.fitWidth,
-                  width: width,
-                  placeholder: (context, text) => bookImagePlaceholder(),
-                  errorWidget: (context, text, error) => bookImagePlaceholder())
-              : CachedNetworkImage(
-                  imageUrl: url,
-                  placeholder: (context, text) => bookImagePlaceholder(),
-                  errorWidget: (context, text, error) =>
-                      bookImagePlaceholder()));
-    } catch (e) {
-      print('Image loading exception: $e');
-      // TODO: Report exception to analytics
-      image = Container(child: bookImagePlaceholder());
-    }
-  else
-    image = Container(child: bookImagePlaceholder());
-
-  return Stack(children: [
-    Container(padding: EdgeInsets.all(4.0), child: image),
-    if (bookmark)
-      Positioned(
-        left: 0.0,
-        child: Align(
-          alignment: Alignment.topLeft,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.7),
-              borderRadius: BorderRadius.all(
-                Radius.circular(8.0),
-              ),
-            ),
-            child: Icon(Icons.bookmark, color: bookmarkListColor),
-          ),
-        ),
-      ),
-  ]);
-}
 
 class ImagePainter extends CustomPainter {
   ImagePainter({

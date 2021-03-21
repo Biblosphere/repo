@@ -261,3 +261,5 @@ const List<String> mainLanguages = [
   'NLD',
   'TUR'
 ];
+
+const List<String> PrivacyLabels = ['private', 'contacts', 'all'];

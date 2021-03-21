@@ -5,6 +5,7 @@ import 'package:biblosphere/model/Panel.dart';
 import 'package:biblosphere/model/Place.dart';
 import 'package:biblosphere/model/Privacy.dart';
 import 'package:biblosphere/util/Colors.dart';
+import 'package:biblosphere/view/SearchPanel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
