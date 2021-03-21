@@ -1,4 +1,23 @@
-part of 'main.dart';
+import 'dart:async';
+import 'dart:math';
+
+//import 'dart:typed_data';
+//import 'dart:ui';
+import 'dart:ui' as ui;
+
+import 'package:biblosphere/model/FilterCubit.dart';
+import 'package:biblosphere/model/FilterState.dart';
+import 'package:biblosphere/model/MarkerData.dart';
+
+// Gesture detector and URL launcher for PP and TOS
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+
+// BLoC patterns
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Google map
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 Future<BitmapDescriptor> getGroupIcon(
   int clusterSize,

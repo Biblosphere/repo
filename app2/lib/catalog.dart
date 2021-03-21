@@ -1,6 +1,11 @@
-part of "main.dart";
-
 // Singleton class to keep single connection
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'model/Book.dart';
+
 class Api {
   final client = Client();
 

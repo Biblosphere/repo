@@ -1,68 +1,41 @@
-import 'dart:math';
 import 'dart:async';
 import 'dart:io';
-//import 'dart:typed_data';
-//import 'dart:ui';
-import 'dart:ui' as ui;
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import "package:collection/collection.dart";
-import 'package:flutter/services.dart';
+import 'dart:math';
 
-// HTTP requests for API calls
-import 'package:http/http.dart';
-// BLoC patterns
-import 'package:flutter_bloc/flutter_bloc.dart';
-// Pick a git phone code
-import 'package:country_code_picker/country_code_picker.dart';
-// Google map
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-// Import slidable actions for book card
-//import 'package:flutter_slidable/flutter_slidable.dart';
-// Cached network images
-import 'package:cached_network_image/cached_network_image.dart';
-// Panel widget for filters and camera
-import 'package:snapping_sheet/snapping_sheet.dart';
+import 'package:biblosphere/catalog.dart';
+import 'package:biblosphere/login.dart';
+import 'package:biblosphere/map.dart';
+import 'package:biblosphere/model/FilterCubit.dart';
+import 'package:biblosphere/model/FilterState.dart';
+import 'package:biblosphere/model/ViewType.dart';
+import 'package:biblosphere/secret.dart';
+import 'package:biblosphere/util/Colors.dart';
+import 'package:biblosphere/util/Enums.dart';
+import 'package:biblosphere/view/BooksWidget.dart';
+import 'package:biblosphere/view/CameraPanel.dart';
+import 'package:biblosphere/view/SearchPanel.dart';
+
 // Camera plugin
 import 'package:camera/camera.dart';
-// Files and directories to save images
-import 'package:path_provider/path_provider.dart';
-// Plugin for subscriptions
-import 'package:purchases_flutter/purchases_flutter.dart';
-// Compare objects by content
-import 'package:equatable/equatable.dart';
+
 // Firebase auth
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
-// Geo hashes
-import 'package:dart_geohash/dart_geohash.dart';
-// Geo location
-import 'package:geolocator/geolocator.dart';
-// Google places
-import 'package:google_place/google_place.dart';
-// Contacts plugin
-import 'package:contacts_service/contacts_service.dart';
-// Permission handler
-import 'package:permission_handler/permission_handler.dart';
-// Gesture detector and URL launcher for PP and TOS
-import 'package:flutter/gestures.dart';
-import 'package:url_launcher/url_launcher.dart';
-// Share the book link to others
-import 'package:share/share.dart';
-// Fuulscree image view
-import 'package:photo_view/photo_view.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-part 'login.dart';
-part 'camera.dart';
-part 'books.dart';
-part 'map.dart';
-part 'filter.dart';
-part 'filter_bloc.dart';
-part 'catalog.dart';
-part 'secret.dart';
+// BLoC patterns
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Files and directories to save images
+import 'package:path_provider/path_provider.dart';
+
+// Plugin for subscriptions
+import 'package:purchases_flutter/purchases_flutter.dart';
+
+// Panel widget for filters and camera
+import 'package:snapping_sheet/snapping_sheet.dart';
+
+List<CameraDescription> cameras;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -166,6 +139,7 @@ class TripleButton extends StatefulWidget {
 class TripleButtonState extends State<TripleButton>
     with SingleTickerProviderStateMixin {
   final double rMin = 25.0;
+
   // Radius of bigger circle
   final double rMax = 34.0;
 
@@ -311,7 +285,8 @@ class TripleButtonState extends State<TripleButton>
                                 if (i == selected && onLongPress[i] != null)
                                   onLongPress[i]();
                               },
-                              color: color, //.transparent,
+                              color: color,
+                              //.transparent,
                               textColor: Colors.white,
                               child: Icon(
                                 icons[i],
@@ -453,7 +428,7 @@ class _MainPageState extends State<MainPage>
                                 right: 0.0,
                                 top: 0.0,
                                 bottom: 0.0);
-                      else 
+                      else
 */
                       if (filters.view == ViewType.list)
                         return BooksWidget();
@@ -479,12 +454,14 @@ class _MainPageState extends State<MainPage>
                           if (cameraCtrl != null &&
                                   !_animationController.isAnimating ||
                               _animationController.value < 0.05)
-                            Container(color: Colors.white.withOpacity(0.8),
-                              child: Center(child: SingleChildScrollView(
-                                //child: AspectRatio(
-                                //    aspectRatio: 1/cameraCtrl.value.aspectRatio,
-                                    child: CameraPreview(cameraCtrl))))
-                                //  )
+                            Container(
+                                color: Colors.white.withOpacity(0.8),
+                                child: Center(
+                                    child: SingleChildScrollView(
+                                        //child: AspectRatio(
+                                        //    aspectRatio: 1/cameraCtrl.value.aspectRatio,
+                                        child: CameraPreview(cameraCtrl))))
+                          //  )
                         ]);
                       } else
                         return Container();
@@ -570,7 +547,8 @@ class _MainPageState extends State<MainPage>
                       try {
                         await cameraCtrl.unlockCaptureOrientation();
                         file = File((await cameraCtrl.takePicture()).path);
-                        cameraCtrl.lockCaptureOrientation(DeviceOrientation.portraitUp);
+                        cameraCtrl.lockCaptureOrientation(
+                            DeviceOrientation.portraitUp);
                       } on CameraException catch (e) {
                         //TODO: Do exception processing for the camera;
                         print('EXCEPTION: Camera controller exception: $e');
@@ -662,43 +640,6 @@ BoxDecoration placeDecoration() {
   );
 }
 
-Widget shaderScroll(Widget child) {
-  return ShaderMask(
-      shaderCallback: (Rect rect) {
-        return LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [
-            Colors.purple,
-            Colors.transparent,
-            Colors.transparent,
-            Colors.purple
-          ],
-          stops: [
-            0.0,
-            0.1,
-            0.985,
-            1.0
-          ], // 10% purple, 80% transparent, 10% purple
-        ).createShader(rect);
-      },
-      blendMode: BlendMode.dstOut,
-      child: child);
-}
-
-InputDecoration inputDecoration(String label) {
-  // TODO: Get rid of '\n' need a better way to locate the labelText
-  //       it's either too high or too low
-
-  return InputDecoration(
-      labelText: label + '\n',
-      labelStyle: inputLabelStyle,
-      border: OutlineInputBorder(borderSide: BorderSide.none),
-      isCollapsed: true,
-//        isDense: true,
-      floatingLabelBehavior: FloatingLabelBehavior.always);
-}
-
 Widget detailsButton(
     {IconData icon, VoidCallback onPressed, bool selected = false}) {
   return Container(
@@ -722,64 +663,3 @@ Widget detailsButton(
                 width: 2.0)),
       ));
 }
-
-
-const Color progressIndicatorColor = Color(0xff598a99);
-const Color background = Colors.white;
-const TextStyle authorStyle =
-    TextStyle(color: Color(0xff8f8993), fontSize: 12.0);
-
-const TextStyle titleStyle = TextStyle(
-    color: Color(0xff483b50), fontSize: 18.0, fontWeight: FontWeight.bold);
-
-const TextStyle genreStyle = TextStyle(
-    color: Color(0xff598a99), fontSize: 12.0, fontWeight: FontWeight.bold);
-
-const Color chipSelectedBackground = Color(0xffd3e9ef);
-const Color chipSelectedText = Color(0xff598a99);
-const TextStyle chipSelectedTextStyle = TextStyle(color: chipSelectedText);
-
-const Color chipUnselectedBackground = Color(0xfff5f4f3);
-const Color chipUnselectedText = Color(0xff8f8993);
-const TextStyle chipUnselectedTextStyle = TextStyle(color: chipUnselectedText);
-
-const Color buttonBackground = Color(0xff598a99);
-const Color cursorColor = Color(0xff598a99);
-const TextStyle inputLabelStyle = TextStyle(color: Color(0xff598a99));
-
-const Color buttonSelectedBackground = Color(0xffc66747);
-const Color buttonSelectedText = Colors.white;
-
-const Color buttonUnselectedBackground = Color(0xb0ffffff);
-const Color buttonUnselectedText = Color(0xff598a99);
-const Color buttonSelectedBorder = Color(0xffc66747);
-const Color buttonBorder = Color(0xff598a99);
-
-const TextStyle authorDetailsStyle =
-    TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
-
-const TextStyle titleDetailsStyle = TextStyle(
-    color: Color(0xff483b50), fontSize: 22.0, fontWeight: FontWeight.bold);
-
-const TextStyle genreDetailsStyle =
-    TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
-
-const TextStyle languageDetailsStyle =
-    TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
-
-const TextStyle distanceDetailsStyle =
-    TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
-
-const TextStyle placeDetailsStyle =
-    TextStyle(color: Color(0xff8f8993), fontSize: 18.0);
-
-const TextStyle suggestionsDetailsStyle = TextStyle(
-    color: Color(0xff8f8993), fontSize: 18.0, fontStyle: FontStyle.italic);
-
-const Color closeCrossColor = Color(0xff598a99);
-
-const Color placeholderColor = Color(0x8f8f8993);
-
-const Color bookmarkListColor = Color(0xffc66747);
-
-const Color detailsAppBarBackgroung = Color(0xff598a99);

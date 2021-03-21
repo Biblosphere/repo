@@ -1,4 +1,22 @@
-part of 'main.dart';
+import 'package:biblosphere/model/FilterCubit.dart';
+import 'package:biblosphere/model/FilterState.dart';
+import 'package:biblosphere/util/Colors.dart';
+import 'package:biblosphere/util/Enums.dart';
+
+// Pick a git phone code
+import 'package:country_code_picker/country_code_picker.dart';
+
+// Gesture detector and URL launcher for PP and TOS
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+// BLoC patterns
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Plugin for subscriptions
+import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginPage extends StatefulWidget {
   LoginPage({Key key}) : super(key: key);
