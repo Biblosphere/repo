@@ -1,4 +1,3 @@
-import 'package:biblosphere/books.dart';
 import 'package:biblosphere/model/Book.dart';
 import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/FilterState.dart';
@@ -6,6 +5,7 @@ import 'package:biblosphere/model/Photo.dart';
 import 'package:biblosphere/model/Shelf.dart';
 import 'package:biblosphere/util/Colors.dart';
 import 'package:biblosphere/util/TextStyle.dart';
+import 'package:biblosphere/ui/library/books_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -21,11 +21,14 @@ class BooksWidget extends StatefulWidget {
 }
 
 class _BooksWidgetState extends State<BooksWidget> {
+  BooksBloc _booksBloc;
+
   _BooksWidgetState();
 
   @override
   void initState() {
     super.initState();
+    _booksBloc = BooksBloc();
   }
 
   @override
@@ -354,7 +357,7 @@ class _BooksWidgetState extends State<BooksWidget> {
 
   void sharePhoto(Photo photo) async {
     // TODO: include picture into the photo's link
-    String link = await buildLink('photo?id=${photo.id}&name=${photo.name}',
+    String link = await _booksBloc.buildLink('photo?id=${photo.id}&name=${photo.name}',
         image: photo.thumbnail,
         title: 'Biblosphere',
         description: 'Look at these books');
@@ -363,7 +366,7 @@ class _BooksWidgetState extends State<BooksWidget> {
   }
 
   void shareBook(Book book) async {
-    String link = await buildLink('book?isbn=${book.isbn}&title=${book.title}');
+    String link = await _booksBloc.buildLink('book?isbn=${book.isbn}&title=${book.title}');
 
     Share.share(link, subject: '"${book.title}" on Biblosphere');
   }

@@ -2,17 +2,16 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:biblosphere/login.dart';
-import 'package:biblosphere/map.dart';
 import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/FilterState.dart';
 import 'package:biblosphere/model/ViewType.dart';
 import 'package:biblosphere/secret.dart';
+import 'package:biblosphere/ui/camera/CameraPanel.dart';
+import 'package:biblosphere/ui/library/BooksWidget.dart';
+import 'package:biblosphere/ui/search/SearchPanel.dart';
+import 'package:biblosphere/ui/search/map.dart';
 import 'package:biblosphere/util/Colors.dart';
 import 'package:biblosphere/util/Enums.dart';
-import 'package:biblosphere/view/BooksWidget.dart';
-import 'package:biblosphere/view/CameraPanel.dart';
-import 'package:biblosphere/view/SearchPanel.dart';
 
 // Camera plugin
 import 'package:camera/camera.dart';
@@ -98,7 +97,7 @@ class _MyAppState extends State<MyApp> {
               if (state.status == LoginStatus.subscribed) {
                 return MainPage();
               } else {
-                return LoginPage();
+                return MainPage();
               }
             })));
   }

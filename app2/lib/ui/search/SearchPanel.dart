@@ -1,14 +1,10 @@
 import 'package:biblosphere/model/Filter.dart';
 import 'package:biblosphere/model/FilterCubit.dart';
-<<<<<<<< HEAD:app2/lib/view/SearchPanel.dart
 import 'package:biblosphere/model/FilterState.dart';
-========
->>>>>>>> refactoring:app2/lib/filter.dart
 import 'package:biblosphere/model/Panel.dart';
 import 'package:biblosphere/util/Colors.dart';
 import 'package:biblosphere/util/Consts.dart';
 import 'package:biblosphere/util/Enums.dart';
-<<<<<<<< HEAD:app2/lib/view/SearchPanel.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -234,17 +230,6 @@ BoxDecoration placeDecoration() {
     ),
   );
 }
-========
-
-// Gesture detector and URL launcher for PP and TOS
-import 'package:flutter/material.dart';
-
-// BLoC patterns
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-// Google map
-import 'package:google_maps_flutter/google_maps_flutter.dart';
->>>>>>>> refactoring:app2/lib/filter.dart
 
 Widget chipBuilder(BuildContext context, Filter filter) {
   IconData icon;
@@ -391,7 +376,6 @@ Widget chipBuilder(BuildContext context, Filter filter) {
   return Container(
       padding: EdgeInsets.only(left: 2.0, right: 2.0), child: chip);
 }
-<<<<<<<< HEAD:app2/lib/view/SearchPanel.dart
 
 Widget shaderScroll(Widget child) {
   return ShaderMask(
@@ -429,5 +413,3 @@ InputDecoration inputDecoration(String label) {
 //        isDense: true,
       floatingLabelBehavior: FloatingLabelBehavior.always);
 }
-========
->>>>>>>> refactoring:app2/lib/filter.dart

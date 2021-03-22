@@ -1,5 +1,4 @@
 // Singleton class to keep single connection
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:biblosphere/networking/CustomException.dart';
@@ -15,34 +14,12 @@ class ApiProvider {
   factory ApiProvider() => _singleton;
 
   Future<dynamic> get(String url, {Map<String, String> headers}) async {
-    var responseJson;
     try {
       final response = await http.get(_baseUrl + url,
           headers: headers); // тут могут быть post delete etc.
-      responseJson = _response(response);
+      return response;
     } on SocketException {
       throw FetchDataException('No Internet connection');
-    }
-    return responseJson;
-  }
-
-  dynamic _response(http.Response response) {
-    switch (response.statusCode) {
-      case 200:
-        var responseJson = json.decode(response.body.toString());
-        print(responseJson);
-        return responseJson;
-      case 400:
-        throw BadRequestException(response.body.toString());
-      case 401:
-
-      case 403:
-        throw UnauthorisedException(response.body.toString());
-      case 500:
-
-      default:
-        throw FetchDataException(
-            'Error occured while Communication with Server with StatusCode : ${response.statusCode}');
     }
   }
 }

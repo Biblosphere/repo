@@ -1,11 +1,11 @@
-import 'package:biblosphere/camera.dart';
 import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/FilterState.dart';
 import 'package:biblosphere/model/Panel.dart';
 import 'package:biblosphere/model/Place.dart';
 import 'package:biblosphere/model/Privacy.dart';
 import 'package:biblosphere/util/Colors.dart';
-import 'package:biblosphere/view/SearchPanel.dart';
+import 'package:biblosphere/ui/camera/camera.dart';
+import 'package:biblosphere/ui/search/SearchPanel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -180,7 +180,7 @@ class _CameraPanelState extends State<CameraPanel> {
                                 chipBuilderCamera(context, state.place,
                                     selected: true),
                                 if (suggestions != null)
-                                  ...suggestions.take(15).map((p) {
+                                  ...suggestions.map((p) {
                                     return chipBuilderCamera(context, p,
                                         selected: false);
                                   }).toList()
