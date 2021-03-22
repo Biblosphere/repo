@@ -486,7 +486,7 @@ class _LoginPageState extends State<LoginPage> {
                 // Annual option
                 productWidget(state.offerings.current.monthly),
                 // Patron option
-                productWidget(state.offerings.current.getPackage('Patron')),
+                // productWidget(state.offerings.current.getPackage('Patron')),
               ],
             ),
           ]));
@@ -591,7 +591,7 @@ class _LoginPageState extends State<LoginPage> {
                                 package.packageType != PackageType.annual
                             ? Container(
                                 padding: EdgeInsets.only(top: 5.0),
-                                child: Text(monthlyPrice,
+                                child: Text(monthlyPrice + " (7 days trial)",
                                     style:
                                         Theme.of(context).textTheme.bodyText2))
                             : Container(),
@@ -606,7 +606,9 @@ class _LoginPageState extends State<LoginPage> {
                                 login.package.packageType == PackageType.annual
                             ? Container(
                                 padding: EdgeInsets.only(top: 5.0),
-                                child: Text(package.product.priceString,
+                                child: Text(
+                                    package.product.priceString +
+                                        " (7 days trial)",
                                     style:
                                         Theme.of(context).textTheme.bodyText2))
                             : Container(),

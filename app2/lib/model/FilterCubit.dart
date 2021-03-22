@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:biblosphere/catalog.dart';
 import 'package:biblosphere/model/Book.dart';
 import 'package:biblosphere/model/Filter.dart';
 import 'package:biblosphere/model/FilterState.dart';
@@ -14,6 +13,7 @@ import 'package:biblosphere/model/Point.dart';
 import 'package:biblosphere/model/Privacy.dart';
 import 'package:biblosphere/model/Shelf.dart';
 import 'package:biblosphere/model/ViewType.dart';
+import 'package:biblosphere/repository/books_repository.dart';
 import 'package:biblosphere/secret.dart';
 import 'package:biblosphere/util/Consts.dart';
 import 'package:biblosphere/util/Enums.dart';
@@ -44,6 +44,8 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:snapping_sheet/snapping_sheet.dart';
 
 class FilterCubit extends Cubit<FilterState> {
+  BooksRepository _booksRepository;
+
   GoogleMapController _mapController;
   SnappingSheetController _snappingControler;
   TextEditingController _searchController;
@@ -52,6 +54,8 @@ class FilterCubit extends Cubit<FilterState> {
   GooglePlace googlePlace = GooglePlace(GooglePlaceKey);
 
   FilterCubit() : super(FilterState()) {
+    _booksRepository = BooksRepository();
+
     // Initialize FireBase
     init();
   }
@@ -81,7 +85,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     var lowercase = query.toLowerCase();
 
-    List<Book> books = await searchByText(lowercase);
+    List<Book> books = await _booksRepository.searchByText(lowercase);
 
     // TODO: Check it for long query in case widget are not mounted already
 

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:biblosphere/catalog.dart';
 import 'package:biblosphere/login.dart';
 import 'package:biblosphere/map.dart';
 import 'package:biblosphere/model/FilterCubit.dart';
@@ -59,12 +58,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  @override
-  void dispose() {
-    api.client.close();
-    super.dispose();
-  }
-
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
