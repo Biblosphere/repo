@@ -10,9 +10,7 @@ import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-// BLoC patterns
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cubit/flutter_cubit.dart';
 
 // Plugin for subscriptions
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -37,7 +35,7 @@ class _LoginPageState extends State<LoginPage> {
         backgroundColor: Theme.of(context).backgroundColor,
         body: SafeArea(child: Container(
           child:
-              BlocBuilder<FilterCubit, FilterState>(builder: (context, login) {
+              CubitBuilder<FilterCubit, FilterState>(builder: (context, login) {
             if (login.status == LoginStatus.unauthorized) {
               return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -89,7 +87,7 @@ class _LoginPageState extends State<LoginPage> {
                                               print("New Country selected: " +
                                                   countryCode.toString());
                                               context
-                                                  .read<FilterCubit>()
+                                                  .cubit<FilterCubit>()
                                                   .countryCodeEntered(
                                                       countryCode);
                                             },
@@ -143,7 +141,7 @@ class _LoginPageState extends State<LoginPage> {
                                             keyboardType: TextInputType.phone,
                                             onChanged: (value) {
                                               context
-                                                  .read<FilterCubit>()
+                                                  .cubit<FilterCubit>()
                                                   .phoneEntered(value);
                                             }),
                                       )
@@ -187,7 +185,7 @@ class _LoginPageState extends State<LoginPage> {
                                             keyboardType: TextInputType.name,
                                             onChanged: (value) {
                                               context
-                                                  .read<FilterCubit>()
+                                                  .cubit<FilterCubit>()
                                                   .nameEntered(value);
                                             }),
                                       )
@@ -206,7 +204,7 @@ class _LoginPageState extends State<LoginPage> {
                                         ? () {
                                             // TODO: Use actual phone number from text field
                                             context
-                                                .read<FilterCubit>()
+                                                .cubit<FilterCubit>()
                                                 .signinPressed();
                                           }
                                         : null,
@@ -232,7 +230,7 @@ class _LoginPageState extends State<LoginPage> {
                                                 value: login.pp,
                                                 onChanged: (value) {
                                                   context
-                                                      .read<FilterCubit>()
+                                                      .cubit<FilterCubit>()
                                                       .privacyPolicyEntered(
                                                           value);
                                                 })),
@@ -329,7 +327,7 @@ class _LoginPageState extends State<LoginPage> {
                                       keyboardType: TextInputType.number,
                                       onChanged: (value) {
                                         context
-                                            .read<FilterCubit>()
+                                            .cubit<FilterCubit>()
                                             .codeEntered(value);
                                       },
                                     ))
@@ -348,7 +346,7 @@ class _LoginPageState extends State<LoginPage> {
                                     ? () {
                                         // TODO: Use actual code from text field or AUTO for Android
                                         context
-                                            .read<FilterCubit>()
+                                            .cubit<FilterCubit>()
                                             .confirmPressed();
                                       }
                                     : null,
@@ -398,7 +396,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ? () {
                                     // TODO: Use actual code from text field or AUTO for Android
                                     context
-                                        .read<FilterCubit>()
+                                        .cubit<FilterCubit>()
                                         .subscribePressed();
                                   }
                                 : null,
@@ -416,7 +414,7 @@ class _LoginPageState extends State<LoginPage> {
                                 value: login.tos,
                                 onChanged: (value) {
                                   context
-                                      .read<FilterCubit>()
+                                      .cubit<FilterCubit>()
                                       .termsOfServiceEntered(value);
                                 }),
                             RichText(
@@ -470,7 +468,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget upgradeWidget(FilterState state) {
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, login) {
+    return CubitBuilder<FilterCubit, FilterState>(builder: (context, login) {
       return Container(
           child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
@@ -559,11 +557,11 @@ class _LoginPageState extends State<LoginPage> {
             (package.product.price / 12.0).toStringAsFixed(2)
         : package.product.priceString;
 
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, login) {
+    return CubitBuilder<FilterCubit, FilterState>(builder: (context, login) {
       return Expanded(
           child: GestureDetector(
               onTap: () {
-                context.read<FilterCubit>().planSelected(package);
+                context.cubit<FilterCubit>().planSelected(package);
               },
               child: Container(
                   child: Column(

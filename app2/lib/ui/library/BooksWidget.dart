@@ -3,12 +3,12 @@ import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/FilterState.dart';
 import 'package:biblosphere/model/Photo.dart';
 import 'package:biblosphere/model/Shelf.dart';
+import 'package:biblosphere/ui/library/books_bloc.dart';
 import 'package:biblosphere/util/Colors.dart';
 import 'package:biblosphere/util/TextStyle.dart';
-import 'package:biblosphere/ui/library/books_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cubit/flutter_cubit.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:share/share.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -38,7 +38,7 @@ class _BooksWidgetState extends State<BooksWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterState>(
+    return CubitBuilder<FilterCubit, FilterState>(
         // buildWhen: (previous, current) => previous.center != current.center,
         builder: (context, state) {
       // double width = MediaQuery.of(context).size.width;
@@ -62,7 +62,7 @@ class _BooksWidgetState extends State<BooksWidget> {
                 // If last element is requested then fetch more items
                 if (item == state.shelfList.length - 1) {
                   print('!!!DEBUG last shelf fetched $item');
-                  BlocProvider.of<FilterCubit>(context).shelvesFetched();
+                  CubitProvider.of<FilterCubit>(context).shelvesFetched();
                 }
 
                 if (item >= state.shelfList.length) {
@@ -303,10 +303,10 @@ class _BooksWidgetState extends State<BooksWidget> {
                   icon: Icons.bookmark,
                   onPressed: () {
                     if (state.isUserBookmark(book)) {
-                      BlocProvider.of<FilterCubit>(context)
+                      CubitProvider.of<FilterCubit>(context)
                           .removeUserBookmark(book);
                     } else {
-                      BlocProvider.of<FilterCubit>(context)
+                      CubitProvider.of<FilterCubit>(context)
                           .addUserBookmark(book);
                     }
                     // TODO: button state does not refrest without setState
@@ -324,7 +324,7 @@ class _BooksWidgetState extends State<BooksWidget> {
               detailsButton(
                   icon: Icons.search,
                   onPressed: () {
-                    context.read<FilterCubit>().searchBookPressed(book);
+                    context.cubit<FilterCubit>().searchBookPressed(book);
                   }),
               // Share button
               detailsButton(
@@ -357,7 +357,8 @@ class _BooksWidgetState extends State<BooksWidget> {
 
   void sharePhoto(Photo photo) async {
     // TODO: include picture into the photo's link
-    String link = await _booksBloc.buildLink('photo?id=${photo.id}&name=${photo.name}',
+    String link = await _booksBloc.buildLink(
+        'photo?id=${photo.id}&name=${photo.name}',
         image: photo.thumbnail,
         title: 'Biblosphere',
         description: 'Look at these books');
@@ -366,7 +367,8 @@ class _BooksWidgetState extends State<BooksWidget> {
   }
 
   void shareBook(Book book) async {
-    String link = await _booksBloc.buildLink('book?isbn=${book.isbn}&title=${book.title}');
+    String link = await _booksBloc
+        .buildLink('book?isbn=${book.isbn}&title=${book.title}');
 
     Share.share(link, subject: '"${book.title}" on Biblosphere');
   }

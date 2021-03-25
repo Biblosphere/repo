@@ -22,7 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 // BLoC patterns
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cubit/flutter_cubit.dart';
 
 // Files and directories to save images
 import 'package:path_provider/path_provider.dart';
@@ -60,7 +60,7 @@ class _MyAppState extends State<MyApp> {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
+    return CubitProvider(
         create: (BuildContext context) => FilterCubit(),
         child: MaterialApp(
             debugShowCheckedModeBanner: false,
@@ -92,7 +92,7 @@ class _MyAppState extends State<MyApp> {
                       borderRadius: BorderRadius.circular(50.0),
                       side: BorderSide(color: Colors.transparent)),
                 )),
-            home: BlocBuilder<FilterCubit, FilterState>(
+            home: CubitBuilder<FilterCubit, FilterState>(
                 builder: (context, state) {
               if (state.status == LoginStatus.subscribed) {
                 return MainPage();
@@ -345,7 +345,7 @@ class _MainPageState extends State<MainPage>
   @override
   void didChangeDependencies() {
     // TODO: Make a code to do it only once at first call afer initState
-    context.read<FilterCubit>().setSnappingController(_controller);
+    context.cubit<FilterCubit>().setSnappingController(_controller);
 
     super.didChangeDependencies();
   }
@@ -361,18 +361,18 @@ class _MainPageState extends State<MainPage>
     return Scaffold(
         resizeToAvoidBottomInset: false,
         body:
-            BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
+            CubitBuilder<FilterCubit, FilterState>(builder: (context, filters) {
           return Stack(children: [
             SnappingSheet(
               //sheetAbove: SnappingSheetContent(
               //    child: ),
               onSnapEnd: () {
                 if (_snapPosition < 10.0)
-                  context.read<FilterCubit>().panelHiden();
+                  context.cubit<FilterCubit>().panelHiden();
                 else if (_snapPosition < 100.0)
-                  context.read<FilterCubit>().panelMinimized();
+                  context.cubit<FilterCubit>().panelMinimized();
                 else if (_snapPosition < 240.0)
-                  context.read<FilterCubit>().panelOpened();
+                  context.cubit<FilterCubit>().panelOpened();
 
                 setState(() {});
               },
@@ -480,7 +480,7 @@ class _MainPageState extends State<MainPage>
                       _controller.snapToPosition(SnapPosition(
                         positionPixel: 60.0,
                       ));
-                      context.read<FilterCubit>().setView(ViewType.map);
+                      context.cubit<FilterCubit>().setView(ViewType.map);
                     },
                     //onPressed for CAMERA
                     () {
@@ -488,7 +488,7 @@ class _MainPageState extends State<MainPage>
                       _controller.snapToPosition(SnapPosition(
                         positionPixel: 60.0,
                       ));
-                      context.read<FilterCubit>().setView(ViewType.camera);
+                      context.cubit<FilterCubit>().setView(ViewType.camera);
                     },
                     //onPressed for LIST
                     () {
@@ -496,13 +496,13 @@ class _MainPageState extends State<MainPage>
                       _controller.snapToPosition(SnapPosition(
                         positionPixel: 60.0,
                       ));
-                      context.read<FilterCubit>().setView(ViewType.list);
+                      context.cubit<FilterCubit>().setView(ViewType.list);
                     }
                   ],
                   onPressedSelected: [
                     // onPressedSelected for MAP
                     () {
-                      context.read<FilterCubit>().mapButtonPressed();
+                      context.cubit<FilterCubit>().mapButtonPressed();
                     },
                     // onPressedSelected for CAMERA
                     () async {
@@ -554,7 +554,7 @@ class _MainPageState extends State<MainPage>
                       _animationController.forward();
 
                       context
-                          .read<FilterCubit>()
+                          .cubit<FilterCubit>()
                           .cameraButtonPressed(file, fileName);
                     },
                     () {}
@@ -562,7 +562,7 @@ class _MainPageState extends State<MainPage>
                   onLongPress: [
                     //onLongPress for MAP
                     () {
-                      context.read<FilterCubit>().mapButtonLongPress();
+                      context.cubit<FilterCubit>().mapButtonLongPress();
                     },
                     //onLongPress for CAMERA
                     () {},

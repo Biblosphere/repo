@@ -6,7 +6,7 @@ import 'package:biblosphere/util/Colors.dart';
 import 'package:biblosphere/util/Consts.dart';
 import 'package:biblosphere/util/Enums.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cubit/flutter_cubit.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class SearchPanel extends StatefulWidget {
@@ -45,7 +45,7 @@ class _SearchPanelState extends State<SearchPanel> {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           IconButton(
             onPressed: () {
-              context.read<FilterCubit>().groupSelectedForSearch(group);
+              context.cubit<FilterCubit>().groupSelectedForSearch(group);
             },
             icon: groupIcon(group),
           ),
@@ -78,7 +78,7 @@ class _SearchPanelState extends State<SearchPanel> {
   @override
   void didChangeDependencies() {
     // TODO: Make a code to do it only once at first call afer initState
-    context.read<FilterCubit>().setSearchController(_controller);
+    context.cubit<FilterCubit>().setSearchController(_controller);
 
     print('!!!DEBUG Listener added 2!');
 
@@ -102,7 +102,7 @@ class _SearchPanelState extends State<SearchPanel> {
   @override
   Widget build(BuildContext context) {
     print('!!!DEBUG build search panel!');
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
+    return CubitBuilder<FilterCubit, FilterState>(builder: (context, state) {
       print('!!!DEBUG search panel bloc build!');
       Panel position = state.panel;
       double width = MediaQuery.of(context).size.width;
@@ -177,7 +177,7 @@ class _SearchPanelState extends State<SearchPanel> {
                             controller: _controller,
                             onEditingComplete: () {
                               FocusScope.of(context).unfocus();
-                              context.read<FilterCubit>().searchEditComplete();
+                              context.cubit<FilterCubit>().searchEditComplete();
                             },
                           ),
                         ),
@@ -233,7 +233,7 @@ BoxDecoration placeDecoration() {
 
 Widget chipBuilder(BuildContext context, Filter filter) {
   IconData icon;
-  Panel position = context.watch<FilterCubit>().state.panel;
+  Panel position = context.cubit<FilterCubit>().state.panel;
   Widget chip;
 
   if (filter.type == FilterType.place) {
@@ -272,7 +272,7 @@ Widget chipBuilder(BuildContext context, Filter filter) {
       // TODO: Put book icon here
       // avatar: CircleAvatar(),
       onPressed: () {
-        context.read<FilterCubit>().toggleFilter(filter.type, filter);
+        context.cubit<FilterCubit>().toggleFilter(filter.type, filter);
       },
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
@@ -293,7 +293,7 @@ Widget chipBuilder(BuildContext context, Filter filter) {
               : chipUnselectedTextStyle);
     else if (filter.type == FilterType.place && position == Panel.full) {
       // Add distance to location in FULL view
-      LatLng location = context.watch<FilterCubit>().state.center;
+      LatLng location = context.cubit<FilterCubit>().state.center;
       label = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(filter.value,
             style: filter.selected
@@ -338,12 +338,12 @@ Widget chipBuilder(BuildContext context, Filter filter) {
         // TODO: Put book icon here
         // avatar: CircleAvatar(),
         onDeleted: () {
-          context.read<FilterCubit>().deleteFilter(filter);
+          context.cubit<FilterCubit>().deleteFilter(filter);
         },
         onPressed: () {
           if (!filter.selected)
             context
-                .read<FilterCubit>()
+                .cubit<FilterCubit>()
                 .addFilter(filter.copyWith(selected: true));
         },
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -361,12 +361,12 @@ Widget chipBuilder(BuildContext context, Filter filter) {
         // TODO: Put book icon here
         // avatar: CircleAvatar(),
         onDeleted: () {
-          context.read<FilterCubit>().deleteFilter(filter);
+          context.cubit<FilterCubit>().deleteFilter(filter);
         },
         onPressed: () {
           if (!filter.selected)
             context
-                .read<FilterCubit>()
+                .cubit<FilterCubit>()
                 .addFilter(filter.copyWith(selected: true));
         },
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

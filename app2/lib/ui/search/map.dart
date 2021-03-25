@@ -7,7 +7,7 @@ import 'package:biblosphere/model/FilterState.dart';
 import 'package:biblosphere/model/MarkerData.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cubit/flutter_cubit.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 Future<BitmapDescriptor> getGroupIcon(
@@ -129,7 +129,7 @@ Future<Set<Marker>> markersFor(
             // TODO: retrieve actual list of languages
             InfoWindow(title: '${d.size} books', snippet: 'RUS, ENG'),
         onTap: () {
-          context.read<FilterCubit>().markerPressed(d);
+          context.cubit<FilterCubit>().markerPressed(d);
         }));
   }
 
@@ -150,7 +150,7 @@ class _MapWidgetState extends State<MapWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, filters) {
+    return CubitBuilder<FilterCubit, FilterState>(builder: (context, filters) {
       return FutureBuilder(
           initialData: Set<Marker>(),
           future: markersFor(context, filters.markers),
@@ -171,7 +171,7 @@ class _MapWidgetState extends State<MapWidget> {
                   zoom: 5.0,
                 ),
                 onCameraIdle: () async {
-                  context.read<FilterCubit>().mapMoved(
+                  context.cubit<FilterCubit>().mapMoved(
                       _position, await _controller.getVisibleRegion());
                 },
                 onCameraMove: (position) {
@@ -180,7 +180,7 @@ class _MapWidgetState extends State<MapWidget> {
                 onMapCreated: (GoogleMapController controller) {
                   //TODO: Keep controller to retrieve visible region
                   _controller = controller;
-                  context.read<FilterCubit>().setMapController(controller);
+                  context.cubit<FilterCubit>().setMapController(controller);
                 },
                 markers: markers);
           });

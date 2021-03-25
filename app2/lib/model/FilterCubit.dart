@@ -22,6 +22,7 @@ import 'package:contacts_service/contacts_service.dart';
 
 // Pick a git phone code
 import 'package:country_code_picker/country_code_picker.dart';
+import 'package:cubit/cubit.dart';
 import 'package:dart_geohash/dart_geohash.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
@@ -29,7 +30,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 // BLoC patterns
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 
 // Google map

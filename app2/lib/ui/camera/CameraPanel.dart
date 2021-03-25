@@ -7,7 +7,7 @@ import 'package:biblosphere/util/Colors.dart';
 import 'package:biblosphere/ui/camera/camera.dart';
 import 'package:biblosphere/ui/search/SearchPanel.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cubit/flutter_cubit.dart';
 
 class CameraPanel extends StatefulWidget {
   CameraPanel({Key key}) : super(key: key);
@@ -44,7 +44,7 @@ class _CameraPanelState extends State<CameraPanel> {
   @override
   void didChangeDependencies() {
     // TODO: Make a code to do it only once at first call afer initState
-    context.read<FilterCubit>().setSearchController(_controller);
+    context.cubit<FilterCubit>().setSearchController(_controller);
 
     print('!!!DEBUG Listener added 1!');
 
@@ -53,7 +53,7 @@ class _CameraPanelState extends State<CameraPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FilterCubit, FilterState>(builder: (context, state) {
+    return CubitBuilder<FilterCubit, FilterState>(builder: (context, state) {
       double width = MediaQuery.of(context).size.width;
       Panel position = state.panel;
 
@@ -91,7 +91,7 @@ class _CameraPanelState extends State<CameraPanel> {
                   children: <Widget>[
                     GestureDetector(
                         onTap: () {
-                          context.read<FilterCubit>().selectPlaceForPhoto();
+                          context.cubit<FilterCubit>().selectPlaceForPhoto();
                         },
                         child: Container(
                             decoration: placeDecoration(),
@@ -157,7 +157,7 @@ class _CameraPanelState extends State<CameraPanel> {
                             controller: _controller,
                             onEditingComplete: () {
                               FocusScope.of(context).unfocus();
-                              context.read<FilterCubit>().searchEditComplete();
+                              context.cubit<FilterCubit>().searchEditComplete();
                             },
                           ),
                         ),
