@@ -43,7 +43,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 // Panel widget for filters and camera
 import 'package:snapping_sheet/snapping_sheet.dart';
 
-class FilterCubit extends Cubit<FilterState> {
+class FilterCubitOld extends Cubit<FilterState> {
   BooksRepository _booksRepository;
 
   GoogleMapController _mapController;
@@ -53,7 +53,7 @@ class FilterCubit extends Cubit<FilterState> {
   // ScrollController _scrollController;
   GooglePlace googlePlace = GooglePlace(GooglePlaceKey);
 
-  FilterCubit() : super(FilterState()) {
+  FilterCubitOld() : super(FilterState()) {
     _booksRepository = BooksRepository();
 
     // Initialize FireBase
@@ -69,14 +69,6 @@ class FilterCubit extends Cubit<FilterState> {
   Future<LatLng> currentLatLng() async {
     Position pos = await Geolocator.getCurrentPosition();
     return LatLng(pos.latitude, pos.longitude);
-  }
-
-  // - Filter panel opened => FILTER
-  void panelOpened() async {
-    // TODO: Load near by book places and keep it in the state object
-    emit(state.copyWith(
-      panel: Panel.open,
-    ));
   }
 
   List<Filter> toggle(List<Filter> filters, FilterType type, bool selected) {
@@ -102,26 +94,26 @@ class FilterCubit extends Cubit<FilterState> {
 
     // If author match use FilterType.author, otherwise FilterType.title
     return books
-        //  .where((b) =>
-        //      b.title.toLowerCase().contains(lowercase) ||
-        //      b.authors.join().toLowerCase().contains(lowercase))
+    //  .where((b) =>
+    //      b.title.toLowerCase().contains(lowercase) ||
+    //      b.authors.join().toLowerCase().contains(lowercase))
         .map((b) {
-          String matchAuthor = b.authors.firstWhere(
+      String matchAuthor = b.authors.firstWhere(
               (a) => lowercase
-                  .split(' ')
-                  .every((word) => a.toLowerCase().contains(word)),
-              orElse: () => null);
+              .split(' ')
+              .every((word) => a.toLowerCase().contains(word)),
+          orElse: () => null);
 
-          if (matchAuthor != null)
-            return Filter(
-                type: FilterType.author, selected: false, value: matchAuthor);
-          else
-            return Filter(
-                type: FilterType.title,
-                selected: false,
-                value: b.title,
-                book: b);
-        })
+      if (matchAuthor != null)
+        return Filter(
+            type: FilterType.author, selected: false, value: matchAuthor);
+      else
+        return Filter(
+            type: FilterType.title,
+            selected: false,
+            value: b.title,
+            book: b);
+    })
         .toSet()
         .toList();
   }
@@ -140,7 +132,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     return keys
         .map((key) =>
-            Filter(type: FilterType.genre, selected: false, value: key))
+        Filter(type: FilterType.genre, selected: false, value: key))
         .toList(growable: false);
   }
 
@@ -161,7 +153,7 @@ class FilterCubit extends Cubit<FilterState> {
     List<Place> places = placesSet.toList();
 
     places.sort((a, b) => (distanceBetween(a.location, state.center) -
-            distanceBetween(b.location, state.center))
+        distanceBetween(b.location, state.center))
         .round());
 
     if (query.length == 0) {
@@ -175,7 +167,7 @@ class FilterCubit extends Cubit<FilterState> {
     // No need to sort as places already sorted by distance
     return places
         .map((p) => Filter(
-            type: FilterType.place, value: p.name, selected: false, place: p))
+        type: FilterType.place, value: p.name, selected: false, place: p))
         .toList(growable: false);
   }
 
@@ -187,8 +179,8 @@ class FilterCubit extends Cubit<FilterState> {
     } else {
       keys = languages.keys
           .where((key) =>
-              key.toLowerCase().contains(query.toLowerCase()) ||
-              languages[key].toLowerCase().contains(query.toLowerCase()))
+      key.toLowerCase().contains(query.toLowerCase()) ||
+          languages[key].toLowerCase().contains(query.toLowerCase()))
           .toList();
     }
 
@@ -203,7 +195,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     return keys
         .map((key) =>
-            Filter(type: FilterType.language, selected: false, value: key))
+        Filter(type: FilterType.language, selected: false, value: key))
         .toList(growable: false);
   }
 
@@ -259,7 +251,7 @@ class FilterCubit extends Cubit<FilterState> {
               .doc(id)
               .update({
             'users':
-                FieldValue.arrayUnion([FirebaseAuth.instance.currentUser.uid])
+            FieldValue.arrayUnion([FirebaseAuth.instance.currentUser.uid])
           });
         });
       }
@@ -314,7 +306,7 @@ class FilterCubit extends Cubit<FilterState> {
         // TODO: Report an exception
       } else {
         DocumentSnapshot doc =
-            await FirebaseFirestore.instance.collection('photos').doc(id).get();
+        await FirebaseFirestore.instance.collection('photos').doc(id).get();
 
         if (!doc.exists) {
           // TODO: Report an exception
@@ -342,17 +334,17 @@ class FilterCubit extends Cubit<FilterState> {
     // TODO: Do I need to cancel/unsubscribe from onLink listener?
     FirebaseDynamicLinks.instance.onLink(
         onSuccess: (PendingDynamicLinkData dynamicLink) {
-      return Future.delayed(Duration.zero, () async {
-        final Uri deepLink = dynamicLink?.link;
+          return Future.delayed(Duration.zero, () async {
+            final Uri deepLink = dynamicLink?.link;
 
-        if (deepLink != null) {
-          await processDeepLink(deepLink);
-        } else {
-          print('EXCEPTION: Empty deep link');
-          // TODO: Report into crashalytic
-        }
-      });
-    }, onError: (OnLinkErrorException e) {
+            if (deepLink != null) {
+              await processDeepLink(deepLink);
+            } else {
+              print('EXCEPTION: Empty deep link');
+              // TODO: Report into crashalytic
+            }
+          });
+        }, onError: (OnLinkErrorException e) {
       return Future.delayed(Duration.zero, () {
         // TODO: Add to Crashalitics
         print('EXCEPTION: onLinkError ${e.message}');
@@ -363,7 +355,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     // Check if app is started by dynamic link
     final PendingDynamicLinkData data =
-        await FirebaseDynamicLinks.instance.getInitialLink();
+    await FirebaseDynamicLinks.instance.getInitialLink();
 
     final Uri deepLink = data?.link;
     if (deepLink != null) {
@@ -396,7 +388,7 @@ class FilterCubit extends Cubit<FilterState> {
       String geohash = GeoHasher().encode(center.longitude, center.latitude);
 
       Map<String, String> neighbors =
-          GeoHasher().neighbors(geohash.substring(0, 4));
+      GeoHasher().neighbors(geohash.substring(0, 4));
 
       Set<String> geohashes = [geohash, ...neighbors.values].toSet();
 
@@ -405,7 +397,7 @@ class FilterCubit extends Cubit<FilterState> {
       });
 
       List<MarkerData> markers =
-          await state.markersFor(points: photos, hashes: geohashes);
+      await state.markersFor(points: photos, hashes: geohashes);
 
       emit(state.copyWith(
         geohashes: geohashes,
@@ -439,7 +431,7 @@ class FilterCubit extends Cubit<FilterState> {
 
         // Check if user exist in Firestore. Create if missing. Add to state.
         DocumentReference ref =
-            FirebaseFirestore.instance.collection('users').doc(user.uid);
+        FirebaseFirestore.instance.collection('users').doc(user.uid);
 
         DocumentSnapshot doc = await ref.get();
 
@@ -819,7 +811,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     // Sort markers by distance
     markers.sort((a, b) => (distanceBetween(a.position, state.center) -
-            distanceBetween(b.position, state.center))
+        distanceBetween(b.position, state.center))
         .round());
 
     // Emit state with updated markers
@@ -842,6 +834,31 @@ class FilterCubit extends Cubit<FilterState> {
 
     List<Filter> suggestions = await findSugestions('', group);
     emit(state.copyWith(filterSuggestions: suggestions));
+  }
+
+  // FILTER PANEL:
+  // - Filter panel opened => FILTER
+  void panelOpened() async {
+    // TODO: Load near by book places and keep it in the state object
+    emit(state.copyWith(
+      panel: Panel.open,
+    ));
+  }
+
+  // FILTER PANEL:
+  // - Filter panel minimized => FILTER
+  void panelMinimized() {
+    emit(state.copyWith(
+      panel: Panel.minimized,
+    ));
+  }
+
+  // FILTER PANEL:
+  // - Filter panel closed => FILTER
+  void panelHiden() {
+    emit(state.copyWith(
+      panel: Panel.hiden,
+    ));
   }
 
   // TRIPLE BUTTON
@@ -872,10 +889,73 @@ class FilterCubit extends Cubit<FilterState> {
     // TODO: Which function is appropriate for list view button?
   }
 
+  // TRIPLE BUTTON
+  // - Set view => FILTER
+  void setView(ViewType view) async {
+    if (view == ViewType.list) {
+      // Switch to list view immediately and then build the list of books
+      print('!!!DEBUG Are we here at all???');
+
+      // Switch view to unblock UI
+      emit(state.copyWith(
+        view: view,
+      ));
+    } else if (view == ViewType.camera) {
+      emit(state.copyWith(
+        view: view,
+      ));
+
+      LatLng pos = await currentLatLng();
+      String hash = GeoHasher().encode(pos.longitude, pos.latitude);
+
+      Place place = state.place;
+
+      if (place == null || place.name == null)
+        place = Place(
+          // TODO: DisplayName is null. Investigate.
+            name: FirebaseAuth.instance.currentUser.displayName,
+            phones: FirebaseAuth.instance.currentUser.phoneNumber != null
+                ? [FirebaseAuth.instance.currentUser.phoneNumber]
+                : [],
+            emails: FirebaseAuth.instance.currentUser.email != null
+                ? [FirebaseAuth.instance.currentUser.email]
+                : [],
+            privacy: Privacy.all,
+            type: PlaceType.me,
+            contact: FirebaseAuth.instance.currentUser.phoneNumber ??
+                FirebaseAuth.instance.currentUser.email,
+            location: pos,
+            geohash: hash);
+      else
+        place = place.copyWith(location: pos, geohash: hash);
+
+      print('!!!DEBUG Place geohash ${place.geohash}');
+
+      emit(state.copyWith(
+        location: pos,
+        place: place,
+      ));
+
+      // Move map to the current user location
+      if (_mapController != null)
+        _mapController.moveCamera(CameraUpdate.newLatLng(pos));
+    } else {
+      emit(state.copyWith(
+        view: view,
+      ));
+    }
+  }
+
   // MAP VIEW
   // - Set controller
   void setMapController(GoogleMapController controller) {
     _mapController = controller;
+  }
+
+  // MAP VIEW
+  // - Set controller
+  void setSnappingController(SnappingSheetController controller) {
+    _snappingControler = controller;
   }
 
   // Function to identify that typing is other. To minimize number
@@ -892,12 +972,12 @@ class FilterCubit extends Cubit<FilterState> {
 
         if (state.view == ViewType.camera) {
           List<Place> suggestions =
-              await findCandidateSugestions(_searchController.text);
+          await findCandidateSugestions(_searchController.text);
 
           emit(state.copyWith(placeSuggestions: suggestions));
         } else {
           List<Filter> suggestions =
-              await findSugestions(_searchController.text, state.group);
+          await findSugestions(_searchController.text, state.group);
 
           emit(state.copyWith(filterSuggestions: suggestions));
         }
@@ -944,7 +1024,7 @@ class FilterCubit extends Cubit<FilterState> {
       // Do not remove the old hash if one of new hashes are inside
       oddHashes = state.geohashes
           .where((h1) =>
-              h1.length > newLevel || hashes.every((h2) => !h2.startsWith(h1)))
+      h1.length > newLevel || hashes.every((h2) => !h2.startsWith(h1)))
           .toSet();
     }
 
@@ -989,7 +1069,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     // Sort markers by distance
     markers.sort((a, b) => (distanceBetween(a.position, state.center) -
-            distanceBetween(b.position, state.center))
+        distanceBetween(b.position, state.center))
         .round());
 
     // Emit state with updated markers
@@ -999,9 +1079,9 @@ class FilterCubit extends Cubit<FilterState> {
       bounds: () => bounds != null ? bounds : state.bounds,
       geohashes: hashes,
       filterSuggestions:
-          (state.panel == Panel.full && state.group == FilterGroup.place)
-              ? await findSugestions('', state.group)
-              : null,
+      (state.panel == Panel.full && state.group == FilterGroup.place)
+          ? await findSugestions('', state.group)
+          : null,
       markers: markers,
       // Emit total number of shelves and empty shelf list
       maxShelves: markers.fold(0, (t, e) => t + e.points.length),
@@ -1249,7 +1329,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     if (place != state.place) {
       List<Place> suggestions =
-          state.placeSuggestions.where((p) => p.name != place.name).toList();
+      state.placeSuggestions.where((p) => p.name != place.name).toList();
 
       // TODO: Old places appeared even if not match the filter query. Filter it!
       suggestions.add(state.place);
@@ -1262,7 +1342,7 @@ class FilterCubit extends Cubit<FilterState> {
           return 100000000;
         else if (a.type == PlaceType.place && b.type == PlaceType.place)
           return (distanceBetween(a.location, state.center) -
-                  distanceBetween(b.location, state.center))
+              distanceBetween(b.location, state.center))
               .round();
         else if (a.type == PlaceType.contact && b.type == PlaceType.contact)
           return a.name.compareTo(b.name);
@@ -1324,17 +1404,17 @@ class FilterCubit extends Cubit<FilterState> {
       // TODO: Place contacts is not available at this search. Details required
       candidates = result.results
           .map((r) => Place(
-              placeId: r.placeId,
-              name: r.name,
-              location:
-                  LatLng(r.geometry.location.lat, r.geometry.location.lng),
-              privacy: Privacy.all,
-              type: PlaceType.place))
+          placeId: r.placeId,
+          name: r.name,
+          location:
+          LatLng(r.geometry.location.lat, r.geometry.location.lng),
+          privacy: Privacy.all,
+          type: PlaceType.place))
           .toList();
 
       // Sort places by distance
       candidates.sort((a, b) => (distanceBetween(a.location, state.center) -
-              distanceBetween(b.location, state.center))
+          distanceBetween(b.location, state.center))
           .round());
 
       // If address book access is granted add all contacts
@@ -1348,7 +1428,7 @@ class FilterCubit extends Cubit<FilterState> {
           });
 
           List<String> phones =
-              c.phones.map((p) => internationalPhone(p.value)).toList();
+          c.phones.map((p) => internationalPhone(p.value)).toList();
           List<String> emails = c.emails.map((e) => e.value).toList();
           String contact;
           if (phones.length > 0)
@@ -1429,7 +1509,7 @@ class FilterCubit extends Cubit<FilterState> {
         // Check if contact is there. If not query GooglePlaces
         if (place.contact == null) {
           DetailsResponse details =
-              await googlePlace.details.get(place.placeId);
+          await googlePlace.details.get(place.placeId);
 
           // TODO: Find constant for this value 'OK'
           if (details.status == 'OK') {
@@ -1441,12 +1521,12 @@ class FilterCubit extends Cubit<FilterState> {
             else
               place = place.copyWith(
                   contact:
-                      'https://www.google.com/maps/search/?api=1&query=${place.name}&query_place_id=${place.placeId}');
+                  'https://www.google.com/maps/search/?api=1&query=${place.name}&query_place_id=${place.placeId}');
           } else {
             // TODO: Report an exception. Most probably it means some garbage!
             place = place.copyWith(
                 contact:
-                    'https://www.google.com/maps/search/?api=1&query=${place.name}&query_place_id=${place.placeId}');
+                'https://www.google.com/maps/search/?api=1&query=${place.name}&query_place_id=${place.placeId}');
           }
         }
 
@@ -1487,7 +1567,7 @@ class FilterCubit extends Cubit<FilterState> {
 
       // Sort places based on distance to center of screen
       places.sort((a, b) => (distanceBetween(a.location, state.location) -
-              distanceBetween(b.location, state.location))
+          distanceBetween(b.location, state.location))
           .round());
 
       if (places.length > 0 &&
@@ -1497,7 +1577,7 @@ class FilterCubit extends Cubit<FilterState> {
       } else {
         // Create a place in DB if not found or too far
         DocumentReference ref =
-            FirebaseFirestore.instance.collection('bookplaces').doc();
+        FirebaseFirestore.instance.collection('bookplaces').doc();
         ref.set(place.toJson());
         place = place.copyWith(id: ref.id);
       }
@@ -1506,9 +1586,9 @@ class FilterCubit extends Cubit<FilterState> {
       DocumentReference ref = FirebaseFirestore.instance
           .collection('bookplaces')
           .doc('U' +
-              FirebaseAuth.instance.currentUser.uid +
-              ':' +
-              place.geohash.substring(0, 7));
+          FirebaseAuth.instance.currentUser.uid +
+          ':' +
+          place.geohash.substring(0, 7));
       DocumentSnapshot doc = await ref.get();
 
       if (doc.exists) {
@@ -1612,7 +1692,7 @@ class FilterCubit extends Cubit<FilterState> {
 
     // Create a photo record for the given place and uploaded image
     DocumentReference doc =
-        FirebaseFirestore.instance.collection('photos').doc();
+    FirebaseFirestore.instance.collection('photos').doc();
 
     doc.set({
       'id': doc.id,

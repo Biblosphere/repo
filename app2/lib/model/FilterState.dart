@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:biblosphere/filter_bloc.dart';
 import 'package:biblosphere/model/Book.dart';
 import 'package:biblosphere/model/Filter.dart';
-import 'package:biblosphere/model/FilterCubit.dart';
+import 'package:biblosphere/model/FilterCubitOld.dart';
 import 'package:biblosphere/model/MarkerData.dart';
 import 'package:biblosphere/model/Panel.dart';
 import 'package:biblosphere/model/Photo.dart';

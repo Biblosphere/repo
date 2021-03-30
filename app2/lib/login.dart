@@ -1,4 +1,3 @@
-import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/FilterState.dart';
 import 'package:biblosphere/util/Colors.dart';
 import 'package:biblosphere/util/Enums.dart';
@@ -15,6 +14,8 @@ import 'package:flutter_cubit/flutter_cubit.dart';
 // Plugin for subscriptions
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'model/FilterCubit.dart';
 
 class LoginPage extends StatefulWidget {
   LoginPage({Key key}) : super(key: key);
