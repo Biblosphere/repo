@@ -200,6 +200,7 @@ enum Panel { hiden, minimized, open, full }
 enum ViewType { map, camera, list }
 
 enum Privacy { private, contacts, all }
+
 const List<String> PrivacyLabels = ['private', 'contacts', 'all'];
 
 typedef Book BookCallback();
@@ -226,21 +227,27 @@ class FilterState extends Equatable {
   // FILTERS
   // Current filters
   final List<Filter> filters;
+
   // List of the ISBNs to filter the books
   final List<String> isbns;
+
   // Ids of places from my address book
   final List<String> favorite;
 
   // VIEW AND MAP
   // Current view (map, list, details, camera) and panel open/close position
   final ViewType view;
+
   // Position of search/camera panel
   final Panel panel;
+
   // Current filter froup for detailed filter (panel.full)
   final FilterGroup group;
+
   // Coordinates and bounds of the map camera
   final LatLng center;
   final LatLngBounds bounds;
+
   // Current geohashes on the map
   final Set<String> geohashes;
 
@@ -251,22 +258,29 @@ class FilterState extends Equatable {
   // final List<Photo> photos;
   // Current markers for map view
   final List<MarkerData> markers;
+
   // Total number of shelves for current markers
   final int maxShelves;
+
   // List of shelves (photo + books)
   final List<Shelf> shelfList;
+
   // Current shelf to display
   final int shelfIndex;
+
   // Suggestions for the filter edit for filters (MAP/VIEW)
   final List<Filter> filterSuggestions;
+
   // Suggestions for the filter edit for places (CAMERA)
   final List<Place> placeSuggestions;
 
   // CAMERA STATE
   // Currently selected place (name, contact, privacy)
   final Place place;
+
   // Privacy for the photo
   final Privacy privacy;
+
   // List of nearby places or address book contacts to add books to
   final List<Place> candidates;
 
@@ -836,6 +850,7 @@ class FilterCubit extends Cubit<FilterState> {
   GoogleMapController _mapController;
   SnappingSheetController _snappingControler;
   TextEditingController _searchController;
+
   // ScrollController _scrollController;
   GooglePlace googlePlace = GooglePlace(GooglePlaceKey);
 
@@ -941,7 +956,7 @@ class FilterCubit extends Cubit<FilterState> {
         .round());
 
     if (query.length == 0) {
-      places = places.take(15).toList();
+      places = places.take(100).toList();
     } else if (query.length > 0) {
       places = places.where((p) {
         return p.name.toLowerCase().contains(query.toLowerCase());
@@ -1750,21 +1765,19 @@ class FilterCubit extends Cubit<FilterState> {
   _onSearchChanged() {
     if (_debounce?.isActive ?? false) _debounce.cancel();
     _debounce = Timer(Duration(milliseconds: _debouncetime), () async {
-      if (_searchController.text != "") {
-        // Perform your search only if typing is over
-        print('!!!DEBUG text from search field: ${_searchController.text}');
+      // Perform your search only if typing is over
+      print('!!!DEBUG text from search field: ${_searchController.text}');
 
-        if (state.view == ViewType.camera) {
-          List<Place> suggestions =
-              await findCandidateSugestions(_searchController.text);
+      if (state.view == ViewType.camera) {
+        List<Place> suggestions =
+            await findPlaceSuggestions(_searchController.text);
 
-          emit(state.copyWith(placeSuggestions: suggestions));
-        } else {
-          List<Filter> suggestions =
-              await findSugestions(_searchController.text, state.group);
+        emit(state.copyWith(placeSuggestions: suggestions));
+      } else {
+        List<Filter> suggestions =
+            await findSugestions(_searchController.text, state.group);
 
-          emit(state.copyWith(filterSuggestions: suggestions));
-        }
+        emit(state.copyWith(filterSuggestions: suggestions));
       }
     });
   }
@@ -2164,76 +2177,64 @@ class FilterCubit extends Cubit<FilterState> {
 
   // CAMERA PANEL:
   // - Find candidates for camera photo location
-  Future<List<Place>> findCandidateSugestions(String query) async {
+  Future<List<Place>> findPlaceSuggestions(String query) async {
     // Get current location of the user
     LatLng location = await currentLatLng();
-    print(
-        '!!!DEBUG New location ${LatLng(location.latitude, location.longitude)}');
 
-    List<Place> candidates = state.candidates;
+    List<Place> candidates;
 
-    // Refresh candidates if current location is changed compare to
-    // the previous more than 50 meters
-    // Or if candidate places are empty at all
-    if (candidates == null ||
-        candidates.isEmpty ||
-        distanceBetween(location, state.location) > 50.0) {
-      // Get all places from Google places in a radius of 50 meters
-      NearBySearchResponse result = await googlePlace.search.getNearBySearch(
-          Location(lat: location.latitude, lng: location.longitude), 300);
+    // Get all places from Google places in a radius of 50 meters
+    NearBySearchResponse result = await googlePlace.search.getNearBySearch(
+        Location(lat: location.latitude, lng: location.longitude), 300,
+        keyword: query);
 
-      print(
-          '!!!DEBUG places query result: ${result.status}, number ${result.results.length}');
+    // TODO: Place contacts is not available at this search. Details required
+    candidates = result.results
+        .map((r) => Place(
+            placeId: r.placeId,
+            name: r.name,
+            location: LatLng(r.geometry.location.lat, r.geometry.location.lng),
+            privacy: Privacy.all,
+            type: PlaceType.place))
+        .toList();
 
-      // TODO: Place contacts is not available at this search. Details required
-      candidates = result.results
-          .map((r) => Place(
-              placeId: r.placeId,
-              name: r.name,
-              location:
-                  LatLng(r.geometry.location.lat, r.geometry.location.lng),
-              privacy: Privacy.all,
-              type: PlaceType.place))
-          .toList();
+    // Sort places by distance
+    candidates.sort((a, b) => (distanceBetween(a.location, state.center) -
+            distanceBetween(b.location, state.center))
+        .round());
 
-      // Sort places by distance
-      candidates.sort((a, b) => (distanceBetween(a.location, state.center) -
-              distanceBetween(b.location, state.center))
-          .round());
+    // If address book access is granted add all contacts
+    if (await Permission.contacts.isGranted) {
+      Iterable<Contact> addressBook = await ContactsService.getContacts();
+      print('!!!DEBUG ${addressBook.length} contacts found');
 
-      // If address book access is granted add all contacts
-      if (await Permission.contacts.isGranted) {
-        Iterable<Contact> addressBook = await ContactsService.getContacts();
-        print('!!!DEBUG ${addressBook.length} contacts found');
-
-        addressBook.forEach((c) {
-          c.phones.forEach((p) {
-            print('!!!DEBUG: ${c.displayName} ${p.label} ${p.value}');
-          });
-
-          List<String> phones =
-              c.phones.map((p) => internationalPhone(p.value)).toList();
-          List<String> emails = c.emails.map((e) => e.value).toList();
-          String contact;
-          if (phones.length > 0)
-            contact = phones.first;
-          else if (emails.length > 0) contact = emails.first;
-
-          if (contact != null)
-            candidates.add(Place(
-                name: c.displayName,
-                // TODO: Take only phones with "mobile" label
-                phones: phones,
-                emails: emails,
-                contact: contact,
-                privacy: Privacy.contacts,
-                type: PlaceType.contact));
+      addressBook.forEach((c) {
+        c.phones.forEach((p) {
+          print('!!!DEBUG: ${c.displayName} ${p.label} ${p.value}');
         });
-      }
 
-      // Update state with newly retrieved candidates
-      emit(state.copyWith(candidates: candidates, location: location));
+        List<String> phones =
+            c.phones.map((p) => internationalPhone(p.value)).toList();
+        List<String> emails = c.emails.map((e) => e.value).toList();
+        String contact;
+        if (phones.length > 0)
+          contact = phones.first;
+        else if (emails.length > 0) contact = emails.first;
+
+        if (contact != null)
+          candidates.add(Place(
+              name: c.displayName,
+              // TODO: Take only phones with "mobile" label
+              phones: phones,
+              emails: emails,
+              contact: contact,
+              privacy: Privacy.contacts,
+              type: PlaceType.contact));
+      });
     }
+
+    // Update state with newly retrieved candidates
+    emit(state.copyWith(candidates: candidates, location: location));
 
     List<Place> suggestions;
 
@@ -2242,16 +2243,11 @@ class FilterCubit extends Cubit<FilterState> {
       suggestions = candidates.take(10).toList();
 
     // If query is not empty filter by query
-    else if (query.length > 0)
-      suggestions = candidates
-          .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-
-    print('!!!DEBUG number of suggestions: ${suggestions.length}');
+    else if (query.length > 0) suggestions = candidates.toList();
 
     // No need to sort as places already sorted by distance
     // Exclude selected place
-    return suggestions.where((p) => p.name != state.place.name).toList();
+    return suggestions.toList();
   }
 
   // CAMERA PANEL:
@@ -2267,7 +2263,7 @@ class FilterCubit extends Cubit<FilterState> {
     );
     emit(state.copyWith(panel: Panel.full));
 
-    List<Place> suggestions = await findCandidateSugestions('');
+    List<Place> suggestions = await findPlaceSuggestions('');
     emit(state.copyWith(placeSuggestions: suggestions));
   }
 
@@ -2416,6 +2412,7 @@ class FilterCubit extends Cubit<FilterState> {
     // Return reference to get url and path
     return ref;
   }
+
 /* DO IT BY TRIGGER IN FIRESTORE PYTHON
   // Trigger image recognition
   Future recognizeImage(String photoId) async {
