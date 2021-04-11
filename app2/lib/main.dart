@@ -5,6 +5,7 @@ import 'package:biblosphere/model/FilterCubitOld.dart';
 import 'package:biblosphere/model/FilterState.dart';
 import 'package:biblosphere/model/ViewType.dart';
 import 'package:biblosphere/secret.dart';
+import 'package:biblosphere/ui/camera/MapCubit.dart';
 import 'package:biblosphere/ui/home/HomeCubit.dart';
 import 'package:biblosphere/ui/home/home_screen.dart';
 import 'package:biblosphere/ui/home/home_screen_old.dart';
@@ -63,6 +64,9 @@ class _MyAppState extends State<MyApp> {
           ),
           CubitProvider<HomeCubit>(
             create: (BuildContext context) => HomeCubit(),
+          ),
+          CubitProvider<MapCubit>(
+            create: (BuildContext context) => MapCubit(),
           ),
         ],
         child: MaterialApp(
@@ -222,8 +226,6 @@ class TripleButtonState extends State<TripleButton>
   Widget build(BuildContext context) {
     // Radius of rotation
     final double rR = rMin / cos(pi / 6.0);
-
-    print('!!!DEBUG triple button build!');
 
     return AnimatedBuilder(
         animation: _animationController,

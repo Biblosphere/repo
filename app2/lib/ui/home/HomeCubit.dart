@@ -3,6 +3,7 @@ import 'package:biblosphere/model/Panel.dart';
 import 'package:biblosphere/model/Place.dart';
 import 'package:biblosphere/model/Privacy.dart';
 import 'package:biblosphere/model/ViewType.dart';
+import 'package:biblosphere/repository/map_repository.dart';
 import 'package:biblosphere/util/Enums.dart';
 import 'package:cubit/cubit.dart';
 import 'package:dart_geohash/dart_geohash.dart';
@@ -12,7 +13,9 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:snapping_sheet/snapping_sheet.dart';
 
 class HomeCubit extends Cubit<FilterState> {
-  HomeCubit() : super(FilterState());
+  HomeCubit() : super(FilterState()) {
+    initPost();
+  }
 
   SnappingSheetController _snappingControler;
 
@@ -60,37 +63,6 @@ class HomeCubit extends Cubit<FilterState> {
       emit(state.copyWith(
         view: view,
       ));
-
-      LatLng pos = await currentLatLng();
-      String hash = GeoHasher().encode(pos.longitude, pos.latitude);
-
-      Place place = state.place;
-
-      if (place == null || place.name == null)
-        place = Place(
-            // TODO: DisplayName is null. Investigate.
-            name: FirebaseAuth.instance.currentUser.displayName,
-            phones: FirebaseAuth.instance.currentUser.phoneNumber != null
-                ? [FirebaseAuth.instance.currentUser.phoneNumber]
-                : [],
-            emails: FirebaseAuth.instance.currentUser.email != null
-                ? [FirebaseAuth.instance.currentUser.email]
-                : [],
-            privacy: Privacy.all,
-            type: PlaceType.me,
-            contact: FirebaseAuth.instance.currentUser.phoneNumber ??
-                FirebaseAuth.instance.currentUser.email,
-            location: pos,
-            geohash: hash);
-      else
-        place = place.copyWith(location: pos, geohash: hash);
-
-      print('!!!DEBUG Place geohash ${place.geohash}');
-
-      emit(state.copyWith(
-        location: pos,
-        place: place,
-      ));
     } else {
       emit(state.copyWith(
         view: view,
@@ -101,5 +73,41 @@ class HomeCubit extends Cubit<FilterState> {
   Future<LatLng> currentLatLng() async {
     Position pos = await Geolocator.getCurrentPosition();
     return LatLng(pos.latitude, pos.longitude);
+  }
+
+  Future<void> initPost() async {
+    LatLng pos = await currentLatLng();
+    String hash = GeoHasher().encode(pos.longitude, pos.latitude);
+
+    Place place = state.place;
+
+    if (place == null || place.name == null)
+      place = Place(
+          // TODO: DisplayName is null. Investigate.
+          name: FirebaseAuth.instance.currentUser.displayName,
+          phones: FirebaseAuth.instance.currentUser.phoneNumber != null
+              ? [FirebaseAuth.instance.currentUser.phoneNumber]
+              : [],
+          emails: FirebaseAuth.instance.currentUser.email != null
+              ? [FirebaseAuth.instance.currentUser.email]
+              : [],
+          privacy: Privacy.all,
+          type: PlaceType.me,
+          contact: FirebaseAuth.instance.currentUser.phoneNumber ??
+              FirebaseAuth.instance.currentUser.email,
+          location: pos,
+          geohash: hash);
+    else
+      place = place.copyWith(location: pos, geohash: hash);
+
+    print('!!!DEBUG Place geohash ${place.geohash}');
+
+    emit(state.copyWith(
+      location: pos,
+      place: place,
+    ));
+
+    MapRepository mapRepository = MapRepository();
+    mapRepository.place = place;
   }
 }

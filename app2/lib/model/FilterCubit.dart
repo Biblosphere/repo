@@ -10,7 +10,6 @@ import 'package:biblosphere/model/Panel.dart';
 import 'package:biblosphere/model/Photo.dart' as Photo;
 import 'package:biblosphere/model/Place.dart';
 import 'package:biblosphere/model/Point.dart';
-import 'package:biblosphere/model/Privacy.dart';
 import 'package:biblosphere/model/Shelf.dart';
 import 'package:biblosphere/model/ViewType.dart';
 import 'package:biblosphere/repository/books_repository.dart';
@@ -884,25 +883,25 @@ class FilterCubit extends Cubit<FilterState> {
   int _debouncetime = 500;
 
   _onSearchChanged() {
-    if (_debounce?.isActive ?? false) _debounce.cancel();
-    _debounce = Timer(Duration(milliseconds: _debouncetime), () async {
-      if (_searchController.text != "") {
-        // Perform your search only if typing is over
-        print('!!!DEBUG text from search field: ${_searchController.text}');
-
-        if (state.view == ViewType.camera) {
-          List<Place> suggestions =
-              await findCandidateSugestions(_searchController.text);
-
-          emit(state.copyWith(placeSuggestions: suggestions));
-        } else {
-          List<Filter> suggestions =
-              await findSugestions(_searchController.text, state.group);
-
-          emit(state.copyWith(filterSuggestions: suggestions));
-        }
-      }
-    });
+    // if (_debounce?.isActive ?? false) _debounce.cancel();
+    // _debounce = Timer(Duration(milliseconds: _debouncetime), () async {
+    //   if (_searchController.text != "") {
+    //     // Perform your search only if typing is over
+    //     print('!!!DEBUG text from search field: ${_searchController.text}');
+    //
+    //     if (state.view == ViewType.camera) {
+    //       List<Place> suggestions =
+    //           await findCandidateSugestions(_searchController.text);
+    //
+    //       emit(state.copyWith(placeSuggestions: suggestions));
+    //     } else {
+    //       List<Filter> suggestions =
+    //           await findSugestions(_searchController.text, state.group);
+    //
+    //       emit(state.copyWith(filterSuggestions: suggestions));
+    //     }
+    //   }
+    // });
   }
 
   // MAP VIEW
@@ -1242,170 +1241,6 @@ class FilterCubit extends Cubit<FilterState> {
     }, SetOptions(merge: true));
   }
 
-  // CAMERA PANEL
-  // - Place choosen for the current photo => FILTER
-  void setPlace(Place place) {
-    print('!!!DEBUG current place changed: ${place.name}');
-
-    if (place != state.place) {
-      List<Place> suggestions =
-          state.placeSuggestions.where((p) => p.name != place.name).toList();
-
-      // TODO: Old places appeared even if not match the filter query. Filter it!
-      suggestions.add(state.place);
-
-      // Sort places by distance
-      suggestions.sort((a, b) {
-        if (a.type == PlaceType.me)
-          return 0;
-        else if (b.type == PlaceType.me)
-          return 100000000;
-        else if (a.type == PlaceType.place && b.type == PlaceType.place)
-          return (distanceBetween(a.location, state.center) -
-                  distanceBetween(b.location, state.center))
-              .round();
-        else if (a.type == PlaceType.contact && b.type == PlaceType.contact)
-          return a.name.compareTo(b.name);
-        else if (a.type == PlaceType.contact && b.type == PlaceType.place)
-          return 50000000;
-        else if (a.type == PlaceType.place && b.type == PlaceType.contact)
-          return 0;
-        else
-          return a.name.compareTo(b.name);
-      });
-
-      emit(state.copyWith(place: place, placeSuggestions: suggestions));
-    }
-  }
-
-  // CAMERA PANEL
-  // - Privacy choosen for the current photo => FILTER
-  void setPrivacy(Privacy privacy) {
-    emit(state.copyWith(privacy: privacy));
-  }
-
-// Function which try to convert local mobile numbers into international ones
-  String internationalPhone(String phone) {
-    if (phone.startsWith('+'))
-      return phone;
-    else if (phone.startsWith('00'))
-      return '+' + phone.substring(2);
-    else if (phone.startsWith('8') && phone.length == 11)
-      // TODO: Add validation that country code of user is Russia
-      return '+7' + phone.substring(1);
-    else
-      // TODO: Add condition country code of user??
-      return phone;
-  }
-
-  // CAMERA PANEL:
-  // - Find candidates for camera photo location
-  Future<List<Place>> findCandidateSugestions(String query) async {
-    // Get current location of the user
-    LatLng location = await currentLatLng();
-    print(
-        '!!!DEBUG New location ${LatLng(location.latitude, location.longitude)}');
-
-    List<Place> candidates = state.candidates;
-
-    // Refresh candidates if current location is changed compare to
-    // the previous more than 50 meters
-    // Or if candidate places are empty at all
-    if (candidates == null ||
-        candidates.isEmpty ||
-        distanceBetween(location, state.location) > 50.0) {
-      // Get all places from Google places in a radius of 50 meters
-      NearBySearchResponse result = await googlePlace.search.getNearBySearch(
-          Location(lat: location.latitude, lng: location.longitude), 300);
-
-      print(
-          '!!!DEBUG places query result: ${result.status}, number ${result.results.length}');
-
-      // TODO: Place contacts is not available at this search. Details required
-      candidates = result.results
-          .map((r) => Place(
-              placeId: r.placeId,
-              name: r.name,
-              location:
-                  LatLng(r.geometry.location.lat, r.geometry.location.lng),
-              privacy: Privacy.all,
-              type: PlaceType.place))
-          .toList();
-
-      // Sort places by distance
-      candidates.sort((a, b) => (distanceBetween(a.location, state.center) -
-              distanceBetween(b.location, state.center))
-          .round());
-
-      // If address book access is granted add all contacts
-      if (await Permission.contacts.isGranted) {
-        Iterable<Contact> addressBook = await ContactsService.getContacts();
-        print('!!!DEBUG ${addressBook.length} contacts found');
-
-        addressBook.forEach((c) {
-          c.phones.forEach((p) {
-            print('!!!DEBUG: ${c.displayName} ${p.label} ${p.value}');
-          });
-
-          List<String> phones =
-              c.phones.map((p) => internationalPhone(p.value)).toList();
-          List<String> emails = c.emails.map((e) => e.value).toList();
-          String contact;
-          if (phones.length > 0)
-            contact = phones.first;
-          else if (emails.length > 0) contact = emails.first;
-
-          if (contact != null)
-            candidates.add(Place(
-                name: c.displayName,
-                // TODO: Take only phones with "mobile" label
-                phones: phones,
-                emails: emails,
-                contact: contact,
-                privacy: Privacy.contacts,
-                type: PlaceType.contact));
-        });
-      }
-
-      // Update state with newly retrieved candidates
-      emit(state.copyWith(candidates: candidates, location: location));
-    }
-
-    List<Place> suggestions;
-
-    // If query is empty return 10 closest places
-    if (query == null || query.length == 0)
-      suggestions = candidates.take(10).toList();
-
-    // If query is not empty filter by query
-    else if (query.length > 0)
-      suggestions = candidates
-          .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-
-    print('!!!DEBUG number of suggestions: ${suggestions.length}');
-
-    // No need to sort as places already sorted by distance
-    // Exclude selected place
-    return suggestions.where((p) => p.name != state.place.name).toList();
-  }
-
-  // CAMERA PANEL:
-  // - Click on location icon or current place chip to eddit current location
-  //   for the photo
-  void selectPlaceForPhoto() async {
-    _searchController.text = '';
-    _snappingControler.snapToPosition(
-      SnapPosition(
-          positionPixel: 530.0,
-          snappingCurve: Curves.elasticOut,
-          snappingDuration: Duration(milliseconds: 750)),
-    );
-    emit(state.copyWith(panel: Panel.full));
-
-    List<Place> suggestions = await findCandidateSugestions('');
-    emit(state.copyWith(placeSuggestions: suggestions));
-  }
 
   // Function to find place in Firestore DB or create a new one if not exist
   Future<Place> getPlaceFromDb(Place place) async {

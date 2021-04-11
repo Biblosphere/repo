@@ -1,13 +1,14 @@
-import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/FilterState.dart';
 import 'package:biblosphere/model/Panel.dart';
 import 'package:biblosphere/model/Place.dart';
 import 'package:biblosphere/model/Privacy.dart';
-import 'package:biblosphere/util/Colors.dart';
 import 'package:biblosphere/ui/camera/camera.dart';
 import 'package:biblosphere/ui/search/SearchPanel.dart';
+import 'package:biblosphere/util/Colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cubit/flutter_cubit.dart';
+
+import 'MapCubit.dart';
 
 class CameraPanel extends StatefulWidget {
   CameraPanel({Key key}) : super(key: key);
@@ -42,18 +43,8 @@ class _CameraPanelState extends State<CameraPanel> {
   }
 
   @override
-  void didChangeDependencies() {
-    // TODO: Make a code to do it only once at first call afer initState
-    context.cubit<FilterCubit>().setSearchController(_controller);
-
-    print('!!!DEBUG Listener added 1!');
-
-    super.didChangeDependencies();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return CubitBuilder<FilterCubit, FilterState>(builder: (context, state) {
+    return CubitBuilder<MapCubit, FilterState>(builder: (context, state) {
       double width = MediaQuery.of(context).size.width;
       Panel position = state.panel;
 
@@ -91,7 +82,7 @@ class _CameraPanelState extends State<CameraPanel> {
                   children: <Widget>[
                     GestureDetector(
                         onTap: () {
-                          context.cubit<FilterCubit>().selectPlaceForPhoto();
+                          context.cubit<MapCubit>().selectPlaceForPhoto();
                         },
                         child: Container(
                             decoration: placeDecoration(),
@@ -128,7 +119,7 @@ class _CameraPanelState extends State<CameraPanel> {
         List<Place> suggestions = state.placeSuggestions;
 
         return OverflowBox(
-            maxHeight: 800.0,
+            maxHeight: 50.0,
             alignment: Alignment.topLeft,
             child: Container(
                 child: Column(
@@ -157,7 +148,7 @@ class _CameraPanelState extends State<CameraPanel> {
                             controller: _controller,
                             onEditingComplete: () {
                               FocusScope.of(context).unfocus();
-                              context.cubit<FilterCubit>().searchEditComplete();
+                              // context.cubit<MapCubit>().searchEditComplete();
                             },
                           ),
                         ),

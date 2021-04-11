@@ -1,4 +1,3 @@
-import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/FilterState.dart';
 import 'package:biblosphere/model/Place.dart';
 import 'package:biblosphere/model/Privacy.dart';
@@ -6,6 +5,8 @@ import 'package:biblosphere/util/Colors.dart';
 import 'package:biblosphere/util/Enums.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cubit/flutter_cubit.dart';
+
+import 'MapCubit.dart';
 
 Widget chipBuilderCamera(BuildContext context, Place place,
     {bool selected = false}) {
@@ -22,7 +23,7 @@ Widget chipBuilderCamera(BuildContext context, Place place,
   }
 
   Widget chip =
-      CubitBuilder<FilterCubit, FilterState>(builder: (context, state) {
+      CubitBuilder<MapCubit, FilterState>(builder: (context, state) {
     IconData icon;
 
     if (place.type == PlaceType.me || place.type == PlaceType.contact) {
@@ -50,7 +51,7 @@ Widget chipBuilderCamera(BuildContext context, Place place,
       // avatar: CircleAvatar(),
       selected: selected,
       onPressed: () {
-        context.cubit<FilterCubit>().setPlace(place);
+        context.cubit<MapCubit>().setPlace(place);
       },
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
@@ -100,7 +101,7 @@ Widget chipBuilderPrivacy(BuildContext context, Privacy privacy, bool selected,
                           : chipUnselectedTextStyle))
             ])),
     onPressed: () {
-      context.cubit<FilterCubit>().setPrivacy(privacy);
+      context.cubit<MapCubit>().setPrivacy(privacy);
     },
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
   );

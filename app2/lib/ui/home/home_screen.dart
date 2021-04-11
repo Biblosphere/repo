@@ -5,6 +5,7 @@ import 'package:biblosphere/model/FilterCubit.dart';
 import 'package:biblosphere/model/FilterState.dart';
 import 'package:biblosphere/model/ViewType.dart';
 import 'package:biblosphere/ui/camera/CameraPanel.dart';
+import 'package:biblosphere/ui/camera/MapCubit.dart';
 import 'package:biblosphere/ui/home/HomeCubit.dart';
 import 'package:biblosphere/ui/library/BooksWidget.dart';
 import 'package:biblosphere/ui/search/SearchPanel.dart';
@@ -99,11 +100,16 @@ class _MainPageState extends State<MainPage>
               onSnapEnd: () {
                 if (_snapPosition < 10.0)
                   context.cubit<HomeCubit>().panelHiden();
-                else if (_snapPosition < 100.0)
+                else if (_snapPosition < 100.0) {
                   context.cubit<HomeCubit>().panelMinimized();
-                else if (_snapPosition < 240.0) {
+                } else if (_snapPosition < 240.0) {
                   context.cubit<HomeCubit>().panelOpened();
                   context.cubit<FilterCubit>().panelOpened();
+                  context.cubit<MapCubit>().panelOpened();
+                } else  {
+                  context.cubit<HomeCubit>().panelOpened();
+                  context.cubit<FilterCubit>().panelOpened();
+                  context.cubit<MapCubit>().panelOpened();
                 }
 
                 setState(() {});
