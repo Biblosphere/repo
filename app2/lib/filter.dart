@@ -338,7 +338,7 @@ class _SearchPanelState extends State<SearchPanel> {
                                   return chipBuilder(context, f);
                                 }).toList(),
                                 if (suggestions != null)
-                                  ...suggestions.take(15).map((f) {
+                                  ...suggestions.take(100).map((f) {
                                     return chipBuilder(context, f);
                                   }).toList()
                               ])))

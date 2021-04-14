@@ -273,7 +273,7 @@ class _CameraPanelState extends State<CameraPanel> {
                                 chipBuilderCamera(context, state.place,
                                     selected: true),
                                 if (suggestions != null)
-                                  ...suggestions.take(15).map((p) {
+                                  ...suggestions.take(100).map((p) {
                                     return chipBuilderCamera(context, p,
                                         selected: false);
                                   }).toList()
