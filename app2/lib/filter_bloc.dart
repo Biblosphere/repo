@@ -1236,6 +1236,20 @@ class FilterCubit extends Cubit<FilterState> {
 
         print('!!!DEBUG User ${user.uid} exist=${doc.exists}');
 
+        // invited by referal
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        String invitedUid = prefs.getString("invited_by");
+
+        if (invitedUid != null) {
+          if (doc.exists) {
+            if (doc.data()['invited_by'] != null) {
+              print('Document data: ${doc.data()['invited_by']}');
+            } else {
+              ref.update({'invited_by': invitedUid});
+            }
+          }
+        }
+
         if (doc.exists && doc.data().containsKey('bookmarks')) {
           emit(state.copyWith(
               bookmarks: List<String>.from(doc.data()['bookmarks'])));
@@ -2488,5 +2502,21 @@ class FilterCubit extends Cubit<FilterState> {
     });
 
     print('!!!DEBUG photo record created');
+  }
+
+  void shareInviteLink() async {
+    String link =
+        await buildLink('invite?uid=${FirebaseAuth.instance.currentUser.uid}');
+
+    Share.share(link, subject: 'Enjoy Biblosphere with me!');
+  }
+
+  void handleOpeningFromInvite(Uri deepLink) async {
+    if (deepLink.path == "/invite") {
+      String id = deepLink.queryParameters['uid'];
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      prefs.setString("invited_by", id);
+      print('!!!DEBUG saved invited user id: $id');
+    }
   }
 }

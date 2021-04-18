@@ -11,6 +11,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    this.initDynamicLinks();
   }
 
   @override
@@ -608,5 +609,26 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ))));
     });
+  }
+
+  void initDynamicLinks() async {
+    FirebaseDynamicLinks.instance.onLink(
+        onSuccess: (PendingDynamicLinkData dynamicLink) async {
+      final Uri deepLink = dynamicLink?.link;
+
+      if (deepLink != null) {
+        context.read<FilterCubit>().handleOpeningFromInvite(deepLink);
+      }
+    }, onError: (OnLinkErrorException e) async {
+      print('onLinkError');
+      print(e.message);
+    });
+
+    final PendingDynamicLinkData data =
+        await FirebaseDynamicLinks.instance.getInitialLink();
+    final Uri deepLink = data?.link;
+    if (deepLink != null) {
+      context.read<FilterCubit>().handleOpeningFromInvite(deepLink);
+    }
   }
 }

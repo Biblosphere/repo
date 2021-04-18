@@ -287,12 +287,14 @@ class Book extends Point {
   final String photo;
   final String photoId;
   final String ownerId;
+
   // Book outline on the bookshelf image
   final List<ui.Offset> outline;
   final List<ui.Offset> bookspine;
   final List<ui.Offset> coverPlace;
   final int photoHeight;
   final int photoWidth;
+
   // Book location
   final String bookplaceId;
   final String bookplaceName;
@@ -395,17 +397,23 @@ class Photo extends Point {
   final String contact;
   final Privacy privacy;
   final PlaceType type;
+
   // Fields for contacts
   final List<String> emails;
   final List<String> phones;
+
   // Field for Google Places
   final String placeId;
+
   // Users of this bookplace (contacts for person, contributors for orgs)
   final List<String> users;
+
   // Books count
   final int count;
+
   // Books counts per language
   final Map<String, int> languages;
+
   // Books counts per genre
   final Map<String, int> genres;
 
@@ -547,6 +555,7 @@ class Photo extends Point {
         languages,
         genres
       ];
+
   String get phone =>
       contact != null && contact.startsWith('+') ? contact : null;
 
@@ -557,6 +566,7 @@ class Photo extends Point {
 }
 
 enum PlaceType { me, place, contact }
+
 const List<String> PlaceTypeLabels = ['contact', 'place', 'contact'];
 
 class Place extends Point {
@@ -565,17 +575,23 @@ class Place extends Point {
   final String contact;
   final Privacy privacy;
   final PlaceType type;
+
   // Fields for contacts
   final List<String> emails;
   final List<String> phones;
+
   // Field for Google Places
   final String placeId;
+
   // Users of this bookplace (contacts for person, contributors for orgs)
   final List<String> users;
+
   // Books count
   final int count;
+
   // Books counts per language
   final Map<String, int> languages;
+
   // Books counts per genre
   final Map<String, int> genres;
 
@@ -719,10 +735,13 @@ class Place extends Point {
 class Shelf {
   // Photo of the shelf
   Photo photo;
+
   // List of books
   List<Book> books;
+
   // Keep current book while switching between shelves
   int cursor;
+
   // Index of the selected book. Used for shelves created from Book record.
   int selected;
 
@@ -882,224 +901,240 @@ class _BooksWidgetState extends State<BooksWidget> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FilterCubit, FilterState>(
-        // buildWhen: (previous, current) => previous.center != current.center,
-        builder: (context, state) {
-      // double width = MediaQuery.of(context).size.width;
-      // double height = MediaQuery.of(context).size.height;
-      // TODO: Add scroll controller to scroll list to selected shelf
+      // buildWhen: (previous, current) => previous.center != current.center,
+      builder: (context, state) {
+        // double width = MediaQuery.of(context).size.width;
+        // double height = MediaQuery.of(context).size.height;
+        // TODO: Add scroll controller to scroll list to selected shelf
 
-      // List view with horizontal scrolling
-      return SafeArea(
+        // List view with horizontal scrolling
+        return SafeArea(
           child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) { 
-          
-          double height = constraints.maxHeight;
-          double width = constraints.maxWidth;
-          return Container(
-              width: width,
-              height: height,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics: PageScrollPhysics(),
-                itemCount: state.maxShelves,
-                cacheExtent: 2 * width,
-                itemBuilder: (context, item) {
-                  // If last element is requested then fetch more items
-                  if (item == state.shelfList.length - 1) {
-                    print('!!!DEBUG last shelf fetched $item');
-                    BlocProvider.of<FilterCubit>(context).shelvesFetched();
-                  }
+            builder: (BuildContext context, BoxConstraints constraints) {
+              double height = constraints.maxHeight;
+              double width = constraints.maxWidth;
+              return Container(
+                width: width,
+                height: height,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  physics: PageScrollPhysics(),
+                  itemCount: state.maxShelves,
+                  cacheExtent: 2 * width,
+                  itemBuilder: (context, item) {
+                    // If last element is requested then fetch more items
+                    if (item == state.shelfList.length - 1) {
+                      print('!!!DEBUG last shelf fetched $item');
+                      BlocProvider.of<FilterCubit>(context).shelvesFetched();
+                    }
 
-                  if (item >= state.shelfList.length) {
+                    if (item >= state.shelfList.length) {
+                      print(
+                          '!!!DEBUG shelf outside range requested $item, ${state.shelfList.length}');
+                      return Container();
+                    }
+
+                    Shelf shelf = state.shelfList[item];
+                    String distance =
+                        distanceString(state.center, shelf.photo.location);
+
+                    // TODO: Add scroll controller to scroll list to selected item
                     print(
-                        '!!!DEBUG shelf outside range requested $item, ${state.shelfList.length}');
-                    return Container();
-                  }
+                        'DEBUG!!! ${shelf.photo.id} ${shelf.photo.thumbnail}');
 
-                  Shelf shelf = state.shelfList[item];
-                  String distance =
-                      distanceString(state.center, shelf.photo.location);
-
-                  // TODO: Add scroll controller to scroll list to selected item
-                  print('DEBUG!!! ${shelf.photo.id} ${shelf.photo.thumbnail}');
-
-                  // Build a card with a photo and a book list
-                  return Container(
+                    // Build a card with a photo and a book list
+                    return Container(
                       width: width,
                       height: height,
                       child: Column(
                         children: [
                           // Photo card
                           Container(
-                              width: width,
-                              height: 0.5 * height,
-                              padding: EdgeInsets.only(
-                                  right: 8.0, left: 8.0, top: 2.0, bottom: 4.0),
-                              child: Container(
-                                  padding: EdgeInsets.all(2.0),
-                                  color: Colors.white.withOpacity(0.85),
-                                  child: Stack(children: [
-                                    Container(
-                                        height: 0.5 * height - 10.0,
-                                        width: width - 20.0,
-                                        child: GestureDetector(
-                                          onDoubleTap: () {
-                                            Navigator.push(context, 
-                                            
-                                            new MaterialPageRoute(
-                                        builder: (context) {
-                                          return Scaffold(
-                                            appBar: AppBar(),
-                                            body: PhotoView(minScale: 0.1,
-      imageProvider: CachedNetworkImageProvider(shelf.photo.url),
-    ));
-                                        }
-                                            
-                                            ));
-                                          },
-                                        child: CachedNetworkImage(
-                                            fit: BoxFit.cover,
-                                            imageUrl: shelf.photo.thumbnail))),
-                                    Positioned.fill(
-                                        right: 0.0,
-                                        bottom: 0.0,
-                                        child: Container(
-                                            margin:
-                                                EdgeInsets.only(bottom: 2.0),
-                                            child: photoButtons(
-                                                context, state, shelf.photo)))
-                                  ]))),
+                            width: width,
+                            height: 0.5 * height,
+                            padding: EdgeInsets.only(
+                                right: 8.0, left: 8.0, top: 2.0, bottom: 4.0),
+                            child: Container(
+                              padding: EdgeInsets.all(2.0),
+                              color: Colors.white.withOpacity(0.85),
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    height: 0.5 * height - 10.0,
+                                    width: width - 20.0,
+                                    child: GestureDetector(
+                                      onDoubleTap: () {
+                                        Navigator.push(
+                                          context,
+                                          new MaterialPageRoute(
+                                            builder: (context) {
+                                              return Scaffold(
+                                                appBar: AppBar(),
+                                                body: PhotoView(
+                                                  minScale: 0.1,
+                                                  imageProvider:
+                                                      CachedNetworkImageProvider(
+                                                          shelf.photo.url),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        );
+                                      },
+                                      child: CachedNetworkImage(
+                                          fit: BoxFit.cover,
+                                          imageUrl: shelf.photo.thumbnail),
+                                    ),
+                                  ),
+                                  Positioned.fill(
+                                    right: 0.0,
+                                    bottom: 0.0,
+                                    child: Container(
+                                      margin: EdgeInsets.only(bottom: 2.0),
+                                      child: photoButtons(
+                                          context, state, shelf.photo),
+                                    ),
+                                  )
+                                ],
+                              ),
+                            ),
+                          ),
                           // Book cards
                           Container(
-                              width: width,
-                              height: 0.5 * height,
-                              child: ListView(
-                                  scrollDirection: Axis.horizontal,
-                                  physics: PageScrollPhysics(),
-                                  children: shelf.books.map((b) {
-                                    // Build a card for the book
-                                    return Container(
-                                        width: width,
-                                        height: 0.5 * height,
-                                        padding: EdgeInsets.only(
-                                            right: 8.0,
-                                            left: 8.0,
-                                            top: 4.0,
-                                            bottom: 8.0),
-                                        child: Container(
-                                            color:
-                                                Colors.white.withOpacity(0.85),
-                                            child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  //CachedNetworkImage(imageUrl: b.cover)
-                                                  Row(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        coverImage(b.cover,
-                                                            bookmark: state
-                                                                .isUserBookmark(
-                                                                    b),
-                                                            width: 80),
-                                                        Expanded(
-                                                            child: Column(
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment
-                                                                        .start,
-                                                                children: [
-                                                              Container(
-                                                                  margin:
-                                                                      EdgeInsets
-                                                                          .all(
-                                                                              2.0),
-                                                                  child:
-                                                                      bookButtons(
-                                                                          context,
-                                                                          state,
-                                                                          b)),
-                                                              Container(
-                                                                  margin: EdgeInsets.only(
-                                                                      top: 4.0,
-                                                                      bottom:
-                                                                          2.0,
-                                                                      left:
-                                                                          4.0),
-                                                                  child: Text(
-                                                                      'Genre: ' +
-                                                                          b.genreText,
-                                                                      style: genreDetailsStyle)),
-                                                              Container(
-                                                                  margin: EdgeInsets.only(
-                                                                      bottom:
-                                                                          2.0,
-                                                                      left:
-                                                                          4.0),
-                                                                  child: Text(
-                                                                      'Language: ' +
-                                                                          b.languageText,
-                                                                      style: languageDetailsStyle)),
-                                                              Container(
-                                                                  margin: EdgeInsets.only(
-                                                                      left: 4.0,
-                                                                      bottom:
-                                                                          2.0),
-                                                                  child: Row(
-                                                                      mainAxisAlignment:
-                                                                          MainAxisAlignment
-                                                                              .start,
-                                                                      children: [
-                                                                        Flexible(
-                                                                            flex:
-                                                                                1,
-                                                                            child:
-                                                                                Text(distance, style: distanceDetailsStyle)),
-                                                                        Icon(Icons
-                                                                            .location_pin),
-                                                                        Flexible(
-                                                                            flex:
-                                                                                3,
-                                                                            child:
-                                                                                Text(b.place, style: placeDetailsStyle))
-                                                                      ]))
-                                                            ]))
-                                                      ]),
-                                                  Flexible(
-                                                      flex: 1,
-                                                      child: Container(
-                                                          padding:
-                                                              EdgeInsets.only(
-                                                                  bottom: 4.0,
-                                                                  left: 8.0,
-                                                                  right: 16.0,
-                                                                  top: 8.0),
-                                                          child: Text(
-                                                              b.authors
-                                                                  .join(', '),
-                                                              style:
-                                                                  authorDetailsStyle))),
-                                                  Flexible(
-                                                      flex: 3,
-                                                      child: Container(
+                            width: width,
+                            height: 0.5 * height,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              physics: PageScrollPhysics(),
+                              children: shelf.books.map(
+                                (b) {
+                                  // Build a card for the book
+                                  return Container(
+                                    width: width,
+                                    height: 0.5 * height,
+                                    padding: EdgeInsets.only(
+                                        right: 8.0,
+                                        left: 8.0,
+                                        top: 4.0,
+                                        bottom: 8.0),
+                                    child: Container(
+                                      color: Colors.white.withOpacity(0.85),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          //CachedNetworkImage(imageUrl: b.cover)
+                                          Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                coverImage(b.cover,
+                                                    bookmark:
+                                                        state.isUserBookmark(b),
+                                                    width: 80),
+                                                Expanded(
+                                                    child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                      Container(
+                                                          margin:
+                                                              EdgeInsets.all(
+                                                                  2.0),
+                                                          child: bookButtons(
+                                                              context,
+                                                              state,
+                                                              b)),
+                                                      Container(
                                                           margin:
                                                               EdgeInsets.only(
-                                                                  bottom: 8.0,
-                                                                  left: 8.0,
-                                                                  right: 16.0,
-                                                                  top: 4.0),
+                                                                  top: 4.0,
+                                                                  bottom: 2.0,
+                                                                  left: 4.0),
                                                           child: Text(
-                                                              b.title ?? '',
+                                                              'Genre: ' +
+                                                                  b.genreText,
                                                               style:
-                                                                  titleDetailsStyle))),
-                                                ])));
-                                  }).toList()))
+                                                                  genreDetailsStyle)),
+                                                      Container(
+                                                          margin:
+                                                              EdgeInsets.only(
+                                                                  bottom: 2.0,
+                                                                  left: 4.0),
+                                                          child: Text(
+                                                              'Language: ' +
+                                                                  b.languageText,
+                                                              style: languageDetailsStyle)),
+                                                      Container(
+                                                          margin:
+                                                              EdgeInsets.only(
+                                                                  left: 4.0,
+                                                                  bottom: 2.0),
+                                                          child: Row(
+                                                              mainAxisAlignment:
+                                                                  MainAxisAlignment
+                                                                      .start,
+                                                              children: [
+                                                                Flexible(
+                                                                    flex: 1,
+                                                                    child: Text(
+                                                                        distance,
+                                                                        style:
+                                                                            distanceDetailsStyle)),
+                                                                Icon(Icons
+                                                                    .location_pin),
+                                                                Flexible(
+                                                                    flex: 3,
+                                                                    child: Text(
+                                                                        b.place,
+                                                                        style:
+                                                                            placeDetailsStyle))
+                                                              ]))
+                                                    ]))
+                                              ]),
+                                          Flexible(
+                                              flex: 1,
+                                              child: Container(
+                                                  padding: EdgeInsets.only(
+                                                      bottom: 4.0,
+                                                      left: 8.0,
+                                                      right: 16.0,
+                                                      top: 8.0),
+                                                  child: Text(
+                                                      b.authors.join(', '),
+                                                      style:
+                                                          authorDetailsStyle))),
+                                          Flexible(
+                                              flex: 3,
+                                              child: Container(
+                                                  margin: EdgeInsets.only(
+                                                      bottom: 8.0,
+                                                      left: 8.0,
+                                                      right: 16.0,
+                                                      top: 4.0),
+                                                  child: Text(b.title ?? '',
+                                                      style:
+                                                          titleDetailsStyle))),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ).toList(),
+                            ),
+                          )
                         ],
-                      ));
-                },
-              ));}));
-    });
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   // TODO: Highlight book on the photo
@@ -1204,8 +1239,8 @@ class _BooksWidgetState extends State<BooksWidget> {
                   selected: false),
               // Message button
               detailsButton(
-                  icon: Icons
-                      .phone, // book.phone != null ? Icons.phone : Icons.email,
+                  icon: Icons.phone,
+                  // book.phone != null ? Icons.phone : Icons.email,
                   onPressed: () => contactHost(photo),
                   selected: false),
               // Share button
@@ -1280,6 +1315,7 @@ Future<String> buildLink(String query,
       shortDynamicLinkPathLength: ShortDynamicLinkPathLength.short,
     ),
     iosParameters: IosParameters(
+      appStoreId: "1445570468",
       bundleId: 'com.biblosphere.biblosphere',
       minimumVersion: '0',
     ),
@@ -1303,7 +1339,9 @@ void shareBook(Book book) async {
 void sharePhoto(Photo photo) async {
   // TODO: include picture into the photo's link
   String link = await buildLink('photo?id=${photo.id}&name=${photo.name}',
-  image: photo.thumbnail, title: 'Biblosphere', description: 'Look at these books');
+      image: photo.thumbnail,
+      title: 'Biblosphere',
+      description: 'Look at these books');
 
   Share.share(link, subject: '"${photo.name}" on Biblosphere');
 }
