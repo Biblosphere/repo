@@ -833,7 +833,8 @@ Widget coverImage(String url, {double width, bool bookmark = false}) {
                       bookImagePlaceholder()));
     } catch (e) {
       print('Image loading exception: $e');
-      // TODO: Report exception to analytics
+      FirebaseCrashlytics.instance
+          .recordError(e, StackTrace.current, reason: 'a non-fatal error');
       image = Container(child: bookImagePlaceholder());
     }
   else

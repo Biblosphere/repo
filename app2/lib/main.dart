@@ -32,6 +32,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 // Firebase auth
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -607,6 +608,8 @@ class _MainPageState extends State<MainPage>
                         cameraCtrl.lockCaptureOrientation(
                             DeviceOrientation.portraitUp);
                       } on CameraException catch (e) {
+                        await FirebaseCrashlytics.instance
+                            .recordError(e, StackTrace.current, reason: 'a non-fatal error');
                         //TODO: Do exception processing for the camera;
                         print('EXCEPTION: Camera controller exception: $e');
                         return null;

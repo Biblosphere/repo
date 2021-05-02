@@ -213,6 +213,7 @@ class FilterState extends Equatable {
   final CountryCode country;
   final String phone;
   final String name;
+  final String message;
   final String code;
   final String verification; // VereficationId from Firebase
   final Package package;
@@ -330,6 +331,7 @@ class FilterState extends Equatable {
     this.country,
     this.verification,
     this.code = '',
+    this.message = '',
     this.package,
     this.pp = false,
     this.tos = false,
@@ -364,6 +366,7 @@ class FilterState extends Equatable {
     String verification,
     LoginStatus status,
     Package package,
+    String message,
     bool pp,
     bool tos,
     Offerings offerings,
@@ -397,6 +400,7 @@ class FilterState extends Equatable {
       country: country ?? this.country,
       code: code ?? this.code,
       verification: verification ?? this.verification,
+      message: message ?? '',
       package: package ?? this.package,
       pp: pp ?? this.pp,
       tos: tos ?? this.tos,
@@ -1257,21 +1261,6 @@ class FilterCubit extends Cubit<FilterState> {
           print('!!!DEBUG [${doc.data()['bookmarks']}] [${state.bookmarks}]');
         }
 
-/*
-        AppUser currentUser;
-        if (doc.exists) {
-          currentUser = AppUser.fromJson(doc.id, doc.data());
-        } else {
-          currentUser = AppUser(
-              id: user.uid, name: user.displayName, mobile: state.mobile);
-          ref.set(currentUser.toJson());
-        }
-*/
-        // !!!DEBUG FOR IOS TESTING (Does not support Purchase on Simulator)
-        // Uncomment following lines to test on IPhone simulator
-        // emitInitial();
-        // return;
-
         try {
           // Register user in Purchases
           print('!!!DEBUG User Id ${user.uid}');
@@ -1294,7 +1283,9 @@ class FilterCubit extends Cubit<FilterState> {
             if (info.entitlements.all["basic"].isActive) {
               emitInitial();
             } else {
-              emit(state.copyWith(status: LoginStatus.unauthorized));
+              emit(state.copyWith(
+                  status: LoginStatus.unauthorized,
+                  message: 'Offerings are missing $offerings'));
             }
           });
 
@@ -1306,8 +1297,9 @@ class FilterCubit extends Cubit<FilterState> {
         } catch (e, stack) {
           print('EXCEPTION: Purchases exception: $e $stack');
           // TODO: Inform about failed sugn-in
-          // TODO: Logg in crashalytic
-          emit(state.copyWith(status: LoginStatus.unauthorized));
+          await FirebaseCrashlytics.instance
+              .recordError(e, stack, reason: 'a non-fatal error');
+          emit(state.copyWith(status: LoginStatus.unauthorized, message: e));
         }
       }
     });
@@ -1353,12 +1345,12 @@ class FilterCubit extends Cubit<FilterState> {
         verificationCompleted: (AuthCredential authCredential) {
           FirebaseAuth.instance
               .signInWithCredential(authCredential)
-              .catchError((e) {
+              .catchError((e) async {
             print('EXCEPTION on signin: $e');
-            // TODO: Keep in crashalitics
-            emit(state.copyWith(
-              status: LoginStatus.unauthorized,
-            ));
+            await FirebaseCrashlytics.instance.recordError(
+                e, StackTrace.current,
+                reason: 'a non-fatal error');
+            emit(state.copyWith(status: LoginStatus.unauthorized, message: e));
           });
 
           // Sign-in in progress
@@ -1366,12 +1358,14 @@ class FilterCubit extends Cubit<FilterState> {
             status: LoginStatus.signInInProgress,
           ));
         },
-        verificationFailed: (FirebaseAuthException authException) {
+        verificationFailed: (FirebaseAuthException authException) async {
           print('EXCEPTION: Auth exception: ${authException.message}');
-          // TODO: Keep in crashalitics
+          await FirebaseCrashlytics.instance.recordError(
+              authException.message, authException.stackTrace,
+              reason: 'a non-fatal error');
           emit(state.copyWith(
-            status: LoginStatus.unauthorized,
-          ));
+              status: LoginStatus.unauthorized,
+              message: authException.message));
         },
         codeSent: (String verificationId, [int forceResendingToken]) {
           //show screen to take input from the user
@@ -1399,16 +1393,18 @@ class FilterCubit extends Cubit<FilterState> {
   }
 
   // Press Confirm button => LOGIN
-  void confirmPressed() {
+  void confirmCodePressed() {
     AuthCredential credential = PhoneAuthProvider.credential(
         verificationId: state.verification, smsCode: state.code);
 
-    FirebaseAuth.instance.signInWithCredential(credential).catchError((e) {
+    FirebaseAuth.instance
+        .signInWithCredential(credential)
+        .catchError((e) async {
       print('EXCEPTION: Signin with code exception $e');
-      // TODO: Keep in crashalitics
       emit(state.copyWith(
-        status: LoginStatus.unauthorized,
-      ));
+          status: LoginStatus.codeRequired, message: e.toString()));
+      await FirebaseCrashlytics.instance
+          .recordError(e, StackTrace.current, reason: 'a non-fatal error');
     });
 
     // TODO: Add code to validate code
@@ -1434,10 +1430,9 @@ class FilterCubit extends Cubit<FilterState> {
       await Purchases.purchasePackage(state.package);
     } catch (e, stack) {
       print('EXCEPTION: Purchase failed $e $stack');
-      // TODO: Keep in crashalitics
-      emit(state.copyWith(
-        status: LoginStatus.unauthorized,
-      ));
+      await FirebaseCrashlytics.instance
+          .recordError(e, StackTrace.current, reason: 'a non-fatal error');
+      emit(state.copyWith(status: LoginStatus.unauthorized, message: '$e'));
     }
   }
 
@@ -2350,7 +2345,7 @@ class FilterCubit extends Cubit<FilterState> {
       else {
         // TODO: Record an exception: either phone or email should be filled in contact
         print(
-            'Exception: nither phone nor email available for the contact ${place.name}');
+            'Exception: neither phone nor email available for the contact ${place.name}');
       }
 
       // Query places from DB
@@ -2457,7 +2452,8 @@ class FilterCubit extends Cubit<FilterState> {
       print("Exception: Failed to recognize image: " +
           e.toString() +
           stack.toString());
-      // TODO: Add event into analytics
+      await FirebaseCrashlytics.instance
+                .recordError(e, StackTrace.current, reason: 'a non-fatal error');
     }
   }
 */
@@ -2518,5 +2514,9 @@ class FilterCubit extends Cubit<FilterState> {
       prefs.setString("invited_by", id);
       print('!!!DEBUG saved invited user id: $id');
     }
+  }
+
+  void clearMessage() {
+    emit(state.copyWith(message: ''));
   }
 }

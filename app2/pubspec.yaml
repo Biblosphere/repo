@@ -65,7 +65,19 @@ dependencies:
   cloud_firestore: ^0.14.2
   firebase_storage: ^5.0.1
   firebase_dynamic_links: ^0.6.3
+  firebase_crashlytics: ^0.2.0
 
+#  firebase: ^7.3.0
+#  firebase_crashlytics: ^0.2.1
+#  firebase_auth: ^0.18.1+1
+#  cloud_firestore: ^0.14.1+2
+#  firebase_storage: ^4.0.1
+#  firebase_dynamic_links: ^0.6.0+1
+#  firebase_messaging: ^6.0.13
+  #  firebase_analytics: ^6.0.1
+
+
+  fluttertoast: ^4.0.1
   # Geo hashes
   dart_geohash: ^1.0.2
 
