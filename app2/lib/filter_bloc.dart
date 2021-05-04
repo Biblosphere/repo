@@ -1338,11 +1338,13 @@ class FilterCubit extends Cubit<FilterState> {
   }
 
   // Press Login button => LOGIN
-  void signinPressed() {
-    FirebaseAuth.instance.verifyPhoneNumber(
+  void signinPressed() async {
+    //print('!!!DEBUG: Mobile number ${state.mobile}');
+    await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: state.mobile,
         timeout: Duration(seconds: 60),
         verificationCompleted: (AuthCredential authCredential) {
+          //print('!!!DEBUG: verificationCompleted');
           FirebaseAuth.instance
               .signInWithCredential(authCredential)
               .catchError((e) async {
@@ -1368,6 +1370,7 @@ class FilterCubit extends Cubit<FilterState> {
               message: authException.message));
         },
         codeSent: (String verificationId, [int forceResendingToken]) {
+          //print('!!!DEBUG VerId and Code Send: $verificationId $forceResendingToken');
           //show screen to take input from the user
           emit(state.copyWith(
               status: LoginStatus.codeRequired, verification: verificationId));
@@ -1382,6 +1385,7 @@ class FilterCubit extends Cubit<FilterState> {
                 verification: verificationId));
         });
 
+    //print('!!!DEBUG Before Emit');
     emit(state.copyWith(
       status: LoginStatus.phoneVerifying,
     ));

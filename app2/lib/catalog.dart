@@ -20,7 +20,7 @@ Future<List<Book>> searchByText(String text) async {
 
   // Call Python service to recognize
   Response res = await api.client.get(
-      'https://biblosphere-api-ihj6i2l2aq-uc.a.run.app/search?q=$text',
+      Uri.parse('https://biblosphere-api-ihj6i2l2aq-uc.a.run.app/search?q=$text'),
       headers: {HttpHeaders.authorizationHeader: "Bearer $jwt"});
 
   if (res.statusCode != 200) {

@@ -33,7 +33,7 @@ dependencies:
   country_code_picker: ^1.5.0
 
   # Google maps
-  google_maps_flutter: ^1.0.2
+  google_maps_flutter: ^2.0.3
 
   # Input chips
   flutter_chips_input: ^1.9.4
@@ -51,7 +51,7 @@ dependencies:
   snapping_sheet: ^2.0.1
 
   # Camera plugin
-  camera: ^0.7.0
+  camera: ^0.8.1
 
   # Plugin to compare objects by content
   equatable: ^1.2.5
@@ -60,12 +60,12 @@ dependencies:
   purchases_flutter: ^1.4.3
 
   # Firebase auth
-  firebase_core: ^0.5.1
-  firebase_auth: ^0.18.2
-  cloud_firestore: ^0.14.2
-  firebase_storage: ^5.0.1
-  firebase_dynamic_links: ^0.6.3
-  firebase_crashlytics: ^0.2.0
+  firebase_core: ^1.1.0
+  firebase_auth: ^1.1.2
+  cloud_firestore: ^1.0.7
+  firebase_storage: ^8.0.5
+  firebase_dynamic_links: ^2.0.2
+  firebase_crashlytics: ^2.0.2
 
 #  firebase: ^7.3.0
 #  firebase_crashlytics: ^0.2.1
@@ -74,7 +74,7 @@ dependencies:
 #  firebase_storage: ^4.0.1
 #  firebase_dynamic_links: ^0.6.0+1
 #  firebase_messaging: ^6.0.13
-  #  firebase_analytics: ^6.0.1
+#  firebase_analytics: ^6.0.1
 
 
   fluttertoast: ^4.0.1
@@ -82,19 +82,19 @@ dependencies:
   dart_geohash: ^1.0.2
 
   # Geo location
-  geolocator: ^6.1.4
+  geolocator: ^7.0.3
 
   # Google places
-  google_place: ^0.3.3
+  google_place: ^0.4.0
 
   # Access to contacts
-  contacts_service: ^0.4.6
+  contacts_service: ^0.6.1
 
   # Permission handler
-  permission_handler: ^5.0.1+1
+  permission_handler: ^7.1.0
 
   # Open external URLs (PP, TOS)
-  url_launcher: ^5.7.10
+  url_launcher: ^6.0.3
 
   # Share link to the book via social apps
   share: ^0.6.5+4
