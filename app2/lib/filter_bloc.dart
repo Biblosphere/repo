@@ -1286,6 +1286,7 @@ class FilterCubit extends Cubit<FilterState> {
               emit(state.copyWith(
                   status: LoginStatus.unauthorized,
                   message: 'Offerings are missing $offerings'));
+              await FirebaseAuth.instance.signOut();
             }
           });
 
@@ -1300,6 +1301,7 @@ class FilterCubit extends Cubit<FilterState> {
           await FirebaseCrashlytics.instance
               .recordError(e, stack, reason: 'a non-fatal error');
           emit(state.copyWith(status: LoginStatus.unauthorized, message: e));
+          await FirebaseAuth.instance.signOut();
         }
       }
     });
@@ -1357,6 +1359,7 @@ class FilterCubit extends Cubit<FilterState> {
                 e, StackTrace.current,
                 reason: 'a non-fatal error');
             emit(state.copyWith(status: LoginStatus.unauthorized, message: e));
+            await FirebaseAuth.instance.signOut();
           });
 
           // Sign-in in progress
@@ -1372,6 +1375,7 @@ class FilterCubit extends Cubit<FilterState> {
           emit(state.copyWith(
               status: LoginStatus.unauthorized,
               message: authException.message));
+          await FirebaseAuth.instance.signOut();
         },
         codeSent: (String verificationId, [int forceResendingToken]) {
           print('!!!DEBUG VerId and Code Send: $verificationId $forceResendingToken');
@@ -1441,6 +1445,7 @@ class FilterCubit extends Cubit<FilterState> {
       await FirebaseCrashlytics.instance
           .recordError(e, StackTrace.current, reason: 'a non-fatal error');
       emit(state.copyWith(status: LoginStatus.unauthorized, message: '$e'));
+      await FirebaseAuth.instance.signOut();
     }
   }
 
