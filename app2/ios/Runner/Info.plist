@@ -58,13 +58,13 @@
 	<key>NSCalendarsUsageDescription</key>
 	<string>This app does not use calendar.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>This app needs camera to take pictures of the bookshlves.</string>
+	<string>To take pictures of the bookshlves and catalog books around you.</string>
 	<key>NSContactsUsageDescription</key>
-	<string>This app uses your contacts to show their books.</string>
+	<string>To show books of your contacts from your address book.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>This app does not use always location.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to location when open.</string>
+	<string>To show books available near your current location.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>This app does not use motion detection.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
