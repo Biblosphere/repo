@@ -29,7 +29,7 @@ class _LoginPageState extends State<LoginPage> {
             listener: (context, state) {
               if (state is FilterState && state.message != '') {
                 context.read<FilterCubit>().clearMessage();
-                Scaffold.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(state.message),
                   ),
@@ -38,9 +38,9 @@ class _LoginPageState extends State<LoginPage> {
             },
             builder: (context, login) {
               if (login.status == LoginStatus.unauthorized) {
-                return AuthPage(login);
+                return authPage(login);
               } else if (login.status == LoginStatus.codeRequired) {
-                return CodePage(login);
+                return codePage(login);
               } else if (login.status == LoginStatus.signedIn) {
                 return Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -77,12 +77,14 @@ class _LoginPageState extends State<LoginPage> {
                               .of(context)
                               .size
                               .width * .7,
-                          child: RaisedButton(
-                              textColor: Colors.white,
-                              color: Color(0xff598a99),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              primary: Colors.white,
+                              onPrimary: Color(0xff598a99),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(50.0),
-                                  side: BorderSide(color: Colors.transparent)),
+                                  ),
+                              side: BorderSide(color: Colors.transparent)),
                               onPressed: login.subscriptionAllowed
                                   ? () {
                                 // TODO: Use actual code from text field or AUTO for Android
@@ -260,7 +262,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget CodePage(FilterState login) {
+  Widget codePage(FilterState login) {
     return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
@@ -335,12 +337,14 @@ class _LoginPageState extends State<LoginPage> {
                         .of(context)
                         .size
                         .width * .7,
-                    child: RaisedButton(
-                      textColor: Colors.white,
-                      color: Color(0xff598a99),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(50.0),
-                          side: BorderSide(color: Colors.transparent)),
+                    child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              primary: Colors.white,
+                              onPrimary: Color(0xff598a99),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(50.0),
+                                  ),
+                              side: BorderSide(color: Colors.transparent)),
                       onPressed: login.confirmAllowed
                           ? () {
                         // TODO: Use actual code from text field or AUTO for Android
@@ -358,7 +362,7 @@ class _LoginPageState extends State<LoginPage> {
         ]);
   }
 
-  Widget AuthPage(FilterState login) {
+  Widget authPage(FilterState login) {
     return Column(mainAxisAlignment: MainAxisAlignment.center, children: <
         Widget>[
       Expanded(
@@ -512,12 +516,18 @@ class _LoginPageState extends State<LoginPage> {
                       .of(context)
                       .size
                       .width * .7,
-                  child: RaisedButton(
-                      textColor: Theme
+                  child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              primary: Colors.white,
+                              onPrimary: Theme
                           .of(context)
                           .textTheme
                           .button
                           .color,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(50.0),
+                                  ),
+                              side: BorderSide(color: Colors.transparent)),
                       onPressed: login.loginAllowed
                           ? () {
                         // TODO: Use actual phone number from text field
@@ -784,6 +794,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+/*
   void _showToast(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: const Text('snack'),
@@ -794,4 +805,5 @@ class _LoginPageState extends State<LoginPage> {
       ),
     ));
   }
+*/
 }
