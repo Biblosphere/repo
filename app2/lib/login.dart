@@ -79,8 +79,8 @@ class _LoginPageState extends State<LoginPage> {
                               .width * .7,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              primary: Colors.white,
-                              onPrimary: Color(0xff598a99),
+                              onPrimary: Colors.white,
+                              primary: Color(0xff598a99),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(50.0),
                                   ),
@@ -339,8 +339,8 @@ class _LoginPageState extends State<LoginPage> {
                         .width * .7,
                     child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              primary: Colors.white,
-                              onPrimary: Color(0xff598a99),
+                              onPrimary: Colors.white,
+                              primary: Color(0xff598a99),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(50.0),
                                   ),
@@ -518,12 +518,8 @@ class _LoginPageState extends State<LoginPage> {
                       .width * .7,
                   child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              primary: Colors.white,
-                              onPrimary: Theme
-                          .of(context)
-                          .textTheme
-                          .button
-                          .color,
+                              primary: Color(0xff598a99),
+                              onPrimary: Colors.white,
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(50.0),
                                   ),

@@ -250,7 +250,7 @@ class _CameraPanelState extends State<CameraPanel> {
                             controller: _controller,
                             onEditingComplete: () {
                               FocusScope.of(context).unfocus();
-                              context.read<FilterCubit>().searchEditComplete();
+                              context.read<FilterCubit>().placeEditComplete();
                             },
                           ),
                         ),
