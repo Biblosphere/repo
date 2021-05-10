@@ -307,6 +307,7 @@ PODS:
   - Flutter (1.0.0)
   - fluttertoast (0.0.2):
     - Flutter
+    - Toast
   - FMDB (2.7.5):
     - FMDB/standard (= 2.7.5)
   - FMDB/standard (2.7.5)
@@ -377,14 +378,14 @@ PODS:
   - "permission_handler (5.1.0+2)":
     - Flutter
   - PromisesObjC (1.2.12)
-  - Purchases (3.7.5):
-    - PurchasesCoreSwift (= 3.7.5)
-  - purchases_flutter (1.4.3):
+  - Purchases (3.11.1):
+    - PurchasesCoreSwift (= 3.11.1)
+  - purchases_flutter (3.2.2):
     - Flutter
-    - PurchasesHybridCommon (= 1.4.5)
-  - PurchasesCoreSwift (3.7.5)
-  - PurchasesHybridCommon (1.4.5):
-    - Purchases (= 3.7.5)
+    - PurchasesHybridCommon (= 1.6.3)
+  - PurchasesCoreSwift (3.11.1)
+  - PurchasesHybridCommon (1.6.3):
+    - Purchases (= 3.11.1)
   - share (0.0.1):
     - Flutter
   - shared_preferences (0.0.1):
@@ -392,6 +393,7 @@ PODS:
   - sqflite (0.0.2):
     - Flutter
     - FMDB (>= 2.7.5)
+  - Toast (4.0.0)
   - url_launcher (0.0.1):
     - Flutter
 
@@ -442,6 +444,7 @@ SPEC REPOS:
     - Purchases
     - PurchasesCoreSwift
     - PurchasesHybridCommon
+    - Toast
 
 EXTERNAL SOURCES:
   camera:
@@ -504,7 +507,7 @@ SPEC CHECKSUMS:
   FirebaseInstallations: a58d4f72ec5861840b84df489f2668d970df558a
   FirebaseStorage: 8542711850ca181a3931c0ed483006a7b46039e7
   Flutter: 434fef37c0980e73bb6479ef766c45957d4b510c
-  fluttertoast: b644586ef3b16f67fae9a1f8754cef6b2d6b634b
+  fluttertoast: 6122fa75143e992b1d3470f61000f591a798cc58
   FMDB: 2ce00b547f966261cd18927a3ddb07cb6f3db82a
   geolocator: f5e3de65e241caba7ce3e8a618803387bda73384
   google_maps_flutter: c7f9c73576de1fbe152a227bfd6e6c4ae8088619
@@ -519,13 +522,14 @@ SPEC CHECKSUMS:
   path_provider: abfe2b5c733d04e238b0d8691db0cfd63a27a93c
   permission_handler: ccb20a9fad0ee9b1314a52b70b76b473c5f8dab0
   PromisesObjC: 3113f7f76903778cf4a0586bd1ab89329a0b7b97
-  Purchases: 7ebce9418bc16732c3c3bb4b6ff7e7e397de024e
-  purchases_flutter: 63ee1ca7b56bc2b4a75bfe15e9ee230ed98987ab
-  PurchasesCoreSwift: 50636e307c1ab76c7a7894a87d042665f2fe0be9
-  PurchasesHybridCommon: b1dd1c5125ccf99b9e62b5974d0e5145895e8b87
+  Purchases: 6351f9ff6bd514e5ec5aa0f989ea181effa94bf5
+  purchases_flutter: 627527b070d80cdaf486fabe8b3d1dbe8d5cad92
+  PurchasesCoreSwift: ee857e4c21e6254b09d7e303a756fcf2b9164408
+  PurchasesHybridCommon: d65a799a61d688588534b80338edbcbf604ca93d
   share: 0b2c3e82132f5888bccca3351c504d0003b3b410
   shared_preferences: af6bfa751691cdc24be3045c43ec037377ada40d
   sqflite: 6d358c025f5b867b29ed92fc697fd34924e11904
+  Toast: 91b396c56ee72a5790816f40d3a94dd357abc196
   url_launcher: 6fef411d543ceb26efce54b05a0a40bfd74cbbef
 
 PODFILE CHECKSUM: fe0e1ee7f3d1f7d00b11b474b62dd62134535aea
