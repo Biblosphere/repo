@@ -1233,25 +1233,22 @@ class FilterCubit extends Cubit<FilterState> {
         await user.reload();
 
         // Check if user exist in Firestore. Create if missing. Add to state.
-        DocumentReference ref =
-            FirebaseFirestore.instance.collection('users').doc(user.uid);
-
+        var collectionUsers = FirebaseFirestore.instance.collection('users');
+        DocumentReference ref = collectionUsers.doc(user.uid);
         DocumentSnapshot doc = await ref.get();
 
         print('!!!DEBUG User ${user.uid} exist=${doc.exists}');
-
-        // invited by referal
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        String invitedUid = prefs.getString("invited_by");
-
-        if (invitedUid != null) {
-          if (doc.exists) {
-            if (doc.data()['invited_by'] != null) {
-              print('Document data: ${doc.data()['invited_by']}');
-            } else {
-              ref.update({'invited_by': invitedUid});
-            }
-          }
+        if (!doc.exists) {
+          collectionUsers.doc(user.uid).set({
+            'id': user.uid, // John Doe
+            'name': user.displayName, // John Doe
+            'photoUrl': user.photoURL, // John Doe
+            'phoneNumber': user.phoneNumber, // John Doe
+          }).then((value) {
+            print("!!!DEBUG User Added: $user");
+            checkIsReferenced(ref);
+          }).catchError(
+              (error) => print("!!!DEBUG Failed to add user: $error"));
         }
 
         if (doc.exists && doc.data().containsKey('bookmarks')) {
@@ -2531,5 +2528,23 @@ class FilterCubit extends Cubit<FilterState> {
 
   void clearMessage() {
     emit(state.copyWith(message: ''));
+  }
+
+  Future<void> checkIsReferenced(DocumentReference ref) async {
+    DocumentSnapshot doc = await ref.get();
+
+    print('!!!DEBUG User exist=${doc.exists}');
+
+    // invited by referal
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String invitedUid = prefs.getString("invited_by");
+
+    if (invitedUid != null) {
+      if (doc.data()['invited_by'] != null) {
+        print('!!!DEBUG Document data: ${doc.data()['invited_by']}');
+      } else {
+        ref.update({'invited_by': invitedUid});
+      }
+    }
   }
 }
