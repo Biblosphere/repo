@@ -573,8 +573,9 @@ class FilterState extends Equatable {
       // Firestore only support up to 10 values in the list for the query
       if (authors.length > 10) {
         authors = authors.take(10).toList();
+        await FirebaseCrashlytics.instance
+            .recordError('EXCEPTION: more than 10 authors in a query', StackTrace.current, reason: 'a non-fatal error');
         print('EXCEPTION: more than 10 authors in a query');
-        // TODO: Report an exception to analyse why it happens
       }
 
       if (authors.length > 1) {
@@ -594,13 +595,15 @@ class FilterState extends Equatable {
       if (places.length > 10) {
         places = places.take(10).toList();
         print('EXCEPTION: more than 10 places in a query');
-        // TODO: Report an exception to analyse why it happens
+        await FirebaseCrashlytics.instance
+            .recordError('EXCEPTION: more than 10 places in a query', StackTrace.current, reason: 'a non-fatal error');
       }
 
       if (places.length > 1) {
         if (multiple) {
           print('EXCEPTION: Already multiple query. Places filters ignored.');
-          // TODO: Report an exception
+          await FirebaseCrashlytics.instance
+              .recordError('EXCEPTION: Already multiple query. Places filters ignored.', StackTrace.current, reason: 'a non-fatal error');
         } else {
           query = query.where('bookplace', whereIn: places);
           multiple = true;
@@ -619,13 +622,13 @@ class FilterState extends Equatable {
       if (genres.length > 10) {
         genres = genres.take(10).toList();
         print('EXCEPTION: more than 10 genres in a query');
-        // TODO: Report an exception to analyse why it happens
+        await FirebaseCrashlytics.instance
+            .recordError('EXCEPTION: more than 10 genres in a query', StackTrace.current, reason: 'a non-fatal error');
       }
 
       if (genres.length > 1) {
         if (multiple) {
-          print('EXCEPTION: Already multiple query. Genres filters ignored.');
-          // TODO: Report an exception
+          await FirebaseCrashlytics.instance.recordError('EXCEPTION: Already multiple query. Genres filters ignored.', StackTrace.current, reason: 'a non-fatal error');
         } else {
           query = query.where('genre', whereIn: genres);
           multiple = true;
@@ -644,14 +647,14 @@ class FilterState extends Equatable {
       if (langs.length > 10) {
         langs = langs.take(10).toList();
         print('EXCEPTION: more than 10 languages in a query');
-        // TODO: Report an exception to analyse why it happens
+        await FirebaseCrashlytics.instance.recordError('EXCEPTION: more than 10 languages in a query', StackTrace.current, reason: 'a non-fatal error');
       }
 
       if (langs.length > 1) {
         if (multiple) {
           print(
               'EXCEPTION: Already multiple query. Languages filters ignored.');
-          // TODO: Report an exception
+          await FirebaseCrashlytics.instance.recordError(  'EXCEPTION: Already multiple query. Languages filters ignored.', StackTrace.current, reason: 'a non-fatal error');
         } else {
           query = query.where('language', whereIn: langs);
           multiple = true;
@@ -664,7 +667,7 @@ class FilterState extends Equatable {
 
       if (isbns.length > 10) {
         print('EXCEPTION: number of ISBNs in query more than 10.');
-        // TODO: Report exception in analytic
+        await FirebaseCrashlytics.instance.recordError(  'EXCEPTION: number of ISBNs in query more than 10.', StackTrace.current, reason: 'a non-fatal error');
       }
 
       // Query by list of books (ISBN)
@@ -1092,7 +1095,7 @@ class FilterCubit extends Cubit<FilterState> {
 
       if (isbn == null || isbn.isEmpty || title == null || title.isEmpty) {
         print('EXCEPTION: Isbn or Title is empty in a deep link');
-        // TODO: Report an exception
+        await FirebaseCrashlytics.instance.recordError('EXCEPTION: Isbn or Title is empty in a deep link', StackTrace.current, reason: 'a non-fatal error');
       } else {
         // Search all books with this ISBN and show on map
         searchAndShowBook(book: Book(isbn: isbn, title: title));
@@ -1106,13 +1109,13 @@ class FilterCubit extends Cubit<FilterState> {
 
       if (id == null || id.isEmpty) {
         print('EXCEPTION: Id or Title is empty in a deep link');
-        // TODO: Report an exception
+        await FirebaseCrashlytics.instance.recordError('EXCEPTION: Id or Title is empty in a deep link', StackTrace.current, reason: 'a non-fatal error');
       } else {
         DocumentSnapshot doc =
             await FirebaseFirestore.instance.collection('photos').doc(id).get();
 
         if (!doc.exists) {
-          // TODO: Report an exception
+          await FirebaseCrashlytics.instance.recordError('EXCEPTION: No photo for deep link id = $id', StackTrace.current, reason: 'a non-fatal error');
           print('EXCEPTION: No photo for deep link id = $id');
         } else {
           // Search all books with this ISBN and show on map
@@ -1144,12 +1147,14 @@ class FilterCubit extends Cubit<FilterState> {
           await processDeepLink(deepLink);
         } else {
           print('EXCEPTION: Empty deep link');
-          // TODO: Report into crashalytic
+          await FirebaseCrashlytics.instance.recordError('EXCEPTION: Empty deep link', StackTrace.current, reason: 'a non-fatal error');
         }
       });
     }, onError: (OnLinkErrorException e) {
-      return Future.delayed(Duration.zero, () {
+      return Future.delayed(Duration.zero, () async {
         // TODO: Add to Crashalitics
+        await FirebaseCrashlytics.instance
+            .recordError(e, StackTrace.current, reason: 'a non-fatal error');
         print('EXCEPTION: onLinkError ${e.message}');
       });
     });
@@ -1280,10 +1285,11 @@ class FilterCubit extends Cubit<FilterState> {
             if (info.entitlements.all["basic"].isActive) {
               emitInitial();
             } else {
+              await FirebaseCrashlytics.instance
+                  .recordError(e, StackTrace.current, reason: 'a non-fatal error');
               emit(state.copyWith(
                   status: LoginStatus.unauthorized,
                   message: 'Offerings are missing $offerings'));
-              await FirebaseAuth.instance.signOut();
             }
           });
 
@@ -1294,17 +1300,14 @@ class FilterCubit extends Cubit<FilterState> {
               package: offerings.current.monthly));
         } catch (e, stack) {
           print('EXCEPTION: Purchases exception: $e $stack');
-          // TODO: Inform about failed sugn-in
           await FirebaseCrashlytics.instance
               .recordError(e, stack, reason: 'a non-fatal error');
-          emit(state.copyWith(status: LoginStatus.unauthorized, message: e));
-          await FirebaseAuth.instance.signOut();
+          emit(state.copyWith(status: LoginStatus.unauthorized, message: "EXCEPTION: Purchases exception: $e"));
         }
       }
     });
 
     // UserCredential userCredential =
-    // await FirebaseAuth.instance.signOut();
     // await FirebaseAuth.instance.signInAnonymously();
   }
 
@@ -1356,7 +1359,6 @@ class FilterCubit extends Cubit<FilterState> {
                 e, StackTrace.current,
                 reason: 'a non-fatal error');
             emit(state.copyWith(status: LoginStatus.unauthorized, message: e));
-            await FirebaseAuth.instance.signOut();
           });
 
           // Sign-in in progress
@@ -1372,7 +1374,6 @@ class FilterCubit extends Cubit<FilterState> {
           emit(state.copyWith(
               status: LoginStatus.unauthorized,
               message: authException.message));
-          await FirebaseAuth.instance.signOut();
         },
         codeSent: (String verificationId, [int forceResendingToken]) {
           print('!!!DEBUG VerId and Code Send: $verificationId $forceResendingToken');
@@ -1410,10 +1411,10 @@ class FilterCubit extends Cubit<FilterState> {
         .signInWithCredential(credential)
         .catchError((e) async {
       print('EXCEPTION: Signin with code exception $e');
-      emit(state.copyWith(
-          status: LoginStatus.codeRequired, message: e.toString()));
       await FirebaseCrashlytics.instance
           .recordError(e, StackTrace.current, reason: 'a non-fatal error');
+      emit(state.copyWith(
+          status: LoginStatus.codeRequired, message: e.toString()));
     });
 
     // TODO: Add code to validate code
@@ -1441,8 +1442,7 @@ class FilterCubit extends Cubit<FilterState> {
       print('EXCEPTION: Purchase failed $e $stack');
       await FirebaseCrashlytics.instance
           .recordError(e, StackTrace.current, reason: 'a non-fatal error');
-      emit(state.copyWith(status: LoginStatus.unauthorized, message: '$e'));
-      await FirebaseAuth.instance.signOut();
+      emit(state.copyWith(status: LoginStatus.unauthorized, message: 'EXCEPTION: Purchase failed $e'));
     }
   }
 
