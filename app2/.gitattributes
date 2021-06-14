@@ -2,6 +2,7 @@
 *.key filter=git-crypt diff=git-crypt
 *.jks filter=git-crypt diff=git-crypt
 signing-cert.p12 filter=git-crypt diff=git-crypt
+apple-distribution.p12 filter=git-crypt diff=git-crypt
 google-services.json filter=git-crypt diff=git-crypt
 GoogleService-Info.plist filter=git-crypt diff=git-crypt
 key.jks filter=git-crypt diff=git-crypt
