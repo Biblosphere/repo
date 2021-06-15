@@ -1281,6 +1281,7 @@ class FilterCubit extends Cubit<FilterState> {
     FirebaseAuth.instance.authStateChanges().listen((User user) async {
       if (user == null) {
         print('!!!DEBUG Login USER IS NULL');
+        emit(state.copyWith(status: LoginStatus.unauthorized));
       } else {
         print('!!!DEBUG Login user $user');
         // Update user name in the Firebase profile
