@@ -26,7 +26,9 @@ from firebase_admin import messaging
 # Image resize for the thumbnail
 from wand.image import Image
 
-client = storage.Client()
+#TODO:AVEA - don't merge
+#client = storage.Client()
+client = storage.Client.from_service_account_json('venv\\keys\\biblosphere-210106-dcfe06610932.json')
 
 # Use the application default credentials
 # TODO: Only initialize it for add_user_books(_from_image_sub) functions which use Firestore (Performance)
@@ -34,10 +36,12 @@ cred = credentials.ApplicationDefault()
 firebase_admin.initialize_app(cred, {
   'projectId': 'biblosphere-210106',
 })
-db = firestore.client()
+#TODO:AVEA - don't merge
+#db = firestore.client()
 
 # TODO: Get the client only in function which needs it. Make empty global variable and check it (Performance)
-publisher = pubsub.PublisherClient()
+#TODO:AVEA - don't merge
+#publisher = pubsub.PublisherClient()
 
 # Function to generate thumbnails for the book shelves
 # Deploy with:
@@ -2653,3 +2657,12 @@ def remove_noise(blocks, confident, unknown, threshold=0.30, trace=False):
     delete_empty(confident)
 
     return
+
+#TODO-AVEA: don't merge
+def test_func():
+    print('its work!')
+
+#TODO-AVEA: don't merge
+#testing run
+if __name__ == '__main__':
+    test_func()
