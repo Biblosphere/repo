@@ -1,5 +1,7 @@
 import re
 import os
+from typing import List, Any
+
 import cv2
 import traceback
 import numpy as np
@@ -32,12 +34,15 @@ client = storage.Client.from_service_account_json('venv\\keys\\biblosphere-21010
 
 # Use the application default credentials
 # TODO: Only initialize it for add_user_books(_from_image_sub) functions which use Firestore (Performance)
-cred = credentials.ApplicationDefault()
+
+#TODO:AVEA - don't merge
+#cred = credentials.ApplicationDefault()
+cred = credentials.Certificate('venv\\keys\\biblosphere-210106-dcfe06610932.json')
+
 firebase_admin.initialize_app(cred, {
   'projectId': 'biblosphere-210106',
 })
-#TODO:AVEA - don't merge
-#db = firestore.client()
+db = firestore.client()
 
 # TODO: Get the client only in function which needs it. Make empty global variable and check it (Performance)
 #TODO:AVEA - don't merge
@@ -182,10 +187,19 @@ def connect_mysql(f):
     @wraps(f)
     def wrapper(request):
         try:
-            cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
-                                          unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
+            # TODO:AVEA - don't merge
+
+            #cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
+            #                              unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
+            #                              database='biblosphere',
+            #                              use_pure=False)
+
+            cnx = mysql.connector.connect(user='biblosphere',
+                                          password='biblosphere',
+                                          host='35.223.45.184',
+                                          port='3306',
                                           database='biblosphere',
-                                          use_pure=False)
+                                          use_pure=True)
 
             cnx.autocommit = True
             cursor = cnx.cursor(prepared=True)
@@ -206,10 +220,20 @@ def connect_mysql_firestore(f):
     @wraps(f)
     def wrapper(data, context):
         try:
-            cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
-                                          unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
+            # TODO:AVEA - don't merge
+
+            #cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
+            #                              unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
+            #                              database='biblosphere',
+            #                              use_pure=False)
+
+
+            cnx = mysql.connector.connect(user='biblosphere',
+                                          password='biblosphere',
+                                          host='35.223.45.184',
+                                          port='3306',
                                           database='biblosphere',
-                                          use_pure=False)
+                                          use_pure=True)
 
             cnx.autocommit = True
             cursor = cnx.cursor(prepared=True)
@@ -1805,7 +1829,6 @@ def bookspine_distance(b1, b2, trace=False):
     angle, d, _ = box_position(b1, b2)
     # if trace:
     #    print('Angle:', angle)
-
     if 0.0 <= angle <= 0.08 or overlap > 0.4:
         distance = d
 
@@ -2388,8 +2411,8 @@ def extract_region(img, box, trace=False):
     if y + h >= maxY:
         h = maxY - y - 1
 
-    rx = w // 2
-    ry = h // 2
+    rx = int(w // 2)  #TODO-AVEA: Error. Needed to convert to int
+    ry = int(h // 2)
 
     # crop source
     d1 = np.array([x, y])
@@ -2466,44 +2489,20 @@ def extract_region(img, box, trace=False):
 
 
 # Re-run image recognition for the region of the image
+#TODO-AVEA: Modify this function
 def recognize_block(block, top_blocks, img, max_height, trace=False):
     # print(block.box)
     img_crop, M, d1, d2 = extract_region(img, block.box, trace=False)
     iM = cv2.invertAffineTransform(M)
 
     response = ocr_image(img_crop)
+    blocks, w_other, max_height = extract_blocks(response, img_crop, trace=trace)
 
-    # Extract blocks from Google Cloud Vision responce
-    words = extract_words(response, img_crop, trace=False)
+    united_block = blocks[0]
+    for i in range(1, len(blocks)):
+        united_block.merge_with(blocks[i])
 
-    if trace:
-        print('Words extracted: words=%d' % (len(words)))
-
-    for w in words:
-        w.box = transform(w.box, iM, d1, d2)
-
-    # Merge neaby blocks along the same bookspine (by angle, distance and size)
-    blocks = []
-    # Copy input blocks to keep original list
-    confident_blocks = [b for b in top_blocks]
-
-    # Merge cross lines
-    merge_along_confident(blocks, confident_blocks, words, img, corrupted=True, trace=False)
-
-    # Merge smaller blocks with text not in the title/author (usually publisher)
-    merge_publisher(blocks, confident_blocks, words, img, corrupted=True, trace=False)
-
-    # Exclude original confident blocks
-    # blocks = [b for b in blocks if b not in confident_blocks]
-
-    # Remove blocks which were already there
-    blocks = [b for b in blocks if b not in top_blocks]
-
-    if trace:
-        for b in blocks:
-            print(b.words())
-
-    return blocks
+    return [united_block]
 
 
 # Delete old blocks which overlap with new blocks
@@ -2659,10 +2658,360 @@ def remove_noise(blocks, confident, unknown, threshold=0.30, trace=False):
     return
 
 #TODO-AVEA: don't merge
-def test_func():
-    print('its work!')
+@connect_mysql_firestore
+def test_func(data, context, cursor):
+    print('...test_func start...')
 
-#TODO-AVEA: don't merge
-#testing run
+    TEST_MODE = True
+    SHOW_PHOTO = False
+
+    #path_parts = context.resource.split('/documents/')[1].split('/')
+    #doc_path = path_parts[0]
+    #photo_id = path_parts[1]
+
+    doc_path = 'photos'
+    photo_id = 'ufOboNfwJD87mOyCab3K'
+
+    rec = db.collection(doc_path).document(photo_id).get().to_dict()
+
+    # Check that all required fields are there
+    if not rec.keys() >= {'photo', 'reporter', 'bookplace', 'id', 'location', 'url'}:
+        # TODO: Make proper error handling
+        print('ERROR: photo/reporter/bookplace/id/location/url parameters missing.', photo_id)
+        return
+
+    photo = Photo.from_json(rec)
+    print('!!!DEBUG: Photo id: ', photo.id)
+    print('!!!DEBUG: Image: ', photo.photo)
+    print('!!!DEBUG: User: ', photo.reporter)
+    print('!!!DEBUG: Place: ', photo.bookplace)
+    print('!!!DEBUG: Location: ', photo.location)
+    print('!!!DEBUG: Url: ', photo.url)
+
+
+    trace = False
+    if 'trace' in rec:
+        trace = rec['trace']
+
+    rec = db.collection('bookplaces').document(photo.bookplace).get()
+
+    if rec is None:
+        # TODO: Make proper error handling
+        print('ERROR: bookplace record not found by id.', photo.bookplace)
+        return
+
+    rec_data = rec.to_dict()
+    if not rec_data.keys() >= {'id', 'name', 'contact'}:
+        # TODO: Make proper error handling
+        print('ERROR: id/name/contact missing in bookplace record.', photo.bookplace)
+        return
+
+    place = Place.from_json(rec_data)
+
+    if place.id is None or place.id == '':
+        place.id = rec.id
+
+    if place.location is None or place.location['geohash'] is None or place.location['geohash'] == '':
+        place.location = photo.location
+
+    print('!!!DEBUG: Place id: ', place.id)
+    print('!!!DEBUG: Place Name: ', place.name)
+    print('!!!DEBUG: Place Location: ', place.location)
+
+
+    filename = photo.photo
+    uid = photo.reporter
+    # place = photo.bookplace
+
+    # client = storage.Client()
+    bucket = client.get_bucket('biblosphere-210106.appspot.com')
+
+    # Check if result JSON is available
+    result_filename = os.path.splitext(filename)[0] + '.json'
+    result_blob = bucket.blob(result_filename)
+
+    # Do recognition only if no results available from previous runs
+    already_recognized = False
+
+    #if True:
+    if not result_blob.exists() or TEST_MODE:
+        print('DEBUG: TEST_MODE or NOT result_blob.exists()')
+
+        b = bucket.blob(filename)
+        img = imread_blob(b)
+
+        # Keep photo size
+        photo.height, photo.width = img.shape[0:2]
+
+        if TEST_MODE:
+            response = None
+            blocks = load_struct_from_file('temp\\blocks.pkl')
+            w_other = load_struct_from_file('temp\\w_other.pkl')
+            max_height = load_struct_from_file('temp\\max_height.pkl')
+
+        else:
+            print('DEBUG: ocr start...')
+            response = ocr_url('gs://biblosphere-210106.appspot.com/' + b.name)
+            print('DEBUG: ocr finish...')
+            # Extract blocks from Google Cloud Vision responce
+            blocks, w_other, max_height = extract_blocks(response, img, trace=trace)
+            save_struct_to_file(blocks, 'temp\\blocks.pkl')
+            save_struct_to_file(w_other, 'temp\\w_other.pkl')
+            save_struct_to_file(max_height, 'temp\\max_height.pkl')
+
+        if max_height is None:
+            max_height = img.shape[0] / 3
+
+        #get book segments using ml model
+        segments = ml_rocognize_book_segments('gs://biblosphere-210106.appspot.com/' + b.name)
+
+        if SHOW_PHOTO:
+            #let's plot blocks on photo
+            local_path = 'temp/' + b.name.split('/')[-1]
+            plot_blocks_on_photo(local_path, blocks)
+            plot_blocks_as_segments(blocks)
+            #plot_predictions_as_segments(segments)
+
+
+
+        blocks = merge_blocks_and_segments(blocks, segments)
+        confident_blocks = []
+
+        lookup_books(cursor, blocks, confident_blocks, trace=trace)
+
+        #Assume corrupted blocks are scanned up-side-down. Recognize again.
+        rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=trace)
+
+        #Identify unknown books (look for false positives)
+        unknown_blocks = list_unknown(cursor, blocks, trace=trace)
+
+        #Clean noise
+        remove_noise(blocks, confident_blocks, unknown_blocks, threshold=0.50, trace=trace)
+
+        #TODO-AVEA: Question to Denis. May be success rotated blocks remove from blocks?
+
+        recognized_blocks = list(set([b for b in blocks if b.book is not None]))
+        unrecognized_blocks = list(set([b for b in blocks if b.book is None and b.bookspine is not None]))
+
+        a = 1
+
+    else:
+        print('DEBUG: result_blob.exists()')
+        already_recognized = True
+        # Read JSON with results from cloud storage
+        stored_results = json.loads(result_blob.download_as_string(), cls=JsonDecoder)
+
+        recognized_blocks = stored_results['recognized']
+        unrecognized_blocks = stored_results['unrecognized']
+        if stored_results.keys() >= {'height', 'width'}:
+            photo.height, photo.width = stored_results['height'], stored_results['width']
+        else:
+            # TODO: Temporary for debug perposes for old JSON files (REMOVE)
+            b = bucket.blob(filename)
+            img = imread_blob(b)
+            photo.height, photo.width = img.shape[0:2]
+
+    f = 1
+
+    #     # Add confident books to the Biblosphere user (Firestore)
+    #     batch = db.batch()
+    #
+    #     print('!!!DEBUG Place ', place)
+    #     for b in recognized_blocks:
+    #         # Set the Firestore bookrecord
+    #         ref = db.collection('books').document(place.id + ':' + b.book.isbn)
+    #         batch.set(ref, b.book_data(photo, place), merge=True)
+    #         print(b.book.isbn, b.book.title, b.book.authors)
+    #         # print(b['contour'])
+    #
+    #     # Commit the batch
+    #     batch.commit()
+    #
+    #     # Update status to completed and keep number of recognized books
+    #     db.collection('photos').document(photo_id).update({'status': 'recognized',
+    #                                                        'total': len(recognized_blocks) + len(unrecognized_blocks),
+    #                                                        'recognized': len(recognized_blocks)})
+    #
+    #     if not already_recognized:
+    #         # Build JSON with results of the recognition
+    #         # - GCS path to image
+    #         # - List of recognized books (isbn/title/authors, contour)
+    #         # - List of unrecognized books (bookspine line, contour)
+    #         # - Google Cloud Vision response
+    #
+    #         data = {
+    #             'uid': uid,
+    #             'uri': filename,
+    #             'height': photo.height,
+    #             'width': photo.width,
+    #             'recognized': recognized_blocks,
+    #             'unrecognized': unrecognized_blocks,
+    #             # 'cloud_vision_response': response
+    #         }
+    #
+    #         # Store JSON to GCS
+    #         result_blob.upload_from_string(json.dumps(data, cls=JsonEncoder).encode('utf8'), 'application/json')
+
+
+
+    print('...test_func done...')
+
+#TODO-AVEA: new usfull func
+def convert_block_to_mask(block):
+    import pylab as plt
+    import numpy as np
+    from matplotlib.path import Path
+
+    height, width = 1080, 1920
+    points = block.box
+
+    x, y = np.mgrid[:height, :width]
+    coors = np.hstack((x.reshape(-1, 1), y.reshape(-1, 1)))  # coors.shape is (4000000,2)
+
+    mask = Path(points).contains_points(coors)
+    return mask.reshape(height, width).transpose()
+
+#TODO-AVEA: new usfull func
+def merge_blocks_and_segments(blocks: list, segments: np.array, with_return=False):
+    #segments array dimensions: segment, width, height
+
+    result = []
+    blocks_pool = blocks.copy()
+    related_blocks = [[] for _ in segments]
+
+    for block_idx in reversed(range(len(blocks_pool))):
+        a = block_idx
+        block_mask = convert_block_to_mask(blocks_pool[block_idx])
+        for segment_idx in range(segments.shape[0]):
+            if masks_intersect(block_mask, segments[segment_idx]):
+                block = blocks_pool[block_idx] if with_return else blocks_pool.pop()
+                related_blocks[segment_idx].append(block)
+                break
+
+    for blocks_group in related_blocks:
+        if len(blocks_group) == 0:
+            continue
+
+        united_block = blocks_group[0]
+        for i in range(1, len(blocks_group)):
+            united_block.merge_with(blocks_group[i])
+
+        result.append(united_block)
+
+    return result
+
+
+#TODO-AVEA: new usfull func
+def masks_intersect(first_mask: np.ndarray, second_mask: np.ndarray, threshold=0.95):
+    min_points = min(first_mask.sum(), second_mask.sum())
+    intersect_mask = first_mask * second_mask
+    intersect_points = intersect_mask.sum()
+
+    res = intersect_points / min_points > threshold
+    return res
+
+
+
+def save_struct_to_file(data, filename):
+    import pickle
+
+    afile = open(filename, 'wb')
+    pickle.dump(data, afile)
+    afile.close()
+
+def load_struct_from_file(filename):
+    import pickle
+
+    file2 = open(filename, 'rb')
+    struct = pickle.load(file2)
+    file2.close()
+
+    return struct
+
+def plot_blocks_on_photo(photo_path, blocks):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    import pylab
+    from PIL import Image
+
+    def build_polygon(points):
+        xy = np.array(points)
+        return patches.Polygon(xy, closed=True, linewidth=2, fill=True, alpha=0.5, color=np.random.rand(3, ))
+
+    pylab.rcParams['figure.figsize'] = [8.0, 8.0]
+    im = Image.open(photo_path)
+    plt.imshow(im)
+    ax = plt.gca()
+
+    for block in blocks:
+        ax.add_patch(build_polygon(block.box))
+    plt.show()
+
+def test_plot_blocks():
+    blocks = load_struct_from_file(r'temp\blocks.pkl')
+    img_file = r'temp\1625630423984.jpg'
+    plot_blocks_on_photo(img_file, blocks)
+
+
+
+
+
+def plot_blocks_as_segments(blocks):
+    import pylab as plt
+
+    a = convert_block_to_mask(blocks[0])
+    for block in blocks[1:]:
+        b = convert_block_to_mask(block)
+        a = a + b
+
+    plt.imshow(a)
+    plt.show()
+
+def plot_segments_on_photo(photo_path, predictions):
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    import pylab
+    from PIL import Image
+
+    one_pred = predictions[7]
+
+    pylab.rcParams['figure.figsize'] = [8.0, 8.0]
+    #im = Image.open(photo_path)
+    #plt.imshow(im)
+    #ax = plt.gca()
+
+    im = one_pred.reshape((one_pred.shape[0], one_pred.shape[1], 1))
+    plt.imshow(im)
+
+
+    plt.show()
+
+#TODO-AVEA: new usfull func
+def ml_rocognize_book_segments(image_path=None):
+    preds = load_struct_from_file(r'temp\predictions.pkl')
+    return np.array(preds, dtype=bool)
+
+
+def plot_predictions_as_segments(preds):
+    import pylab as plt
+
+    a = preds[0]
+    for i in range(preds.shape[0]):
+        a += preds[i]
+
+    plt.imshow(a)
+    plt.show()
+
+
+
+
 if __name__ == '__main__':
-    test_func()
+    #test_plot_blocks()
+    test_func(None, None)
+
+    #preds = load_struct_from_file(r'temp\predictions.pkl')
+    #img_file = r'temp\1625630423984.jpg'
+    #plot_segments_on_photo(img_file, preds)
