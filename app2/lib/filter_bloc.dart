@@ -332,7 +332,7 @@ class FilterState extends Equatable {
 
   static const List<Filter> empty = const [
     Filter(type: FilterType.wish, selected: false),
-    Filter(type: FilterType.contacts, selected: false),
+    // Filter(type: FilterType.contacts, selected: false),
   ];
 
   const FilterState({
@@ -742,7 +742,7 @@ class FilterState extends Equatable {
     return books;
   }
 
-  Future<List<Photo>> photosFor(String geohash) async {
+  Future<List<PhotoModel>> photosFor(String geohash) async {
     String low = (geohash + '000000000').substring(0, 9);
     String high = (geohash + 'zzzzzzzzz').substring(0, 9);
 
@@ -754,8 +754,8 @@ class FilterState extends Equatable {
         .get();
 
     // Group all photos for geohash areas one level down
-    List<Photo> photos = photoSnap.docs
-        .map((doc) => Photo.fromJson(doc.id, doc.data()))
+    List<PhotoModel> photos = photoSnap.docs
+        .map((doc) => PhotoModel.fromJson(doc.id, doc.data()))
         .toList();
 
     print('!!!DEBUG: photosFor reads ${photos.length} photos');
@@ -813,12 +813,12 @@ class FilterState extends Equatable {
           count = value.length;
         else
           value.forEach((p) {
-            count += (p is Photo) ? p.count ?? 1 : 1;
+            count += (p is PhotoModel) ? p.count ?? 1 : 1;
           });
 
         Set<Place> places = value
-            .where((p) => (p is Photo) && p.type == PlaceType.place)
-            .map((p) => (p as Photo).place)
+            .where((p) => (p is PhotoModel) && p.type == PlaceType.place)
+            .map((p) => (p as PhotoModel).place)
             .toSet();
 
         markers.add(MarkerData(
@@ -1173,7 +1173,7 @@ class FilterCubit extends Cubit<FilterState> {
           print('EXCEPTION: No photo for deep link id = $id');
         } else {
           // Search all books with this ISBN and show on map
-          getAndShowPhoto(photo: Photo.fromJson(doc.id, doc.data()));
+          getAndShowPhoto(photo: PhotoModel.fromJson(doc.id, doc.data()));
         }
       }
     }
@@ -1246,7 +1246,7 @@ class FilterCubit extends Cubit<FilterState> {
 
       print('!!!DEBUG after getting current location!');
 
-      Set<Photo> photos = Set();
+      Set<PhotoModel> photos = Set();
 
       // Get geohash of the current location and neighbours ~ 60 km
       String geohash = GeoHasher().encode(center.longitude, center.latitude);
@@ -1758,7 +1758,7 @@ class FilterCubit extends Cubit<FilterState> {
 
       // Make markers based on PLACES
     } else if (state.select == QueryType.places) {
-      Set<Photo> photos = Set();
+      Set<PhotoModel> photos = Set();
       // Add places only for missing areas
       await Future.forEach(state.geohashes, (hash) async {
         photos.addAll(await state.photosFor(hash));
@@ -2012,7 +2012,7 @@ class FilterCubit extends Cubit<FilterState> {
           markers: markers, points: books, bounds: bounds, hashes: hashes);
     } else if (state.select == QueryType.places) {
       // Make markers based on PLACES
-      Set<Photo> photos = Set();
+      Set<PhotoModel> photos = Set();
 
       // print('!!!DEBUG Markers based on PLACES Filters: ${state.filters.length} Books: ${state.books.length}');
       // Add places only for missing areas
@@ -2093,7 +2093,7 @@ class FilterCubit extends Cubit<FilterState> {
       Shelf s;
       if (point is Book) {
         s = await Shelf.fromBook(point);
-      } else if (point is Photo) {
+      } else if (point is PhotoModel) {
         s = await Shelf.fromPhoto(point);
       }
 
@@ -2182,7 +2182,7 @@ class FilterCubit extends Cubit<FilterState> {
     searchAndShow(newState);
   }
 
-  void getAndShowPhoto({Photo photo}) async {
+  void getAndShowPhoto({PhotoModel photo}) async {
     print('!!!DEBUG Search and show photo ${photo.name}');
 
     List<MarkerData> markers = await state.markersFor(points: [photo].toSet());

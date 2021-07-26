@@ -10,6 +10,13 @@ import 'dart:ui' as ui;
 // Import slidable actions for book card
 //import 'package:flutter_slidable/flutter_slidable.dart';
 // Cached network images
+import 'package:biblosphere/model/Book.dart';
+import 'package:biblosphere/model/Place.dart';
+import 'package:biblosphere/model/Shelf.dart';
+import 'package:biblosphere/model/Point.dart';
+import 'package:biblosphere/model/Photo.dart';
+import 'package:biblosphere/util/Consts.dart';
+import 'package:biblosphere/util/Enums.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 // Camera plugin
