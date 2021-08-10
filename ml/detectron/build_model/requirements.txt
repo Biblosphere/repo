@@ -1,0 +1,9 @@
+flask
+healthcheck
+Pillow
+opencv-python
+joblib
+torch=1.9
+
+
+#Run this file with - pip3 install -r requirements.txt

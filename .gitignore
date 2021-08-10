@@ -20,3 +20,4 @@ doc/api/
 *.js.deps
 *.js.map
 *.pyc
+ml/detectron/build_model/model/model.joblib
