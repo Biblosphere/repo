@@ -32,4 +32,9 @@ CMD [ "python", "DetectronFlask.py" ]
 
 
 # deploy container
-# gcloud run deploy demo-docker-model --image gcr.io/biblosphere-210106/detectron-model --platform managed --memory 4G
+# gcloud run deploy detectron-model --image gcr.io/biblosphere-210106/detectron-model --platform managed --memory 4G
+
+
+#DOCKER DEPLOY (TO TEST)
+#docker container run -p 8080:80 gcr.io/$GOOGLE_PROJECT/test-app:$IMAGE
+#docker run -it -p 5000:5000 --name detectron-model -d gcr.io/biblosphere-210106/detectron-model

@@ -2,7 +2,11 @@
 from flask import Flask, request, send_file
 from healthcheck import HealthCheck
 from PIL import Image
-import os, cv2, joblib, logging, torch
+import os
+import cv2
+import joblib
+import logging
+import torch
 import numpy as np
 
 import detectron2
@@ -54,9 +58,9 @@ def predict():
     file = request.files['photo'] 
     logging.info(f'Received incoming file - {file.filename}')    
         
-    INPUT_PHOTO_FILE = './temp/input_photo.png'
-    OUTPUT_PHOTO_FILE = './temp/output_photo.png'
-    OUTPUT_COMPRESSED_FILE = './temp/output.pred_masks'
+    INPUT_PHOTO_FILE = 'input_photo.png'
+    OUTPUT_PHOTO_FILE = 'output_photo.png'
+    OUTPUT_COMPRESSED_FILE = 'output.pred_masks'
     
     img = Image.open(file)
     img.save(INPUT_PHOTO_FILE, format='PNG')
