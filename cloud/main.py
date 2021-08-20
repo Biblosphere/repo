@@ -28,6 +28,10 @@ from firebase_admin import messaging
 # Image resize for the thumbnail
 from wand.image import Image
 
+#TODO-AVEA: added libs
+import requests, shutil, joblib, io
+from PIL import Image as Image_PIL, ExifTags
+
 #TODO:AVEA - don't merge
 #client = storage.Client()
 client = storage.Client.from_service_account_json('venv\\keys\\biblosphere-210106-dcfe06610932.json')
@@ -2498,6 +2502,9 @@ def recognize_block(block, top_blocks, img, max_height, trace=False):
     response = ocr_image(img_crop)
     blocks, w_other, max_height = extract_blocks(response, img_crop, trace=trace)
 
+    if len(blocks) == 0:
+        return []
+
     united_block = blocks[0]
     for i in range(1, len(blocks)):
         united_block.merge_with(blocks[i])
@@ -2663,14 +2670,21 @@ def test_func(data, context, cursor):
     print('...test_func start...')
 
     TEST_MODE = True
-    SHOW_PHOTO = False
-
-    #path_parts = context.resource.split('/documents/')[1].split('/')
-    #doc_path = path_parts[0]
-    #photo_id = path_parts[1]
+    SHOW_PHOTO = True
 
     doc_path = 'photos'
-    photo_id = 'ufOboNfwJD87mOyCab3K'
+    photo_id = '5wT7bve0jXyOZoIdC3Fv'
+
+    '''
+    Тестовое (мое фото):
+    ufOboNfwJD87mOyCab3K
+    
+    Другие фото:
+    1xbzGeQPqLRh5F0MabTg (rotated)
+    4K4e42A1pt3Rt2mbjpmY
+    5wT7bve0jXyOZoIdC3Fv
+    '''
+
 
     rec = db.collection(doc_path).document(photo_id).get().to_dict()
 
@@ -2682,11 +2696,6 @@ def test_func(data, context, cursor):
 
     photo = Photo.from_json(rec)
     print('!!!DEBUG: Photo id: ', photo.id)
-    print('!!!DEBUG: Image: ', photo.photo)
-    print('!!!DEBUG: User: ', photo.reporter)
-    print('!!!DEBUG: Place: ', photo.bookplace)
-    print('!!!DEBUG: Location: ', photo.location)
-    print('!!!DEBUG: Url: ', photo.url)
 
 
     trace = False
@@ -2716,7 +2725,6 @@ def test_func(data, context, cursor):
 
     print('!!!DEBUG: Place id: ', place.id)
     print('!!!DEBUG: Place Name: ', place.name)
-    print('!!!DEBUG: Place Location: ', place.location)
 
 
     filename = photo.photo
@@ -2733,136 +2741,84 @@ def test_func(data, context, cursor):
     # Do recognition only if no results available from previous runs
     already_recognized = False
 
-    #if True:
-    if not result_blob.exists() or TEST_MODE:
-        print('DEBUG: TEST_MODE or NOT result_blob.exists()')
 
-        b = bucket.blob(filename)
-        img = imread_blob(b)
+    b = bucket.blob(filename)
+    img = imread_blob(b) # dims: height x width x color
 
-        # Keep photo size
-        photo.height, photo.width = img.shape[0:2]
-
-        if TEST_MODE:
-            response = None
-            blocks = load_struct_from_file('temp\\blocks.pkl')
-            w_other = load_struct_from_file('temp\\w_other.pkl')
-            max_height = load_struct_from_file('temp\\max_height.pkl')
-
-        else:
-            print('DEBUG: ocr start...')
-            response = ocr_url('gs://biblosphere-210106.appspot.com/' + b.name)
-            print('DEBUG: ocr finish...')
-            # Extract blocks from Google Cloud Vision responce
-            blocks, w_other, max_height = extract_blocks(response, img, trace=trace)
-            save_struct_to_file(blocks, 'temp\\blocks.pkl')
-            save_struct_to_file(w_other, 'temp\\w_other.pkl')
-            save_struct_to_file(max_height, 'temp\\max_height.pkl')
-
-        if max_height is None:
-            max_height = img.shape[0] / 3
-
-        #get book segments using ml model
-        segments = ml_rocognize_book_segments('gs://biblosphere-210106.appspot.com/' + b.name)
-
-        if SHOW_PHOTO:
-            #let's plot blocks on photo
-            local_path = 'temp/' + b.name.split('/')[-1]
-            plot_blocks_on_photo(local_path, blocks)
-            plot_blocks_as_segments(blocks)
-            #plot_predictions_as_segments(segments)
+    img_bytes = b.download_as_bytes()
+    img_angle = img_rotate_angle(img_bytes)
 
 
+    if SHOW_PHOTO:
+        b.download_to_filename('temp/' + b.name.split('/')[-1])
 
-        blocks = merge_blocks_and_segments(blocks, segments)
-        confident_blocks = []
+    # Keep photo size
+    photo.height, photo.width = img.shape[0:2]
 
-        lookup_books(cursor, blocks, confident_blocks, trace=trace)
+    print('DEBUG: ocr start...')
+    response = ocr_url('gs://biblosphere-210106.appspot.com/' + b.name)
+    blocks, w_other, max_height = extract_blocks(response, img, trace=trace)
+    print('DEBUG: ocr finish...')
 
-        #Assume corrupted blocks are scanned up-side-down. Recognize again.
-        rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=trace)
+    if max_height is None:
+        max_height = img.shape[0] / 3
 
-        #Identify unknown books (look for false positives)
-        unknown_blocks = list_unknown(cursor, blocks, trace=trace)
+    #get book segments using ml model (segments dims: segment_index x height x width)
+    segments = ml_rocognize_book_segments(img_bytes)
 
-        #Clean noise
-        remove_noise(blocks, confident_blocks, unknown_blocks, threshold=0.50, trace=trace)
+    # rotate img to normal angle
+    if img_angle == 90:
+        photo.width, photo.height = photo.height, photo.width
+        #segments = np.rot90(segments, k=1, axes=(1,2))
+    elif img_angle == 270:
+        pass
+        #segments = np.rot90(segments, k=1, axes=(1,2))
 
-        #TODO-AVEA: Question to Denis. May be success rotated blocks remove from blocks?
+    if SHOW_PHOTO:
+        local_path = 'temp/' + b.name.split('/')[-1]
+        plot_blocks_on_photo(local_path, blocks)
+        #plot_blocks_as_segments(blocks)
+        #plot_predictions_as_segments(segments)
 
-        recognized_blocks = list(set([b for b in blocks if b.book is not None]))
-        unrecognized_blocks = list(set([b for b in blocks if b.book is None and b.bookspine is not None]))
 
-        a = 1
+    blocks = merge_blocks_and_segments(blocks, segments, photo.height, photo.width, with_return=True)
+    confident_blocks = []
 
-    else:
-        print('DEBUG: result_blob.exists()')
-        already_recognized = True
-        # Read JSON with results from cloud storage
-        stored_results = json.loads(result_blob.download_as_string(), cls=JsonDecoder)
+    # склеенные блоки
+    if SHOW_PHOTO:
+        local_path = 'temp/' + b.name.split('/')[-1]
+        for block in blocks:
+            plot_blocks_on_photo(local_path, [block])
 
-        recognized_blocks = stored_results['recognized']
-        unrecognized_blocks = stored_results['unrecognized']
-        if stored_results.keys() >= {'height', 'width'}:
-            photo.height, photo.width = stored_results['height'], stored_results['width']
-        else:
-            # TODO: Temporary for debug perposes for old JSON files (REMOVE)
-            b = bucket.blob(filename)
-            img = imread_blob(b)
-            photo.height, photo.width = img.shape[0:2]
+    lookup_books(cursor, blocks, confident_blocks, trace=trace)
 
-    f = 1
+    #TODO-AVEA: Докручивать надо исходную картинку. OCR и Detectron докручивают сами.
+    if img_angle == 90:
+        img = np.rot90(img, k=3, axes=(0,1))
+    elif img_angle == 270:
+        img = np.rot90(img, k=1, axes=(0,1))
 
-    #     # Add confident books to the Biblosphere user (Firestore)
-    #     batch = db.batch()
-    #
-    #     print('!!!DEBUG Place ', place)
-    #     for b in recognized_blocks:
-    #         # Set the Firestore bookrecord
-    #         ref = db.collection('books').document(place.id + ':' + b.book.isbn)
-    #         batch.set(ref, b.book_data(photo, place), merge=True)
-    #         print(b.book.isbn, b.book.title, b.book.authors)
-    #         # print(b['contour'])
-    #
-    #     # Commit the batch
-    #     batch.commit()
-    #
-    #     # Update status to completed and keep number of recognized books
-    #     db.collection('photos').document(photo_id).update({'status': 'recognized',
-    #                                                        'total': len(recognized_blocks) + len(unrecognized_blocks),
-    #                                                        'recognized': len(recognized_blocks)})
-    #
-    #     if not already_recognized:
-    #         # Build JSON with results of the recognition
-    #         # - GCS path to image
-    #         # - List of recognized books (isbn/title/authors, contour)
-    #         # - List of unrecognized books (bookspine line, contour)
-    #         # - Google Cloud Vision response
-    #
-    #         data = {
-    #             'uid': uid,
-    #             'uri': filename,
-    #             'height': photo.height,
-    #             'width': photo.width,
-    #             'recognized': recognized_blocks,
-    #             'unrecognized': unrecognized_blocks,
-    #             # 'cloud_vision_response': response
-    #         }
-    #
-    #         # Store JSON to GCS
-    #         result_blob.upload_from_string(json.dumps(data, cls=JsonEncoder).encode('utf8'), 'application/json')
+    #Assume corrupted blocks are scanned up-side-down. Recognize again.
+    rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=trace)
 
+    #Identify unknown books (look for false positives)
+    unknown_blocks = list_unknown(cursor, blocks, trace=trace)
+
+    #Clean noise
+    remove_noise(blocks, confident_blocks, unknown_blocks, threshold=0.50, trace=trace)
+
+    recognized_blocks = list(set([b for b in blocks if b.book is not None]))
+    unrecognized_blocks = list(set([b for b in blocks if b.book is None and b.bookspine is not None]))
 
 
     print('...test_func done...')
 
 #TODO-AVEA: new usfull func
-def convert_block_to_mask(block):
+def convert_block_to_mask(block, height, width):
     import pylab as plt
     import numpy as np
     from matplotlib.path import Path
 
-    height, width = 1080, 1920
     points = block.box
 
     x, y = np.mgrid[:height, :width]
@@ -2872,7 +2828,7 @@ def convert_block_to_mask(block):
     return mask.reshape(height, width).transpose()
 
 #TODO-AVEA: new usfull func
-def merge_blocks_and_segments(blocks: list, segments: np.array, with_return=False):
+def merge_blocks_and_segments(blocks: list, segments: np.array, width, height, with_return=False):
     #segments array dimensions: segment, width, height
 
     result = []
@@ -2881,7 +2837,7 @@ def merge_blocks_and_segments(blocks: list, segments: np.array, with_return=Fals
 
     for block_idx in reversed(range(len(blocks_pool))):
         a = block_idx
-        block_mask = convert_block_to_mask(blocks_pool[block_idx])
+        block_mask = convert_block_to_mask(blocks_pool[block_idx], height, width)
         for segment_idx in range(segments.shape[0]):
             if masks_intersect(block_mask, segments[segment_idx]):
                 block = blocks_pool[block_idx] if with_return else blocks_pool.pop()
@@ -2990,21 +2946,53 @@ def plot_segments_on_photo(photo_path, predictions):
     plt.show()
 
 #TODO-AVEA: new usfull func
-def ml_rocognize_book_segments(image_path=None):
-    preds = load_struct_from_file(r'temp\predictions.pkl')
-    return np.array(preds, dtype=bool)
+def ml_rocognize_book_segments(img_bytes):
+    """Function gets predicts book's segments on photo by Detectron-model"""
+    # preds = load_struct_from_file(r'temp\predictions.pkl')
+    # return np.array(preds, dtype=bool)
+
+    URL = 'https://detectron-model-ihj6i2l2aq-uc.a.run.app/predict'
+    TEMP_FILES_DIR = 'temp'
+    PREDICTIONS_COMPRESSED_FILE = 'preds.download'
+    temp_file_path = os.path.join(TEMP_FILES_DIR, PREDICTIONS_COMPRESSED_FILE)
+
+    rs = requests.post(URL, data={'output_data': 'predicted_masks'}, files={'photo': img_bytes}, stream=True)
+    assert rs.status_code == 200, f'Detectron-model return status_code {rs.status_code}, reason: {rs.reason}'
+
+    with open(temp_file_path, "wb") as receive:
+        shutil.copyfileobj(rs.raw, receive)
+    del rs
+
+    return joblib.load(temp_file_path)
+
+
 
 
 def plot_predictions_as_segments(preds):
     import pylab as plt
 
-    a = preds[0]
+    #a = preds[0]
     for i in range(preds.shape[0]):
-        a += preds[i]
+        #a += preds[i]
+        plt.imshow(preds[i])
+        plt.show()
 
-    plt.imshow(a)
-    plt.show()
+#TODO-AVEA: new usfull func
+def img_rotate_angle(img_bytes):
+    result = 0
 
+    with Image_PIL.open(io.BytesIO(img_bytes)) as image:
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation':
+                break
+
+        exif = dict(image._getexif().items())
+        if exif[orientation] == 6:
+            result = 90
+        elif exif[orientation] == 8:
+            result = 270
+
+    return result
 
 
 

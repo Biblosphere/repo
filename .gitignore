@@ -21,3 +21,5 @@ doc/api/
 *.js.map
 *.pyc
 ml/detectron/build_model/model/model.joblib
+temp/
+cloud/preds.download
