@@ -3,4 +3,5 @@
 *.ipynb
 __pycache__/*.*
 check_commands.txt
-test_photo.jpg
+*.jpg
+*.png
