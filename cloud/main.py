@@ -29,7 +29,7 @@ from firebase_admin import messaging
 from wand.image import Image
 
 #TODO-AVEA: added libs
-import requests, shutil, joblib, io
+import requests, io
 from PIL import Image as Image_PIL, ExifTags
 
 #TODO:AVEA - don't merge
@@ -2664,6 +2664,121 @@ def remove_noise(blocks, confident, unknown, threshold=0.30, trace=False):
 
     return
 
+
+# *************************************************************************************************************
+
+
+# TODO-AVEA: new usfull func
+#Function to eval rotate angle gor photo (use exif tags)
+def img_rotate_angle(img_bytes):
+    result = 0
+
+    with Image_PIL.open(io.BytesIO(img_bytes)) as image:
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation':
+                break
+
+        exif = dict(image._getexif().items())
+        if exif[orientation] == 6:
+            result = 90
+        elif exif[orientation] == 8:
+            result = 270
+
+    return result
+
+
+# TODO-AVEA: new usfull func
+#Function gets predicts book's segments on photo by Detectron-model (standalone micro-service)
+def ml_rocognize_book_boxes(img_bytes):
+    URL = 'https://detectron-model-ihj6i2l2aq-uc.a.run.app/predict-rectangles'
+    TEMP_FILES_DIR = 'temp'
+    PREDICTIONS_COMPRESSED_FILE = 'preds.download'
+    temp_file_path = os.path.join(TEMP_FILES_DIR, PREDICTIONS_COMPRESSED_FILE)
+
+    rs = requests.post(URL, files={'photo': img_bytes})
+    assert rs.status_code == 200, f'Detectron-model return status_code {rs.status_code}, reason: {rs.reason}'
+
+    return rs.json()['boxes']
+
+
+# TODO-AVEA: new usfull func
+#Function to merge blocks from OCR, using book boxes from Detectron model
+def merge_blocks_and_book_boxes(blocks: list, book_boxes: list, width, height, with_return=False):
+    def is_box_inside_another_box(mini_box, big_box, points_treshold=3):
+        mini_box = cv2.boxPoints(cv2.minAreaRect(mini_box)).astype(float)
+        big_box = np.array(big_box, int)
+        points_inside = 0
+        for point in mini_box:
+            points_inside += 1 if cv2.pointPolygonTest(big_box, (point[0], point[1]), False) >= 0 else 0
+        return points_inside >= points_treshold
+
+    result = []
+    blocks_pool = blocks.copy()
+    related_blocks = [[] for _ in book_boxes]
+
+    for block_idx in reversed(range(len(blocks_pool))):
+        text_box = blocks_pool[block_idx].box
+        for book_idx in range(len(book_boxes)):
+            if is_box_inside_another_box(text_box, book_boxes[book_idx]):
+                block = blocks_pool[block_idx] if with_return else blocks_pool.pop()
+                related_blocks[book_idx].append(block)
+                break
+
+    for blocks_group in related_blocks:
+        if len(blocks_group) == 0:
+            continue
+
+        united_block = blocks_group[0]
+        for i in range(1, len(blocks_group)):
+            united_block.merge_with(blocks_group[i])
+
+        result.append(united_block)
+
+    return result
+
+#Function to draw blocks from OCR on photo
+def plot_blocks_on_photo(photo_path, blocks):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    import pylab
+    from PIL import Image
+
+    def build_polygon(points):
+        xy = np.array(points)
+        return patches.Polygon(xy, closed=True, linewidth=2, fill=True, alpha=0.5, color=np.random.rand(3, ))
+
+    pylab.rcParams['figure.figsize'] = [8.0, 8.0]
+    im = Image.open(photo_path)
+    plt.imshow(im)
+    ax = plt.gca()
+
+    for block in blocks:
+        ax.add_patch(build_polygon(block.box))
+    plt.show()
+
+#Function to draw boxes from Detectron model on photo
+def plot_boxes_on_photo(photo_path, boxes):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    import pylab
+    from PIL import Image
+
+    def build_polygon(points):
+        xy = np.array(points)
+        return patches.Polygon(xy, closed=True, linewidth=2, fill=True, alpha=0.5, color=np.random.rand(3, ))
+
+    pylab.rcParams['figure.figsize'] = [8.0, 8.0]
+    im = Image.open(photo_path)
+    plt.imshow(im)
+    ax = plt.gca()
+
+    for box in boxes:
+        ax.add_patch(build_polygon(box))
+    plt.show()
+
+
 #TODO-AVEA: don't merge
 @connect_mysql_firestore
 def test_func(data, context, cursor):
@@ -2673,16 +2788,21 @@ def test_func(data, context, cursor):
     SHOW_PHOTO = True
 
     doc_path = 'photos'
-    photo_id = '5wT7bve0jXyOZoIdC3Fv'
+    photo_id = 'ufOboNfwJD87mOyCab3K'
 
     '''
-    Тестовое (мое фото):
+    Test photos (my example):
     ufOboNfwJD87mOyCab3K
     
-    Другие фото:
+    Another photos:
     1xbzGeQPqLRh5F0MabTg (rotated)
     4K4e42A1pt3Rt2mbjpmY
     5wT7bve0jXyOZoIdC3Fv
+    15X3RtHTvUo4abwRJNgO (many books)
+    4EukdH5XqrEyge0bKCsl 
+    8QPIIHA5vqCl6LKvRNyY
+    Cp1v9WPom7IDCA9EFQd4
+    D0h4i9dpNKSVMUsWXM6N
     '''
 
 
@@ -2763,28 +2883,22 @@ def test_func(data, context, cursor):
     if max_height is None:
         max_height = img.shape[0] / 3
 
+    print('DEBUG: detectron start...')
     #get book segments using ml model (segments dims: segment_index x height x width)
-    segments = ml_rocognize_book_segments(img_bytes)
+    book_boxes = ml_rocognize_book_boxes(img_bytes)
+    print('DEBUG: detectron finish...')
 
-    # rotate img to normal angle
-    if img_angle == 90:
-        photo.width, photo.height = photo.height, photo.width
-        #segments = np.rot90(segments, k=1, axes=(1,2))
-    elif img_angle == 270:
-        pass
-        #segments = np.rot90(segments, k=1, axes=(1,2))
 
     if SHOW_PHOTO:
         local_path = 'temp/' + b.name.split('/')[-1]
         plot_blocks_on_photo(local_path, blocks)
-        #plot_blocks_as_segments(blocks)
-        #plot_predictions_as_segments(segments)
+        plot_boxes_on_photo(local_path, book_boxes)
 
 
-    blocks = merge_blocks_and_segments(blocks, segments, photo.height, photo.width, with_return=True)
+    blocks = merge_blocks_and_book_boxes(blocks, book_boxes, photo.height, photo.width, with_return=True)
     confident_blocks = []
 
-    # склеенные блоки
+    # show merged blocks
     if SHOW_PHOTO:
         local_path = 'temp/' + b.name.split('/')[-1]
         for block in blocks:
@@ -2792,7 +2906,6 @@ def test_func(data, context, cursor):
 
     lookup_books(cursor, blocks, confident_blocks, trace=trace)
 
-    #TODO-AVEA: Докручивать надо исходную картинку. OCR и Detectron докручивают сами.
     if img_angle == 90:
         img = np.rot90(img, k=3, axes=(0,1))
     elif img_angle == 270:
@@ -2813,193 +2926,7 @@ def test_func(data, context, cursor):
 
     print('...test_func done...')
 
-#TODO-AVEA: new usfull func
-def convert_block_to_mask(block, height, width):
-    import pylab as plt
-    import numpy as np
-    from matplotlib.path import Path
-
-    points = block.box
-
-    x, y = np.mgrid[:height, :width]
-    coors = np.hstack((x.reshape(-1, 1), y.reshape(-1, 1)))  # coors.shape is (4000000,2)
-
-    mask = Path(points).contains_points(coors)
-    return mask.reshape(height, width).transpose()
-
-#TODO-AVEA: new usfull func
-def merge_blocks_and_segments(blocks: list, segments: np.array, width, height, with_return=False):
-    #segments array dimensions: segment, width, height
-
-    result = []
-    blocks_pool = blocks.copy()
-    related_blocks = [[] for _ in segments]
-
-    for block_idx in reversed(range(len(blocks_pool))):
-        a = block_idx
-        block_mask = convert_block_to_mask(blocks_pool[block_idx], height, width)
-        for segment_idx in range(segments.shape[0]):
-            if masks_intersect(block_mask, segments[segment_idx]):
-                block = blocks_pool[block_idx] if with_return else blocks_pool.pop()
-                related_blocks[segment_idx].append(block)
-                break
-
-    for blocks_group in related_blocks:
-        if len(blocks_group) == 0:
-            continue
-
-        united_block = blocks_group[0]
-        for i in range(1, len(blocks_group)):
-            united_block.merge_with(blocks_group[i])
-
-        result.append(united_block)
-
-    return result
-
-
-#TODO-AVEA: new usfull func
-def masks_intersect(first_mask: np.ndarray, second_mask: np.ndarray, threshold=0.95):
-    min_points = min(first_mask.sum(), second_mask.sum())
-    intersect_mask = first_mask * second_mask
-    intersect_points = intersect_mask.sum()
-
-    res = intersect_points / min_points > threshold
-    return res
-
-
-
-def save_struct_to_file(data, filename):
-    import pickle
-
-    afile = open(filename, 'wb')
-    pickle.dump(data, afile)
-    afile.close()
-
-def load_struct_from_file(filename):
-    import pickle
-
-    file2 = open(filename, 'rb')
-    struct = pickle.load(file2)
-    file2.close()
-
-    return struct
-
-def plot_blocks_on_photo(photo_path, blocks):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as patches
-    import pylab
-    from PIL import Image
-
-    def build_polygon(points):
-        xy = np.array(points)
-        return patches.Polygon(xy, closed=True, linewidth=2, fill=True, alpha=0.5, color=np.random.rand(3, ))
-
-    pylab.rcParams['figure.figsize'] = [8.0, 8.0]
-    im = Image.open(photo_path)
-    plt.imshow(im)
-    ax = plt.gca()
-
-    for block in blocks:
-        ax.add_patch(build_polygon(block.box))
-    plt.show()
-
-def test_plot_blocks():
-    blocks = load_struct_from_file(r'temp\blocks.pkl')
-    img_file = r'temp\1625630423984.jpg'
-    plot_blocks_on_photo(img_file, blocks)
-
-
-
-
-
-def plot_blocks_as_segments(blocks):
-    import pylab as plt
-
-    a = convert_block_to_mask(blocks[0])
-    for block in blocks[1:]:
-        b = convert_block_to_mask(block)
-        a = a + b
-
-    plt.imshow(a)
-    plt.show()
-
-def plot_segments_on_photo(photo_path, predictions):
-
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as patches
-    import pylab
-    from PIL import Image
-
-    one_pred = predictions[7]
-
-    pylab.rcParams['figure.figsize'] = [8.0, 8.0]
-    #im = Image.open(photo_path)
-    #plt.imshow(im)
-    #ax = plt.gca()
-
-    im = one_pred.reshape((one_pred.shape[0], one_pred.shape[1], 1))
-    plt.imshow(im)
-
-
-    plt.show()
-
-#TODO-AVEA: new usfull func
-def ml_rocognize_book_segments(img_bytes):
-    """Function gets predicts book's segments on photo by Detectron-model"""
-    # preds = load_struct_from_file(r'temp\predictions.pkl')
-    # return np.array(preds, dtype=bool)
-
-    URL = 'https://detectron-model-ihj6i2l2aq-uc.a.run.app/predict'
-    TEMP_FILES_DIR = 'temp'
-    PREDICTIONS_COMPRESSED_FILE = 'preds.download'
-    temp_file_path = os.path.join(TEMP_FILES_DIR, PREDICTIONS_COMPRESSED_FILE)
-
-    rs = requests.post(URL, data={'output_data': 'predicted_masks'}, files={'photo': img_bytes}, stream=True)
-    assert rs.status_code == 200, f'Detectron-model return status_code {rs.status_code}, reason: {rs.reason}'
-
-    with open(temp_file_path, "wb") as receive:
-        shutil.copyfileobj(rs.raw, receive)
-    del rs
-
-    return joblib.load(temp_file_path)
-
-
-
-
-def plot_predictions_as_segments(preds):
-    import pylab as plt
-
-    #a = preds[0]
-    for i in range(preds.shape[0]):
-        #a += preds[i]
-        plt.imshow(preds[i])
-        plt.show()
-
-#TODO-AVEA: new usfull func
-def img_rotate_angle(img_bytes):
-    result = 0
-
-    with Image_PIL.open(io.BytesIO(img_bytes)) as image:
-        for orientation in ExifTags.TAGS.keys():
-            if ExifTags.TAGS[orientation] == 'Orientation':
-                break
-
-        exif = dict(image._getexif().items())
-        if exif[orientation] == 6:
-            result = 90
-        elif exif[orientation] == 8:
-            result = 270
-
-    return result
-
 
 
 if __name__ == '__main__':
-    #test_plot_blocks()
     test_func(None, None)
-
-    #preds = load_struct_from_file(r'temp\predictions.pkl')
-    #img_file = r'temp\1625630423984.jpg'
-    #plot_segments_on_photo(img_file, preds)
