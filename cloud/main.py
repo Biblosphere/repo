@@ -671,7 +671,10 @@ def photo_created(data, context, cursor):
         already_recognized = False
         if not result_blob.exists():
             b = bucket.blob(filename)
-            img = imread_blob(b)
+            img = imread_blob(b) # dims: height x width x color
+
+            img_bytes = b.download_as_bytes()
+            img_angle = img_rotate_angle(img_bytes)
 
             # Keep photo size
             photo.height, photo.width = img.shape[0:2]
@@ -692,23 +695,21 @@ def photo_created(data, context, cursor):
             if max_height is None:
                 max_height = img.shape[0] / 3
 
-            # Merge neaby blocks along the same bookspine (by angle, distance and size)
-            confident_blocks = merge_bookspines(blocks, w_other, max_height, img, trace=trace)
+            print('DEBUG: detectron start...')
+            # get book segments using ml model (segments dims: segment_index x height x width)
+            book_boxes = ml_rocognize_book_boxes(img_bytes)
+            print('DEBUG: detectron finish...')
 
-            # Merge cross lines
-            merge_along_confident(blocks, confident_blocks, w_other, img, trace=trace)
+            blocks = merge_blocks_and_book_boxes(blocks, book_boxes, photo.height, photo.width, with_return=True)
+            confident_blocks = []
 
             # Search for books (as new words matched to the blocks search might be different)
             lookup_books(cursor, blocks, confident_blocks, trace=trace)
 
-            # Merge smaller blocks with text not in the title/author (usually publisher)
-            merge_publisher(blocks, confident_blocks, w_other, img, trace=trace)
+            img = rotate_image_if_need(img, img_angle)
 
             # Assume corrupted blocks are scanned up-side-down. Recognize again.
             rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=trace)
-
-            # Stitch fragments of the same book (if same book is cut to two blocks)
-            merge_book_fragments(blocks, confident_blocks, img, trace=trace)
 
             # Identify unknown books (look for false positives)
             unknown_blocks = list_unknown(cursor, blocks, trace=trace)
@@ -719,7 +720,7 @@ def photo_created(data, context, cursor):
             recognized_blocks = list(set([b for b in blocks if b.book is not None]))
             unrecognized_blocks = list(set([b for b in blocks if b.book is None and b.bookspine is not None]))
 
-            # Disable profiler
+        # Disable profiler
             # pr.disable()
 
             #if trace:
@@ -2686,6 +2687,15 @@ def img_rotate_angle(img_bytes):
 
     return result
 
+# TODO-AVEA: new usfull func
+#Function rotate image if it have exif tag rotated
+def rotate_image_if_need(img, img_angle):
+    if img_angle == 90:
+        img = np.rot90(img, k=3, axes=(0,1))
+    elif img_angle == 270:
+        img = np.rot90(img, k=1, axes=(0,1))
+
+    return img
 
 # TODO-AVEA: new usfull func
 #Function gets predicts book's segments on photo by Detectron-model (standalone micro-service)
@@ -2788,7 +2798,7 @@ def test_func(data, context, cursor):
     SHOW_PHOTO = True
 
     doc_path = 'photos'
-    photo_id = 'ufOboNfwJD87mOyCab3K'
+    photo_id = '1xbzGeQPqLRh5F0MabTg'
 
     '''
     Test photos (my example):
@@ -2904,12 +2914,10 @@ def test_func(data, context, cursor):
         for block in blocks:
             plot_blocks_on_photo(local_path, [block])
 
+    # Search for books (as new words matched to the blocks search might be different)
     lookup_books(cursor, blocks, confident_blocks, trace=trace)
 
-    if img_angle == 90:
-        img = np.rot90(img, k=3, axes=(0,1))
-    elif img_angle == 270:
-        img = np.rot90(img, k=1, axes=(0,1))
+    img = rotate_image_if_need(img, img_angle)
 
     #Assume corrupted blocks are scanned up-side-down. Recognize again.
     rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=trace)
