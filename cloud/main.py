@@ -28,20 +28,15 @@ from firebase_admin import messaging
 # Image resize for the thumbnail
 from wand.image import Image
 
-#TODO-AVEA: added libs
 import requests, io
 from PIL import Image as Image_PIL, ExifTags
 
-#TODO:AVEA - don't merge
-#client = storage.Client()
-client = storage.Client.from_service_account_json('venv\\keys\\biblosphere-210106-dcfe06610932.json')
+client = storage.Client()
 
 # Use the application default credentials
 # TODO: Only initialize it for add_user_books(_from_image_sub) functions which use Firestore (Performance)
 
-#TODO:AVEA - don't merge
-#cred = credentials.ApplicationDefault()
-cred = credentials.Certificate('venv\\keys\\biblosphere-210106-dcfe06610932.json')
+cred = credentials.ApplicationDefault()
 
 firebase_admin.initialize_app(cred, {
   'projectId': 'biblosphere-210106',
@@ -49,8 +44,7 @@ firebase_admin.initialize_app(cred, {
 db = firestore.client()
 
 # TODO: Get the client only in function which needs it. Make empty global variable and check it (Performance)
-#TODO:AVEA - don't merge
-#publisher = pubsub.PublisherClient()
+publisher = pubsub.PublisherClient()
 
 # Function to generate thumbnails for the book shelves
 # Deploy with:
@@ -191,19 +185,11 @@ def connect_mysql(f):
     @wraps(f)
     def wrapper(request):
         try:
-            # TODO:AVEA - don't merge
+            cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
+                                         unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
+                                         database='biblosphere',
+                                         use_pure=False)
 
-            #cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
-            #                              unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
-            #                              database='biblosphere',
-            #                              use_pure=False)
-
-            cnx = mysql.connector.connect(user='biblosphere',
-                                          password='biblosphere',
-                                          host='35.223.45.184',
-                                          port='3306',
-                                          database='biblosphere',
-                                          use_pure=True)
 
             cnx.autocommit = True
             cursor = cnx.cursor(prepared=True)
@@ -224,20 +210,12 @@ def connect_mysql_firestore(f):
     @wraps(f)
     def wrapper(data, context):
         try:
-            # TODO:AVEA - don't merge
-
-            #cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
-            #                              unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
-            #                              database='biblosphere',
-            #                              use_pure=False)
+            cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
+                                         unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
+                                         database='biblosphere',
+                                         use_pure=False)
 
 
-            cnx = mysql.connector.connect(user='biblosphere',
-                                          password='biblosphere',
-                                          host='35.223.45.184',
-                                          port='3306',
-                                          database='biblosphere',
-                                          use_pure=True)
 
             cnx.autocommit = True
             cursor = cnx.cursor(prepared=True)
@@ -2416,7 +2394,7 @@ def extract_region(img, box, trace=False):
     if y + h >= maxY:
         h = maxY - y - 1
 
-    rx = int(w // 2)  #TODO-AVEA: Error. Needed to convert to int
+    rx = int(w // 2)
     ry = int(h // 2)
 
     # crop source
@@ -2494,7 +2472,6 @@ def extract_region(img, box, trace=False):
 
 
 # Re-run image recognition for the region of the image
-#TODO-AVEA: Modify this function
 def recognize_block(block, top_blocks, img, max_height, trace=False):
     # print(block.box)
     img_crop, M, d1, d2 = extract_region(img, block.box, trace=False)
@@ -2669,7 +2646,6 @@ def remove_noise(blocks, confident, unknown, threshold=0.30, trace=False):
 # *************************************************************************************************************
 
 
-# TODO-AVEA: new usfull func
 #Function to eval rotate angle gor photo (use exif tags)
 def img_rotate_angle(img_bytes):
     result = 0
@@ -2687,7 +2663,6 @@ def img_rotate_angle(img_bytes):
 
     return result
 
-# TODO-AVEA: new usfull func
 #Function rotate image if it have exif tag rotated
 def rotate_image_if_need(img, img_angle):
     if img_angle == 90:
@@ -2697,7 +2672,6 @@ def rotate_image_if_need(img, img_angle):
 
     return img
 
-# TODO-AVEA: new usfull func
 #Function gets predicts book's segments on photo by Detectron-model (standalone micro-service)
 def ml_rocognize_book_boxes(img_bytes):
     URL = 'https://detectron-model-ihj6i2l2aq-uc.a.run.app/predict-rectangles'
@@ -2711,7 +2685,6 @@ def ml_rocognize_book_boxes(img_bytes):
     return rs.json()['boxes']
 
 
-# TODO-AVEA: new usfull func
 #Function to merge blocks from OCR, using book boxes from Detectron model
 def merge_blocks_and_book_boxes(blocks: list, book_boxes: list, width, height, with_return=False):
     def is_box_inside_another_box(mini_box, big_box, points_treshold=3):
@@ -2746,195 +2719,3 @@ def merge_blocks_and_book_boxes(blocks: list, book_boxes: list, width, height, w
 
     return result
 
-#Function to draw blocks from OCR on photo
-def plot_blocks_on_photo(photo_path, blocks):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as patches
-    import pylab
-    from PIL import Image
-
-    def build_polygon(points):
-        xy = np.array(points)
-        return patches.Polygon(xy, closed=True, linewidth=2, fill=True, alpha=0.5, color=np.random.rand(3, ))
-
-    pylab.rcParams['figure.figsize'] = [8.0, 8.0]
-    im = Image.open(photo_path)
-    plt.imshow(im)
-    ax = plt.gca()
-
-    for block in blocks:
-        ax.add_patch(build_polygon(block.box))
-    plt.show()
-
-#Function to draw boxes from Detectron model on photo
-def plot_boxes_on_photo(photo_path, boxes):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as patches
-    import pylab
-    from PIL import Image
-
-    def build_polygon(points):
-        xy = np.array(points)
-        return patches.Polygon(xy, closed=True, linewidth=2, fill=True, alpha=0.5, color=np.random.rand(3, ))
-
-    pylab.rcParams['figure.figsize'] = [8.0, 8.0]
-    im = Image.open(photo_path)
-    plt.imshow(im)
-    ax = plt.gca()
-
-    for box in boxes:
-        ax.add_patch(build_polygon(box))
-    plt.show()
-
-
-#TODO-AVEA: don't merge
-@connect_mysql_firestore
-def test_func(data, context, cursor):
-    print('...test_func start...')
-
-    TEST_MODE = True
-    SHOW_PHOTO = True
-
-    doc_path = 'photos'
-    photo_id = '1xbzGeQPqLRh5F0MabTg'
-
-    '''
-    Test photos (my example):
-    ufOboNfwJD87mOyCab3K
-    
-    Another photos:
-    1xbzGeQPqLRh5F0MabTg (rotated)
-    4K4e42A1pt3Rt2mbjpmY
-    5wT7bve0jXyOZoIdC3Fv
-    15X3RtHTvUo4abwRJNgO (many books)
-    4EukdH5XqrEyge0bKCsl 
-    8QPIIHA5vqCl6LKvRNyY
-    Cp1v9WPom7IDCA9EFQd4
-    D0h4i9dpNKSVMUsWXM6N
-    '''
-
-
-    rec = db.collection(doc_path).document(photo_id).get().to_dict()
-
-    # Check that all required fields are there
-    if not rec.keys() >= {'photo', 'reporter', 'bookplace', 'id', 'location', 'url'}:
-        # TODO: Make proper error handling
-        print('ERROR: photo/reporter/bookplace/id/location/url parameters missing.', photo_id)
-        return
-
-    photo = Photo.from_json(rec)
-    print('!!!DEBUG: Photo id: ', photo.id)
-
-
-    trace = False
-    if 'trace' in rec:
-        trace = rec['trace']
-
-    rec = db.collection('bookplaces').document(photo.bookplace).get()
-
-    if rec is None:
-        # TODO: Make proper error handling
-        print('ERROR: bookplace record not found by id.', photo.bookplace)
-        return
-
-    rec_data = rec.to_dict()
-    if not rec_data.keys() >= {'id', 'name', 'contact'}:
-        # TODO: Make proper error handling
-        print('ERROR: id/name/contact missing in bookplace record.', photo.bookplace)
-        return
-
-    place = Place.from_json(rec_data)
-
-    if place.id is None or place.id == '':
-        place.id = rec.id
-
-    if place.location is None or place.location['geohash'] is None or place.location['geohash'] == '':
-        place.location = photo.location
-
-    print('!!!DEBUG: Place id: ', place.id)
-    print('!!!DEBUG: Place Name: ', place.name)
-
-
-    filename = photo.photo
-    uid = photo.reporter
-    # place = photo.bookplace
-
-    # client = storage.Client()
-    bucket = client.get_bucket('biblosphere-210106.appspot.com')
-
-    # Check if result JSON is available
-    result_filename = os.path.splitext(filename)[0] + '.json'
-    result_blob = bucket.blob(result_filename)
-
-    # Do recognition only if no results available from previous runs
-    already_recognized = False
-
-
-    b = bucket.blob(filename)
-    img = imread_blob(b) # dims: height x width x color
-
-    img_bytes = b.download_as_bytes()
-    img_angle = img_rotate_angle(img_bytes)
-
-
-    if SHOW_PHOTO:
-        b.download_to_filename('temp/' + b.name.split('/')[-1])
-
-    # Keep photo size
-    photo.height, photo.width = img.shape[0:2]
-
-    print('DEBUG: ocr start...')
-    response = ocr_url('gs://biblosphere-210106.appspot.com/' + b.name)
-    blocks, w_other, max_height = extract_blocks(response, img, trace=trace)
-    print('DEBUG: ocr finish...')
-
-    if max_height is None:
-        max_height = img.shape[0] / 3
-
-    print('DEBUG: detectron start...')
-    #get book segments using ml model (segments dims: segment_index x height x width)
-    book_boxes = ml_rocognize_book_boxes(img_bytes)
-    print('DEBUG: detectron finish...')
-
-
-    if SHOW_PHOTO:
-        local_path = 'temp/' + b.name.split('/')[-1]
-        plot_blocks_on_photo(local_path, blocks)
-        plot_boxes_on_photo(local_path, book_boxes)
-
-
-    blocks = merge_blocks_and_book_boxes(blocks, book_boxes, photo.height, photo.width, with_return=True)
-    confident_blocks = []
-
-    # show merged blocks
-    if SHOW_PHOTO:
-        local_path = 'temp/' + b.name.split('/')[-1]
-        for block in blocks:
-            plot_blocks_on_photo(local_path, [block])
-
-    # Search for books (as new words matched to the blocks search might be different)
-    lookup_books(cursor, blocks, confident_blocks, trace=trace)
-
-    img = rotate_image_if_need(img, img_angle)
-
-    #Assume corrupted blocks are scanned up-side-down. Recognize again.
-    rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=trace)
-
-    #Identify unknown books (look for false positives)
-    unknown_blocks = list_unknown(cursor, blocks, trace=trace)
-
-    #Clean noise
-    remove_noise(blocks, confident_blocks, unknown_blocks, threshold=0.50, trace=trace)
-
-    recognized_blocks = list(set([b for b in blocks if b.book is not None]))
-    unrecognized_blocks = list(set([b for b in blocks if b.book is None and b.bookspine is not None]))
-
-
-    print('...test_func done...')
-
-
-
-if __name__ == '__main__':
-    test_func(None, None)
