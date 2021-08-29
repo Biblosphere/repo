@@ -1,0 +1,7 @@
+*.pyc
+.ipynb_checkpoints/*.*
+*.ipynb
+__pycache__/*.*
+check_commands.txt
+*.jpg
+*.png

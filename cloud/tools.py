@@ -5,7 +5,9 @@ from google.cloud import vision
 
 
 # Instantiates a client
-vision_client = vision.ImageAnnotatorClient()
+#TODO:AVEA - don't merge
+#vision_client = vision.ImageAnnotatorClient()
+vision_client = vision.ImageAnnotatorClient.from_service_account_json('venv\\keys\\biblosphere-210106-dcfe06610932.json')
 
 
 def ocr_url(url):
