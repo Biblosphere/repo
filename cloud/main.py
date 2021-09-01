@@ -1,5 +1,7 @@
 import re
 import os
+from typing import List, Any
+
 import cv2
 import traceback
 import numpy as np
@@ -26,11 +28,16 @@ from firebase_admin import messaging
 # Image resize for the thumbnail
 from wand.image import Image
 
+import requests, io
+from PIL import Image as Image_PIL, ExifTags
+
 client = storage.Client()
 
 # Use the application default credentials
 # TODO: Only initialize it for add_user_books(_from_image_sub) functions which use Firestore (Performance)
+
 cred = credentials.ApplicationDefault()
+
 firebase_admin.initialize_app(cred, {
   'projectId': 'biblosphere-210106',
 })
@@ -179,9 +186,10 @@ def connect_mysql(f):
     def wrapper(request):
         try:
             cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
-                                          unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
-                                          database='biblosphere',
-                                          use_pure=False)
+                                         unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
+                                         database='biblosphere',
+                                         use_pure=False)
+
 
             cnx.autocommit = True
             cursor = cnx.cursor(prepared=True)
@@ -203,9 +211,11 @@ def connect_mysql_firestore(f):
     def wrapper(data, context):
         try:
             cnx = mysql.connector.connect(user='biblosphere', password='biblosphere',
-                                          unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
-                                          database='biblosphere',
-                                          use_pure=False)
+                                         unix_socket='/cloudsql/biblosphere-210106:us-central1:biblosphere',
+                                         database='biblosphere',
+                                         use_pure=False)
+
+
 
             cnx.autocommit = True
             cursor = cnx.cursor(prepared=True)
@@ -639,7 +649,10 @@ def photo_created(data, context, cursor):
         already_recognized = False
         if not result_blob.exists():
             b = bucket.blob(filename)
-            img = imread_blob(b)
+            img = imread_blob(b) # dims: height x width x color
+
+            img_bytes = b.download_as_bytes()
+            img_angle = img_rotate_angle(img_bytes)
 
             # Keep photo size
             photo.height, photo.width = img.shape[0:2]
@@ -660,23 +673,21 @@ def photo_created(data, context, cursor):
             if max_height is None:
                 max_height = img.shape[0] / 3
 
-            # Merge neaby blocks along the same bookspine (by angle, distance and size)
-            confident_blocks = merge_bookspines(blocks, w_other, max_height, img, trace=trace)
+            print('DEBUG: detectron start...')
+            # get book segments using ml model (segments dims: segment_index x height x width)
+            book_boxes = ml_rocognize_book_boxes(img_bytes)
+            print('DEBUG: detectron finish...')
 
-            # Merge cross lines
-            merge_along_confident(blocks, confident_blocks, w_other, img, trace=trace)
+            blocks = merge_blocks_and_book_boxes(blocks, book_boxes, photo.height, photo.width, with_return=True)
+            confident_blocks = []
 
             # Search for books (as new words matched to the blocks search might be different)
             lookup_books(cursor, blocks, confident_blocks, trace=trace)
 
-            # Merge smaller blocks with text not in the title/author (usually publisher)
-            merge_publisher(blocks, confident_blocks, w_other, img, trace=trace)
+            img = rotate_image_if_need(img, img_angle)
 
             # Assume corrupted blocks are scanned up-side-down. Recognize again.
             rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=trace)
-
-            # Stitch fragments of the same book (if same book is cut to two blocks)
-            merge_book_fragments(blocks, confident_blocks, img, trace=trace)
 
             # Identify unknown books (look for false positives)
             unknown_blocks = list_unknown(cursor, blocks, trace=trace)
@@ -687,7 +698,7 @@ def photo_created(data, context, cursor):
             recognized_blocks = list(set([b for b in blocks if b.book is not None]))
             unrecognized_blocks = list(set([b for b in blocks if b.book is None and b.bookspine is not None]))
 
-            # Disable profiler
+        # Disable profiler
             # pr.disable()
 
             #if trace:
@@ -1801,7 +1812,6 @@ def bookspine_distance(b1, b2, trace=False):
     angle, d, _ = box_position(b1, b2)
     # if trace:
     #    print('Angle:', angle)
-
     if 0.0 <= angle <= 0.08 or overlap > 0.4:
         distance = d
 
@@ -2384,8 +2394,8 @@ def extract_region(img, box, trace=False):
     if y + h >= maxY:
         h = maxY - y - 1
 
-    rx = w // 2
-    ry = h // 2
+    rx = int(w // 2)
+    ry = int(h // 2)
 
     # crop source
     d1 = np.array([x, y])
@@ -2468,38 +2478,16 @@ def recognize_block(block, top_blocks, img, max_height, trace=False):
     iM = cv2.invertAffineTransform(M)
 
     response = ocr_image(img_crop)
+    blocks, w_other, max_height = extract_blocks(response, img_crop, trace=trace)
 
-    # Extract blocks from Google Cloud Vision responce
-    words = extract_words(response, img_crop, trace=False)
+    if len(blocks) == 0:
+        return []
 
-    if trace:
-        print('Words extracted: words=%d' % (len(words)))
+    united_block = blocks[0]
+    for i in range(1, len(blocks)):
+        united_block.merge_with(blocks[i])
 
-    for w in words:
-        w.box = transform(w.box, iM, d1, d2)
-
-    # Merge neaby blocks along the same bookspine (by angle, distance and size)
-    blocks = []
-    # Copy input blocks to keep original list
-    confident_blocks = [b for b in top_blocks]
-
-    # Merge cross lines
-    merge_along_confident(blocks, confident_blocks, words, img, corrupted=True, trace=False)
-
-    # Merge smaller blocks with text not in the title/author (usually publisher)
-    merge_publisher(blocks, confident_blocks, words, img, corrupted=True, trace=False)
-
-    # Exclude original confident blocks
-    # blocks = [b for b in blocks if b not in confident_blocks]
-
-    # Remove blocks which were already there
-    blocks = [b for b in blocks if b not in top_blocks]
-
-    if trace:
-        for b in blocks:
-            print(b.words())
-
-    return blocks
+    return [united_block]
 
 
 # Delete old blocks which overlap with new blocks
@@ -2653,3 +2641,81 @@ def remove_noise(blocks, confident, unknown, threshold=0.30, trace=False):
     delete_empty(confident)
 
     return
+
+
+# *************************************************************************************************************
+
+
+#Function to eval rotate angle gor photo (use exif tags)
+def img_rotate_angle(img_bytes):
+    result = 0
+
+    with Image_PIL.open(io.BytesIO(img_bytes)) as image:
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation':
+                break
+
+        exif = dict(image._getexif().items())
+        if exif[orientation] == 6:
+            result = 90
+        elif exif[orientation] == 8:
+            result = 270
+
+    return result
+
+#Function rotate image if it have exif tag rotated
+def rotate_image_if_need(img, img_angle):
+    if img_angle == 90:
+        img = np.rot90(img, k=3, axes=(0,1))
+    elif img_angle == 270:
+        img = np.rot90(img, k=1, axes=(0,1))
+
+    return img
+
+#Function gets predicts book's segments on photo by Detectron-model (standalone micro-service)
+def ml_rocognize_book_boxes(img_bytes):
+    URL = 'https://detectron-model-ihj6i2l2aq-uc.a.run.app/predict-rectangles'
+    TEMP_FILES_DIR = 'temp'
+    PREDICTIONS_COMPRESSED_FILE = 'preds.download'
+    temp_file_path = os.path.join(TEMP_FILES_DIR, PREDICTIONS_COMPRESSED_FILE)
+
+    rs = requests.post(URL, files={'photo': img_bytes})
+    assert rs.status_code == 200, f'Detectron-model return status_code {rs.status_code}, reason: {rs.reason}'
+
+    return rs.json()['boxes']
+
+
+#Function to merge blocks from OCR, using book boxes from Detectron model
+def merge_blocks_and_book_boxes(blocks: list, book_boxes: list, width, height, with_return=False):
+    def is_box_inside_another_box(mini_box, big_box, points_treshold=3):
+        mini_box = cv2.boxPoints(cv2.minAreaRect(mini_box)).astype(float)
+        big_box = np.array(big_box, int)
+        points_inside = 0
+        for point in mini_box:
+            points_inside += 1 if cv2.pointPolygonTest(big_box, (point[0], point[1]), False) >= 0 else 0
+        return points_inside >= points_treshold
+
+    result = []
+    blocks_pool = blocks.copy()
+    related_blocks = [[] for _ in book_boxes]
+
+    for block_idx in reversed(range(len(blocks_pool))):
+        text_box = blocks_pool[block_idx].box
+        for book_idx in range(len(book_boxes)):
+            if is_box_inside_another_box(text_box, book_boxes[book_idx]):
+                block = blocks_pool[block_idx] if with_return else blocks_pool.pop()
+                related_blocks[book_idx].append(block)
+                break
+
+    for blocks_group in related_blocks:
+        if len(blocks_group) == 0:
+            continue
+
+        united_block = blocks_group[0]
+        for i in range(1, len(blocks_group)):
+            united_block.merge_with(blocks_group[i])
+
+        result.append(united_block)
+
+    return result
+
