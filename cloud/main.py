@@ -579,15 +579,71 @@ def spine_rectangle(contour):
     return np.int0(cv2.boxPoints(rect))
 
 
-# Function to recognize the books once photo  added to Firestore
+# Wrapper-function to recognize the books once photo  added to Firestore
 # Deploy with:
 # gcloud functions deploy photo_created --runtime python37 --trigger-event providers/cloud.firestore/eventTypes/document.create --trigger-resource projects/biblosphere-210106/databases/(default)/documents/photos/{photo}
 # gcloud functions logs read photo_created
 @connect_mysql_firestore
 def photo_created(data, context, cursor):
+    print('!!!DEBUG: def photo_created started...')
+
     path_parts = context.resource.split('/documents/')[1].split('/')
     doc_path = path_parts[0]
     photo_id = path_parts[1]
+
+    recognize_photo(data, context, cursor, doc_path, photo_id)
+
+    print('!!!DEBUG: def photo_created finished.')
+
+
+# HTTP API wrapper-function for re-recognition on photo.
+# Deploy with:
+# gcloud functions deploy rescan_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
+# gcloud functions logs read rescan_photo
+@connect_mysql_firestore
+def rescan_photo(request, cursor):
+    photo_id = ''
+    print('!!!DEBUG: def rescan_photo started...')
+    try:
+        params = request.get_json(silent=True)
+        if params is None:
+            json_abort(400, message="Missing input parameters")
+
+        # Validate params
+        if 'photo_id' not in params:
+            print('ERROR: photo_id parameters missing.')
+            return 'photo_id parameters missing.'
+
+        photo_id = params['photo_id']
+        print('photo_id:', photo_id)
+
+        data = None
+        doc_path = 'photos'
+
+
+        return json.dumps([photo_id], cls=JsonEncoder)
+        print('!!!DEBUG: def rescan_photo finished.')
+    except Exception as e:
+        print('Exception for photo_id [%s]' % photo_id, e)
+        traceback.print_exc()
+        return json_abort(400, message="%s" % e)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Function to recognize the book on photo
+def recognize_photo(doc_path, photo_id, cursor):
+    print('!!!DEBUG: def recognize_photo started...')
 
     rec = db.collection(doc_path).document(photo_id).get().to_dict()
 
@@ -636,9 +692,9 @@ def photo_created(data, context, cursor):
     try:
         filename = photo.photo
         uid = photo.reporter
-        #place = photo.bookplace
+        # place = photo.bookplace
 
-        #client = storage.Client()
+        # client = storage.Client()
         bucket = client.get_bucket('biblosphere-210106.appspot.com')
 
         # Check if result JSON is available
@@ -649,7 +705,7 @@ def photo_created(data, context, cursor):
         already_recognized = False
         if not result_blob.exists():
             b = bucket.blob(filename)
-            img = imread_blob(b) # dims: height x width x color
+            img = imread_blob(b)  # dims: height x width x color
 
             img_bytes = b.download_as_bytes()
             img_angle = img_rotate_angle(img_bytes)
@@ -699,16 +755,16 @@ def photo_created(data, context, cursor):
             unrecognized_blocks = list(set([b for b in blocks if b.book is None and b.bookspine is not None]))
 
         # Disable profiler
-            # pr.disable()
+        # pr.disable()
 
-            #if trace:
-            #    for b in confident_blocks:
-            #        cv2.drawContours(img, [np.array(b.box)], 0, (0, 255, 0), img.shape[0] // 300)
-            #        print('Book found for:', b.bookspine)
-            #        print('>', b.book.authors, b.book.title)
-            #    for b in unknown_blocks:
-            #        cv2.drawContours(img, [np.array(b.box)], 0, (0, 0, 255), img.shape[0] // 300)
-            #    plot_img(img, show=True)
+        # if trace:
+        #    for b in confident_blocks:
+        #        cv2.drawContours(img, [np.array(b.box)], 0, (0, 255, 0), img.shape[0] // 300)
+        #        print('Book found for:', b.bookspine)
+        #        print('>', b.book.authors, b.book.title)
+        #    for b in unknown_blocks:
+        #        cv2.drawContours(img, [np.array(b.box)], 0, (0, 0, 255), img.shape[0] // 300)
+        #    plot_img(img, show=True)
         else:
             already_recognized = True
             # Read JSON with results from cloud storage
@@ -730,18 +786,18 @@ def photo_created(data, context, cursor):
         print('!!!DEBUG Place ', place)
         for b in recognized_blocks:
             # Set the Firestore bookrecord
-            ref = db.collection('books').document(place.id+':'+b.book.isbn)
+            ref = db.collection('books').document(place.id + ':' + b.book.isbn)
             batch.set(ref, b.book_data(photo, place), merge=True)
             print(b.book.isbn, b.book.title, b.book.authors)
-            #print(b['contour'])
+            # print(b['contour'])
 
         # Commit the batch
         batch.commit()
 
         # Update status to completed and keep number of recognized books
         db.collection('photos').document(photo_id).update({'status': 'recognized',
-                                                            'total': len(recognized_blocks) + len(unrecognized_blocks),
-                                                            'recognized': len(recognized_blocks)})
+                                                           'total': len(recognized_blocks) + len(unrecognized_blocks),
+                                                           'recognized': len(recognized_blocks)})
 
         if not already_recognized:
             # Build JSON with results of the recognition
@@ -751,14 +807,14 @@ def photo_created(data, context, cursor):
             # - Google Cloud Vision response
 
             data = {
-                    'uid': uid,
-                    'uri': filename,
-                    'height': photo.height,
-                    'width': photo.width,
-                    'recognized': recognized_blocks,
-                    'unrecognized': unrecognized_blocks,
-                    # 'cloud_vision_response': response
-                   }
+                'uid': uid,
+                'uri': filename,
+                'height': photo.height,
+                'width': photo.width,
+                'recognized': recognized_blocks,
+                'unrecognized': unrecognized_blocks,
+                # 'cloud_vision_response': response
+            }
 
             # Store JSON to GCS
             result_blob.upload_from_string(json.dumps(data, cls=JsonEncoder).encode('utf8'), 'application/json')
@@ -768,6 +824,8 @@ def photo_created(data, context, cursor):
         print(u'Exception during image recognition: %s' % e)
         traceback.print_exc()
         db.collection('photos').document(photo_id).update({'status': 'failed'})
+
+    print('!!!DEBUG: def recognize_photo finished.')
 
 
 class Line:
