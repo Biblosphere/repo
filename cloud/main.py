@@ -600,7 +600,7 @@ def photo_created(data, context, cursor):
 # Deploy with:
 # gcloud functions deploy rescan_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
 # gcloud functions logs read rescan_photo
-@connect_mysql_firestore
+@connect_mysql
 def rescan_photo(request, cursor):
     photo_id = ''
     print('!!!DEBUG: def rescan_photo started...')
