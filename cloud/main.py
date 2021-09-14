@@ -591,7 +591,7 @@ def photo_created(data, context, cursor):
     doc_path = path_parts[0]
     photo_id = path_parts[1]
 
-    recognize_photo(data, context, cursor, doc_path, photo_id)
+    recognize_photo(doc_path, photo_id, cursor)
 
     print('!!!DEBUG: def photo_created finished.')
 
@@ -627,14 +627,6 @@ def rescan_photo(request, cursor):
         print('Exception for photo_id [%s]' % photo_id, e)
         traceback.print_exc()
         return json_abort(400, message="%s" % e)
-
-
-
-
-
-
-
-
 
 
 
