@@ -638,6 +638,11 @@ def rescan_photo(request, cursor):
 
 # Function to recognize the book on photo
 def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
+    def current_algorithm_description():
+        algorithm = 'Detectron build 1.0 (2021-08-26)'
+        known_books = 3059977
+        return algorithm, known_books
+
     print('!!!DEBUG: def recognize_photo started...')
     output_result = []
 
@@ -686,6 +691,7 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
     print('!!!DEBUG: Place Location: ', place.location)
 
     try:
+        start_time = datetime.datetime.now()
         filename = photo.photo
         uid = photo.reporter
         # place = photo.bookplace
@@ -793,10 +799,21 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
         # Commit the batch
         batch.commit()
 
+        algorithm, know_books = current_algorithm_description()
+        duration = datetime.datetime.now() - start_time
+        recognition_stats = {'date': datetime.datetime.now().date(),
+                            'algorithm': algorithm,
+                            'known_books': know_books,
+                            'detectron_find_books': len(book_boxes),
+                            'record_in_stats': False,
+                            'duration': duration.microseconds
+                            }
+
         # Update status to completed and keep number of recognized books
         db.collection('photos').document(photo_id).update({'status': 'recognized',
                                                            'total': len(recognized_blocks) + len(unrecognized_blocks),
-                                                           'recognized': len(recognized_blocks)})
+                                                           'recognized': len(recognized_blocks),
+                                                           'recognition_stats': recognition_stats})
 
         if not already_recognized:
             # Build JSON with results of the recognition
