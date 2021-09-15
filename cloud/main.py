@@ -581,7 +581,7 @@ def spine_rectangle(contour):
 
 # Wrapper-function to recognize the books once photo  added to Firestore
 # Deploy with:
-# gcloud functions deploy photo_created --runtime python37 --trigger-event providers/cloud.firestore/eventTypes/document.create --trigger-resource projects/biblosphere-210106/databases/(default)/documents/photos/{photo}
+# gcloud functions deploy photo_created --runtime python37 --trigger-event providers/cloud.firestore/eventTypes/document.create --trigger-resource "projects/biblosphere-210106/databases/(default)/documents/photos/{photo}"
 # gcloud functions logs read photo_created
 @connect_mysql_firestore
 def photo_created(data, context, cursor):
