@@ -28,7 +28,7 @@ from firebase_admin import messaging
 # Image resize for the thumbnail
 from wand.image import Image
 
-import requests, io
+import requests, io, datetime
 from PIL import Image as Image_PIL, ExifTags
 
 client = storage.Client()
@@ -614,10 +614,18 @@ def rescan_photo(request, cursor):
             print('ERROR: photo_id parameters missing.')
             return 'photo_id parameters missing.'
 
-        recognize_photo(doc_path='photos', photo_id=params['photo_id'], cursor=cursor, rescan_always=True)
+        photo_id = params['photo_id']
+        start_time = datetime.datetime.now()
+
+        recognized = recognize_photo(doc_path='photos', photo_id=photo_id, cursor=cursor, rescan_always=True)
+
+        duration = str(datetime.datetime.now() - start_time)
+        result = {"photo_id": photo_id,
+                  "duration": duration,
+                  "recognized_books": recognized}
 
         print('!!!DEBUG: def rescan_photo finished.')
-        return json.dumps([photo_id], cls=JsonEncoder)
+        return json.dumps(result, cls=JsonEncoder)
     except Exception as e:
         print('Exception for photo_id [%s]' % photo_id, e)
         traceback.print_exc()
@@ -631,6 +639,7 @@ def rescan_photo(request, cursor):
 # Function to recognize the book on photo
 def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
     print('!!!DEBUG: def recognize_photo started...')
+    output_result = []
 
     rec = db.collection(doc_path).document(photo_id).get().to_dict()
 
@@ -770,12 +779,15 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
         # Add confident books to the Biblosphere user (Firestore)
         batch = db.batch()
 
+
         print('!!!DEBUG Place ', place)
         for b in recognized_blocks:
             # Set the Firestore bookrecord
             ref = db.collection('books').document(place.id + ':' + b.book.isbn)
             batch.set(ref, b.book_data(photo, place), merge=True)
-            print(b.book.isbn, b.book.title, b.book.authors)
+            log_str = f'{b.book.isbn} {b.book.title} {b.book.authors}'
+            print(log_str)
+            output_result.append(log_str)
             # print(b['contour'])
 
         # Commit the batch
@@ -813,6 +825,7 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
         db.collection('photos').document(photo_id).update({'status': 'failed'})
 
     print('!!!DEBUG: def recognize_photo finished.')
+    return output_result
 
 
 class Line:
