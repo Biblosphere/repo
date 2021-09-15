@@ -801,7 +801,8 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
 
         algorithm, know_books = current_algorithm_description()
         duration = datetime.datetime.now() - start_time
-        recognition_stats = {'date': datetime.datetime.now().date(),
+        now_date = datetime.datetime.now().date()
+        recognition_stats = {'date': f'{now_date.year}-{now_date.month}-{now_date.day}',
                             'algorithm': algorithm,
                             'known_books': know_books,
                             'detectron_find_books': len(book_boxes),
