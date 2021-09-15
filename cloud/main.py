@@ -614,15 +614,10 @@ def rescan_photo(request, cursor):
             print('ERROR: photo_id parameters missing.')
             return 'photo_id parameters missing.'
 
-        photo_id = params['photo_id']
-        print('photo_id:', photo_id)
+        recognize_photo(doc_path='photos', photo_id=params['photo_id'], cursor=cursor, rescan_always=True)
 
-        data = None
-        doc_path = 'photos'
-
-
-        return json.dumps([photo_id], cls=JsonEncoder)
         print('!!!DEBUG: def rescan_photo finished.')
+        return json.dumps([photo_id], cls=JsonEncoder)
     except Exception as e:
         print('Exception for photo_id [%s]' % photo_id, e)
         traceback.print_exc()
@@ -634,7 +629,7 @@ def rescan_photo(request, cursor):
 
 
 # Function to recognize the book on photo
-def recognize_photo(doc_path, photo_id, cursor):
+def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
     print('!!!DEBUG: def recognize_photo started...')
 
     rec = db.collection(doc_path).document(photo_id).get().to_dict()
@@ -695,7 +690,7 @@ def recognize_photo(doc_path, photo_id, cursor):
 
         # Do recognition only if no results available from previous runs
         already_recognized = False
-        if not result_blob.exists():
+        if not result_blob.exists() or rescan_always:
             b = bucket.blob(filename)
             img = imread_blob(b)  # dims: height x width x color
 
