@@ -633,9 +633,6 @@ def rescan_photo(request, cursor):
 
 
 
-
-
-
 # Function to recognize the book on photo
 def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
     def current_algorithm_description():
@@ -844,6 +841,19 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
 
     print('!!!DEBUG: def recognize_photo finished.')
     return output_result
+
+
+# Function-trigger to record new recognition stats from firestore to bigquery
+# Deploy with:
+# gcloud functions deploy photo_created --runtime python37 --trigger-event providers/cloud.firestore/eventTypes/document.update --trigger-resource "projects/biblosphere-210106/databases/(default)/documents/photos/{photo}"
+def record_stats_to_bigquery(context):
+
+    path_parts = context.resource.split('/documents/')[1].split('/')
+    doc_path = path_parts[0]
+    photo_id = path_parts[1]
+
+    print(f'debug: {doc_path}, {photo_id}')
+
 
 
 class Line:
