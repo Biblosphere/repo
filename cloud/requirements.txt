@@ -15,3 +15,5 @@ firebase-admin
 geohash2
 wand
 Pillow
+google-oauth
+google-cloud
