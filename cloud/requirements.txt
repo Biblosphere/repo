@@ -16,4 +16,4 @@ geohash2
 wand
 Pillow
 google-oauth
-google-cloud
+google-cloud-bigquery

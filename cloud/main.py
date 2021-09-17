@@ -237,7 +237,7 @@ def connect_mysql_firestore(f):
 # Wrapper for BigQuery connection
 def connect_bigquery(f):
     @wraps(f)
-    def wrapper(request):
+    def wrapper(data, request):
         try:
             credential = {
                   "type": "service_account",
@@ -260,7 +260,7 @@ def connect_bigquery(f):
         except Exception as e: # MySQL error
             json_abort(401, message="BigQuery connection failed")
 
-        result = f(request, bq_client)
+        result = f(data, request, bq_client)
 
         return result
 
@@ -882,7 +882,7 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
 # Deploy with:
 # gcloud functions deploy record_stats_to_bigquery --runtime python37 --trigger-event providers/cloud.firestore/eventTypes/document.update --trigger-resource "projects/biblosphere-210106/databases/(default)/documents/photos/{photo}"
 @connect_bigquery
-def record_stats_to_bigquery(context, bq_client):
+def record_stats_to_bigquery(data, context, bq_client):
 
     def test_bigquery_connect(bq_client):
         query = '''
