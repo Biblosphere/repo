@@ -257,7 +257,7 @@ def connect_bigquery(f):
 
             bq_client = bigquery.Client(credentials=credentials, project=project_id)
 
-        except Exception as e: # MySQL error
+        except Exception as e: # BigQuery error
             json_abort(401, message="BigQuery connection failed")
 
         result = f(data, request, bq_client)
@@ -884,28 +884,10 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
 @connect_bigquery
 def record_stats_to_bigquery(data, context, bq_client):
 
-    def test_bigquery_connect(bq_client):
-        query = '''
-        SELECT * FROM `biblosphere-210106.demo_averyanov.Cities` 
-        where CityName = 'Omsk' 
-
-        UNION ALL
-
-        SELECT * FROM `biblosphere-210106.demo_averyanov.Cities` 
-        where CityName = 'Moscow' 
-        '''
-
-        query_job = bq_client.query(query)
-        results = query_job.result()
-        for res in results:
-            print(res, '\n')
-
-
     def insert_stats_to_bigquery(photo_id, stats, bq_client):
 
-        stat_date = datetime.datetime.strptime(stats['date'], "%Y-%m-%d")
-        record = [{u'timestamp': stat_date.timestamp(),
-                   u'date': stat_date.isoformat(),
+        record = [{u'timestamp': stats['date'].timestamp(),
+                   u'date': stats['date'].isoformat(),
                    u'photo_id': photo_id,
                    u'algorithm': stats['algorithm'],
                    u'known_books': stats['known_books'] if 'known_books' in stats else 0,
@@ -914,20 +896,30 @@ def record_stats_to_bigquery(data, context, bq_client):
                    u'total_finded_books': stats['total_finded_books'],
                    u'detectron_finded_books': stats['detectron_find_books'] if 'detectron_find_books' in stats else 0,
                    u'photo_url': stats['photo_url'],
-                   u'added': datetime.datetime.today().isoformat(),
+                   u'added': stats['added'].isoformat(),
                    }]
+        print('DEBUG:insert into BigQuery', record)
 
-        print('DEBUG:', record)
-        # errors = bq_client.insert_rows_json(table_id, record)  # Make an API request.
-        # if errors != []:
-        #     return "Encountered errors while inserting rows (photo_id: {}): {}".format(photo_id, errors))
-        # else:
-        #     return None
+        table_id = "biblosphere-210106.biblosphere.recognition_stats"
+        errors = bq_client.insert_rows_json(table_id, record)
+        if errors != []:
+            return "Encountered errors while inserting rows (photo_id: {}): {}".format(photo_id, errors)
+        else:
+            return None
 
-    def stats_in_bigquery(photo_id, stats):
-        return True
+    def stats_in_bigquery(photo_id, stats, bq_client):
 
-    test_bigquery_connect(bq_client)
+        query = f'''
+        SELECT added FROM biblosphere.recognition_stats
+        WHERE
+            photo_id = '{photo_id}'
+            AND date = '{stats['date'].isoformat()}'
+            AND added = '{stats['added'].isoformat()}'
+        '''
+        query_job = bq_client.query(query)
+        results = list(query_job.result())
+        return len(results) != 0
+
 
     path_parts = context.resource.split('/documents/')[1].split('/')
     doc_path = path_parts[0]
@@ -944,18 +936,21 @@ def record_stats_to_bigquery(data, context, bq_client):
         print('DEBUG: stats already in biqquery')
         return
 
+    stats['date'] = datetime.datetime.strptime(stats['date'], "%Y-%m-%d")
     stats['recognized_books'] = rec['recognized'] if 'recognized' in rec else 0
     stats['total_finded_books'] = rec['total'] if 'total' in rec else 0
     stats['photo_url'] = rec['url']
+    stats['added'] = datetime.datetime.today()
 
-    errors = insert_stats_to_bigquery(photo_id, stats)
+    errors = insert_stats_to_bigquery(photo_id, stats, bq_client)
     if errors != None:
         print('DEBUG: Error in insert to bigquery:', errors)
         return
 
-    if stats_in_bigquery(photo_id, stats):
+    if stats_in_bigquery(photo_id, stats, bq_client):
+        stats = rec['recognition_stats']
         stats['record_in_stats'] = True
-        #db.collection('photos').document(photo_id).update({'recognition_stats': stats})
+        db.collection('photos').document(photo_id).update({'recognition_stats': stats})
         print('DEBUG: stats sucessfully inserted into biqquery')
     else:
         print('DEBUG: Error: Inserted stats is not finded in bigquery')
