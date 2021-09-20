@@ -936,19 +936,19 @@ def record_stats_to_bigquery(data, context, bq_client):
         print('DEBUG: stats already in biqquery')
         return
 
-    stats['date'] = datetime.datetime.strptime(stats['date'], "%Y-%m-%d")
-    stats['recognized_books'] = rec['recognized'] if 'recognized' in rec else 0
-    stats['total_finded_books'] = rec['total'] if 'total' in rec else 0
-    stats['photo_url'] = rec['url']
-    stats['added'] = datetime.datetime.today()
+    bq_stats = stats.copy()
+    bq_stats['date'] = datetime.datetime.strptime(bq_stats['date'], "%Y-%m-%d")
+    bq_stats['recognized_books'] = rec['recognized'] if 'recognized' in rec else 0
+    bq_stats['total_finded_books'] = rec['total'] if 'total' in rec else 0
+    bq_stats['photo_url'] = rec['url']
+    bq_stats['added'] = datetime.datetime.today()
 
-    errors = insert_stats_to_bigquery(photo_id, stats, bq_client)
+    errors = insert_stats_to_bigquery(photo_id, bq_stats, bq_client)
     if errors != None:
         print('DEBUG: Error in insert to bigquery:', errors)
         return
 
-    if stats_in_bigquery(photo_id, stats, bq_client):
-        stats = rec['recognition_stats']
+    if stats_in_bigquery(photo_id, bq_stats, bq_client):
         stats['record_in_stats'] = True
         db.collection('photos').document(photo_id).update({'recognition_stats': stats})
         print('DEBUG: stats sucessfully inserted into biqquery')
