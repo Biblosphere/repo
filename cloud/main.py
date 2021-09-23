@@ -2848,7 +2848,9 @@ def img_rotate_angle(img_bytes):
                 break
 
         exif = dict(image._getexif().items())
-        if exif[orientation] == 6:
+        if orientation not in exif:
+            pass
+        elif exif[orientation] == 6:
             result = 90
         elif exif[orientation] == 8:
             result = 270
