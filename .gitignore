@@ -24,3 +24,5 @@ ml/detectron/build_model/model/model.joblib
 temp/
 cloud/preds.download
 .idea/*
+ml/detectron/build_model/downloaded_photo.png
+ml/detectron/build_model/test_photos/*
