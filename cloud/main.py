@@ -239,21 +239,8 @@ def connect_bigquery(f):
     @wraps(f)
     def wrapper(data, request):
         try:
-            credential = {
-                  "type": "service_account",
-                  "project_id": "biblosphere-210106",
-                  "private_key_id": "46141bf2af9d98ccffb044b924c3e19fb39d3ddb",
-                  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC1+lZ1cKdCqmxe\nRH1DBvET6V8DDYFVAZYdHkq0L5uytPu64XOqcdOv1FCOPDnw9oeeJkhgGFeCpN0V\nQPRCvpNrzm4Q8I5hqjCMVh4GcXh8fIv5kpxj+Vbs9wJ3DKamBnJtjxeibwT8OFwE\nDbp476TKEfNT5HdV1GjXh5NDrqt1lKCuK0nKVyqZ0GkOhC7MW5nR2v7P6zk2u9KB\n3eueYJ4mj9242v8BXocGhpaoye3CquBPzw3BhD0efHaOi3No0kUUoo/vunfgT9vu\nZHB/BBIlJu+zASMoDshw+zK5R9eW2Njg1+s9BI55nvL3FRZBSdy5cGcwJS/fW4jj\nXN7zY5qDAgMBAAECggEAVyIqy8jJDa60fN6ma7WjMTmI+Nk6mA1OZ1rdwjEZiBQI\nhI725yHhjktG1xQXWj1w6lTCSuDc5f0yrr6PNnYx+Gi7YvkL88+dt1R0w/kJC/JG\nw5VjtKrq6EPNtlskYFKt76+YTXqDFJGX3YkFRGraqLa3n+/BBCPUn36XEM1N49ob\nlb3BLV+6d9ksrYFs6AGGAJPYYINxCH8auMhM0lAzNinZPTs41+D0QNgQoxfJBe3g\nL6Pj7SUbdkPigbf7CIwEymyXwwOx/QlqL8rMcQlPbcLVc6WmQOMUTXblK4LPxjB5\na85Qr1AFTkXP5xvYbBtHOOejTreaj7XOy1xo5srN4QKBgQDlFPYxxIJUdAz/FaNh\niWOvJnm+5Eni0AZRtn264sseKrGCEoATZuAKA8GafN+skJsu8KeV/sGEpgeTismV\nEcreOmhF+yFYvibZxYkaNzxAiJI944DshK4XHyJGm7VybqAVmwBI59TZaNBz4B/l\nWq3j8/VZnh0SS5fbTFtCIXO1JwKBgQDLXG9qn0LGnjY+F7LNpDmv2Vf5bo1i9xKs\nr4xk25Z/xM8wWrW4DUeZjKNcm1Fv2H6oawgcnEddoKHZBCDrjT0i3As3IT5UnJns\nH3u4/oobf6Zz88M5fThAaF7CIXzldX4svOtnvp2K2nsrJurApXHyaBiymuqjYAGx\nChL4hfBhRQKBgHkBe5KKVLW7n2nWyjipVAie8ExPVmACtnPPS9a+GcDTmHQ2xYR6\nIPnpRgkO0S/cKry+zidDLIGfGf1roFOn1FtSyuW8Y772opsB5wv8BU2pVmZumBlX\ndIYuIfLeKRhLKzB+ccYQ/7Pf08yBpReHsLbqlL1D8eNKHuruCH6EIRSdAoGBAKEV\n+meh+hosrtjmmssMQGnMJ0S8zqBLCG7jq7kkvAU/l8M8x18gncvCvJCZs5t+CW5N\nQiKvpFRE7o9iFtWfjoLzfKrR2XbaiY6hrbZvYmS/69FDkSwTxaA3TIBIWI/GTwkP\nKQWH13Fq+U/IRwIMy8LxtEaeMijx3sUnLrnQFwZlAoGAZLJtrJFmXbjH2dV4hiLI\nA5FJmiaiz7a7B2YOu+0YsLI6t3ChEw1x3vfilJAuAQtXLqfi4A1o5raJt9TFTR46\nxRbGkwVaXcdfAz3Hv+ZDg82ljRSjeEAIlwmNFrgu9KZjGKh6DWTg75eyy8G/xqBP\nqxSM1U2qVlmT+6Q9TzgdR1k=\n-----END PRIVATE KEY-----\n",
-                  "client_email": "biblosphere-210106@appspot.gserviceaccount.com",
-                  "client_id": "106972658678192953965",
-                  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                  "token_uri": "https://oauth2.googleapis.com/token",
-                  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/biblosphere-210106%40appspot.gserviceaccount.com"
-                }
-
             project_id = 'biblosphere-210106'
-            credentials = service_account.Credentials.from_service_account_info(credential)
+            credentials = service_account.Credentials.from_service_account_file('keys/biblosphere-210106-0e61a72c6976.json')
 
             bq_client = bigquery.Client(credentials=credentials, project=project_id)
 
