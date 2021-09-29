@@ -2900,3 +2900,5 @@ def merge_blocks_and_book_boxes(blocks: list, book_boxes: list, width, height, w
 
     return result
 
+
+
