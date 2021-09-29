@@ -2911,6 +2911,7 @@ def merge_blocks_and_book_boxes(blocks: list, book_boxes: list, width, height, w
 # gcloud functions deploy recognize_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
 @connect_mysql
 def recognize_photo(request, cursor):
+    import time
     print('!!!DEBUG: def recognize_photo started...')
     try:
         if 'photo' not in request.files:
@@ -2919,7 +2920,9 @@ def recognize_photo(request, cursor):
         file = request.files['photo']
         print(f'Received incoming file - {file.filename}')
 
-        img = Image.open(file)
+        time.sleep(29)
+
+        img = Image_PIL.open(file)
         # img.save(INPUT_PHOTO_FILE_NAME, format='PNG')
 
         books = [{'title': 'Мастер и Маргарита', 'author': 'Булгаков М. А.'},
