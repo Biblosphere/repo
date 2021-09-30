@@ -658,7 +658,7 @@ def rescan_photo(request, cursor):
 # Function to recognize the book on photo
 def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
     def current_algorithm_description():
-        algorithm = 'Detectron build 1.0 (2021-08-26)'
+        algorithm = 'Detectron build 1.0.1 (2021-09-30)'
         known_books = 3059977
         return algorithm, known_books
 
@@ -2863,7 +2863,8 @@ def ml_rocognize_book_boxes(img_bytes):
     rs = requests.post(URL, files={'photo': img_bytes})
     assert rs.status_code == 200, f'Detectron-model return status_code {rs.status_code}, reason: {rs.reason}'
 
-    return rs.json()['boxes']
+    boxes = [box for box in rs.json()['boxes'] if len(box) > 0]
+    return boxes
 
 
 #Function to merge blocks from OCR, using book boxes from Detectron model
