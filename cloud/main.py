@@ -613,7 +613,7 @@ def photo_created(data, context, cursor):
     doc_path = path_parts[0]
     photo_id = path_parts[1]
 
-    recognize_photo(doc_path, photo_id, cursor)
+    recognize_photo_in_base(doc_path, photo_id, cursor)
 
     print('!!!DEBUG: def photo_created finished.')
 
@@ -639,7 +639,7 @@ def rescan_photo(request, cursor):
         photo_id = params['photo_id']
         start_time = datetime.datetime.now()
 
-        recognized = recognize_photo(doc_path='photos', photo_id=photo_id, cursor=cursor, rescan_always=True)
+        recognized = recognize_photo_in_base(doc_path='photos', photo_id=photo_id, cursor=cursor, rescan_always=True)
 
         duration = str(datetime.datetime.now() - start_time)
         result = {"photo_id": photo_id,
@@ -656,13 +656,13 @@ def rescan_photo(request, cursor):
 
 
 # Function to recognize the book on photo
-def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
+def recognize_photo_in_base(doc_path, photo_id, cursor, rescan_always=False):
     def current_algorithm_description():
         algorithm = 'Detectron build 1.0.1 (2021-09-30)'
         known_books = 3059977
         return algorithm, known_books
 
-    print('!!!DEBUG: def recognize_photo started...')
+    print('!!!DEBUG: def recognize_photo_in_base started...')
     output_result = []
 
     rec = db.collection(doc_path).document(photo_id).get().to_dict()
@@ -861,7 +861,7 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
         traceback.print_exc()
         db.collection('photos').document(photo_id).update({'status': 'failed'})
 
-    print('!!!DEBUG: def recognize_photo finished.')
+    print('!!!DEBUG: def recognize_photo_in_base finished.')
     return output_result
 
 
@@ -2930,7 +2930,7 @@ def recognize_photo(request, cursor):
                  {'title': 'Война и мир', 'author': 'Толстой Л.Н.'},
                 ]
 
-        print('!!!DEBUG: def rescan_photo finished.')
+        print('!!!DEBUG: def recognize_photo finished.')
         return json.dumps(books, cls=JsonEncoder)
     except Exception as e:
         print('Exception: ', e)
