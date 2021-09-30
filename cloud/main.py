@@ -826,7 +826,7 @@ def recognize_photo_in_base(doc_path, photo_id, cursor, rescan_always=False):
                             'known_books': know_books,
                             'detectron_find_books': len(book_boxes),
                             'record_in_stats': False,
-                            'duration': int(duration)
+                            'duration': int(duration.total_seconds() * 1000000)
                             }
 
         # Update status to completed and keep number of recognized books
