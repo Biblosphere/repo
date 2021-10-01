@@ -1442,7 +1442,8 @@ def words2blocks(words, max_height, trace=False):
         line = [w.center + h, w.center - h]
 
         overlap = blocks_on_line(line, words)
-        blocks.append(Block(overlap))
+        if len(overlap) > 0:
+            blocks.append(Block(overlap))
 
         words = words - set(overlap)
 
@@ -2698,7 +2699,8 @@ def ml_rocognize_book_boxes(img_bytes):
     rs = requests.post(URL, files={'photo': img_bytes})
     assert rs.status_code == 200, f'Detectron-model return status_code {rs.status_code}, reason: {rs.reason}'
 
-    return rs.json()['boxes']
+    boxes = [box for box in rs.json()['boxes'] if len(box) > 0]
+    return boxes
 
 
 # TODO-AVEA: new usfull func
@@ -2788,7 +2790,7 @@ def test_func(data, context, cursor):
     SHOW_PHOTO = True
 
     doc_path = 'photos'
-    photo_id = 'ufOboNfwJD87mOyCab3K'
+    photo_id = '7MpISTN2OS1Q7l0cH1Pa'
 
     '''
     Test photos (my example):
@@ -2887,7 +2889,6 @@ def test_func(data, context, cursor):
     #get book segments using ml model (segments dims: segment_index x height x width)
     book_boxes = ml_rocognize_book_boxes(img_bytes)
     print('DEBUG: detectron finish...')
-
 
     if SHOW_PHOTO:
         local_path = 'temp/' + b.name.split('/')[-1]
