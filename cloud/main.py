@@ -620,7 +620,7 @@ def photo_created(data, context, cursor):
 
 # HTTP API wrapper-function for re-recognition on photo.
 # Deploy with:
-# gcloud functions deploy rescan_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
+# gcloud functions deploy rescan_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=300s
 # gcloud functions logs read rescan_photo
 @connect_mysql
 def rescan_photo(request, cursor):
