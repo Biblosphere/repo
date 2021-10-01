@@ -1600,7 +1600,8 @@ def words2blocks(words, max_height, trace=False):
         line = [w.center + h, w.center - h]
 
         overlap = blocks_on_line(line, words)
-        blocks.append(Block(overlap))
+        if len(overlap) > 0:
+            blocks.append(Block(overlap))
 
         words = words - set(overlap)
 
