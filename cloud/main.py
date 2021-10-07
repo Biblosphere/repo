@@ -2911,25 +2911,81 @@ def merge_blocks_and_book_boxes(blocks: list, book_boxes: list, width, height, w
 # HTTP API
 # Deploy with:
 # gcloud functions deploy recognize_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
+def recognize_photo(request=None, cursor=None):
+    print('!!!DEBUG: def recognize_photo started...')
+    try:
+        books = [{'title': 'Мастер и Маргарита', 'author': 'Булгаков М. А.'},
+                  {'title': 'Война и мир', 'author': 'Толстой Л.Н.'},
+                ]
+
+        print('!!!DEBUG: def recognize_photo finished.')
+        return json.dumps(books, cls=JsonEncoder)
+    except Exception as e:
+        print('Exception: ', e)
+        traceback.print_exc()
+        return json_abort(400, message="%s" % e)
+
+
+# HTTP API
+# Deploy with:
+# gcloud functions deploy recognize_photo_test --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
 @connect_mysql
-def recognize_photo(request, cursor):
-    import time
+def recognize_photo_test(request=None, cursor=None):
     print('!!!DEBUG: def recognize_photo started...')
     try:
         if 'photo' not in request.files:
             return 'File for predict is not founded', 400
-
         file = request.files['photo']
         print(f'Received incoming file - {file.filename}')
 
-        time.sleep(29)
-
         img = Image_PIL.open(file)
-        # img.save(INPUT_PHOTO_FILE_NAME, format='PNG')
+        img.save('input_file.png', format='PNG')
 
-        books = [{'title': 'Мастер и Маргарита', 'author': 'Булгаков М. А.'},
-                 {'title': 'Война и мир', 'author': 'Толстой Л.Н.'},
-                ]
+
+        img = cv2.imread('input_file.png')
+        fl = open('input_file.png', 'rb')
+        img_bytes = fl.read()
+        fl.close()
+
+        img_angle = img_rotate_angle(img_bytes)
+        height, width = img.shape[0:2]
+
+        response = ocr_image(img)
+
+        # Extract blocks from Google Cloud Vision responce
+        blocks, w_other, max_height = extract_blocks(response, img, trace=False)
+
+        if max_height is None:
+            max_height = img.shape[0] / 3
+
+        print('DEBUG: detectron start...')
+        # get book segments using ml model (segments dims: segment_index x height x width)
+        book_boxes = ml_rocognize_book_boxes(img_bytes)
+        print('DEBUG: detectron finish...')
+
+        blocks = merge_blocks_and_book_boxes(blocks, book_boxes, height, width, with_return=True)
+        confident_blocks = []
+
+        # Search for books (as new words matched to the blocks search might be different)
+        lookup_books(cursor, blocks, confident_blocks, trace=False)
+
+        img = rotate_image_if_need(img, img_angle)
+
+        # Assume corrupted blocks are scanned up-side-down. Recognize again.
+        rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=False)
+
+        # Identify unknown books (look for false positives)
+        unknown_blocks = list_unknown(cursor, blocks, trace=False)
+
+        # Clean noise
+        remove_noise(blocks, confident_blocks, unknown_blocks, threshold=0.50, trace=False)
+
+        recognized_blocks = list(set([b for b in blocks if b.book is not None]))
+
+        books = []
+        for block in recognized_blocks:
+            book = {'title': block.book.title, 'author': block.book.authors, 'isbn': block.book.isbn}
+            books.append(book)
 
         print('!!!DEBUG: def recognize_photo finished.')
         return json.dumps(books, cls=JsonEncoder)
