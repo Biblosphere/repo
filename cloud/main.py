@@ -2928,7 +2928,7 @@ def recognize_photo(request=None, cursor=None):
 
 # HTTP API
 # Deploy with:
-# gcloud functions deploy recognize_photo_test --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
+# gcloud functions deploy recognize_photo_test --runtime python37 --trigger-http --allow-unauthenticated --memory=1GB --timeout=300s
 @connect_mysql
 def recognize_photo_test(request=None, cursor=None):
     print('!!!DEBUG: def recognize_photo started...')
@@ -2938,14 +2938,10 @@ def recognize_photo_test(request=None, cursor=None):
         file = request.files['photo']
         print(f'Received incoming file - {file.filename}')
 
-        img = Image_PIL.open(file)
-        img.save('input_file.png', format='PNG')
-
-
-        img = cv2.imread('input_file.png')
-        fl = open('input_file.png', 'rb')
-        img_bytes = fl.read()
-        fl.close()
+        img_bytes = file.read()
+        npimg = np.fromstring(img_bytes, np.uint8)
+        img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+        print('img shape:', img.shape)
 
         img_angle = img_rotate_angle(img_bytes)
         height, width = img.shape[0:2]
