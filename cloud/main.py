@@ -2855,13 +2855,19 @@ def rotate_image_if_need(img, img_angle):
     return img
 
 #Function gets predicts book's segments on photo by Detectron-model (standalone micro-service)
-def ml_rocognize_book_boxes(img_bytes):
+def ml_rocognize_book_boxes(img_bytes, gpu=False):
+    URL_gpu = 'http://35.212.242.48:5000/predict-rectangles'
     URL = 'https://detectron-model-ihj6i2l2aq-uc.a.run.app/predict-rectangles'
+
     TEMP_FILES_DIR = 'temp'
     PREDICTIONS_COMPRESSED_FILE = 'preds.download'
     temp_file_path = os.path.join(TEMP_FILES_DIR, PREDICTIONS_COMPRESSED_FILE)
 
-    rs = requests.post(URL, files={'photo': img_bytes})
+    if gpu:
+        rs = requests.post(URL_gpu, files={'photo': img_bytes})
+    else:
+        rs = requests.post(URL, files={'photo': img_bytes})
+
     assert rs.status_code == 200, f'Detectron-model return status_code {rs.status_code}, reason: {rs.reason}'
 
     boxes = [box for box in rs.json()['boxes'] if len(box) > 0]
@@ -2910,13 +2916,67 @@ def merge_blocks_and_book_boxes(blocks: list, book_boxes: list, width, height, w
 
 # HTTP API
 # Deploy with:
-# gcloud functions deploy recognize_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
+# gcloud functions deploy recognize_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=1GB --timeout=300s
 def recognize_photo(request=None, cursor=None):
     print('!!!DEBUG: def recognize_photo started...')
     try:
-        books = [{'title': 'Мастер и Маргарита', 'author': 'Булгаков М. А.'},
-                  {'title': 'Война и мир', 'author': 'Толстой Л.Н.'},
-                ]
+        if 'photo' not in request.files:
+            return 'File for predict is not founded', 400
+        file = request.files['photo']
+        print(f'Received incoming file - {file.filename}')
+
+        request_args = request.args
+        if request_args and "gpu" in request_args and request_args["gpu"] == '1':
+            gpu = True
+        else:
+            gpu = False
+        print(f'gpu mode: {gpu}')
+
+
+        img_bytes = file.read()
+        npimg = np.fromstring(img_bytes, np.uint8)
+        img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+        print('img shape:', img.shape)
+
+        img_angle = img_rotate_angle(img_bytes)
+        height, width = img.shape[0:2]
+
+        response = ocr_image(img)
+
+        # Extract blocks from Google Cloud Vision responce
+        blocks, w_other, max_height = extract_blocks(response, img, trace=False)
+
+        if max_height is None:
+            max_height = img.shape[0] / 3
+
+        print('DEBUG: detectron start...')
+        # get book segments using ml model (segments dims: segment_index x height x width)
+        book_boxes = ml_rocognize_book_boxes(img_bytes, gpu=gpu)
+        print('DEBUG: detectron finish...')
+
+        blocks = merge_blocks_and_book_boxes(blocks, book_boxes, height, width, with_return=True)
+        confident_blocks = []
+
+        # Search for books (as new words matched to the blocks search might be different)
+        lookup_books(cursor, blocks, confident_blocks, trace=False)
+
+        img = rotate_image_if_need(img, img_angle)
+
+        # Assume corrupted blocks are scanned up-side-down. Recognize again.
+        rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=False)
+
+        # Identify unknown books (look for false positives)
+        unknown_blocks = list_unknown(cursor, blocks, trace=False)
+
+        # Clean noise
+        remove_noise(blocks, confident_blocks, unknown_blocks, threshold=0.50, trace=False)
+
+        recognized_blocks = list(set([b for b in blocks if b.book is not None]))
+
+        books = []
+        for block in recognized_blocks:
+            book = {'title': block.book.title, 'author': block.book.authors, 'isbn': block.book.isbn}
+            books.append(book)
 
         print('!!!DEBUG: def recognize_photo finished.')
         return json.dumps(books, cls=JsonEncoder)
@@ -2938,6 +2998,14 @@ def recognize_photo_test(request=None, cursor=None):
         file = request.files['photo']
         print(f'Received incoming file - {file.filename}')
 
+        request_args = request.args
+        if request_args and "gpu" in request_args and request_args["gpu"] == '1':
+            gpu = True
+        else:
+            gpu = False
+        print(f'gpu mode: {gpu}')
+
+
         img_bytes = file.read()
         npimg = np.fromstring(img_bytes, np.uint8)
         img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
@@ -2956,7 +3024,7 @@ def recognize_photo_test(request=None, cursor=None):
 
         print('DEBUG: detectron start...')
         # get book segments using ml model (segments dims: segment_index x height x width)
-        book_boxes = ml_rocognize_book_boxes(img_bytes)
+        book_boxes = ml_rocognize_book_boxes(img_bytes, gpu=gpu)
         print('DEBUG: detectron finish...')
 
         blocks = merge_blocks_and_book_boxes(blocks, book_boxes, height, width, with_return=True)
