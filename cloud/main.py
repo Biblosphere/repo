@@ -2787,10 +2787,10 @@ def test_func(data, context, cursor):
     print('...test_func start...')
 
     TEST_MODE = True
-    SHOW_PHOTO = True
+    SHOW_PHOTO = False
 
     doc_path = 'photos'
-    photo_id = '7MpISTN2OS1Q7l0cH1Pa'
+    photo_id = 'ufOboNfwJD87mOyCab3K'
 
     '''
     Test photos (my example):
@@ -2928,6 +2928,81 @@ def test_func(data, context, cursor):
     print('...test_func done...')
 
 
+#Function rotate image if it have exif tag rotated
+def rotate_image_if_need(img, img_angle):
+    if img_angle == 90:
+        img = np.rot90(img, k=3, axes=(0,1))
+    elif img_angle == 270:
+        img = np.rot90(img, k=1, axes=(0,1))
+
+    return img
+
+@connect_mysql_firestore
+def test_func2(data, context, cursor):
+
+    print('!!!DEBUG: def recognize_photo started...')
+    try:
+        # if 'photo' not in request.files:
+        #     return 'File for predict is not founded', 400
+        # file = request.files['photo']
+        # print(f'Received incoming file - {file.filename}')
+
+        # img = Image_PIL.open(file)
+        # img.save(INPUT_PHOTO_FILE_NAME, format='PNG')
+
+
+        img = cv2.imread('temp/1611267349915.jpg')
+        fl = open('temp/1611267349915.jpg', 'rb')
+        img_bytes = fl.read()
+        fl.close()
+
+        img_angle = img_rotate_angle(img_bytes)
+        height, width = img.shape[0:2]
+
+        response = ocr_image(img)
+
+        # Extract blocks from Google Cloud Vision responce
+        blocks, w_other, max_height = extract_blocks(response, img, trace=False)
+
+        if max_height is None:
+            max_height = img.shape[0] / 3
+
+        print('DEBUG: detectron start...')
+        # get book segments using ml model (segments dims: segment_index x height x width)
+        book_boxes = ml_rocognize_book_boxes(img_bytes)
+        print('DEBUG: detectron finish...')
+
+        blocks = merge_blocks_and_book_boxes(blocks, book_boxes, height, width, with_return=True)
+        confident_blocks = []
+
+        # Search for books (as new words matched to the blocks search might be different)
+        lookup_books(cursor, blocks, confident_blocks, trace=False)
+
+        img = rotate_image_if_need(img, img_angle)
+
+        # Assume corrupted blocks are scanned up-side-down. Recognize again.
+        rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=False)
+
+        # Identify unknown books (look for false positives)
+        unknown_blocks = list_unknown(cursor, blocks, trace=False)
+
+        # Clean noise
+        remove_noise(blocks, confident_blocks, unknown_blocks, threshold=0.50, trace=False)
+
+        recognized_blocks = list(set([b for b in blocks if b.book is not None]))
+
+        books = []
+        for block in recognized_blocks:
+            book = {'title': block.book.title, 'author': block.book.authors, 'isbn': block.book.isbn}
+            books.append(book)
+
+        print('!!!DEBUG: def recognize_photo finished.')
+        return json.dumps(books, cls=JsonEncoder)
+    except Exception as e:
+        print('Exception: ', e)
+        traceback.print_exc()
+        return json_abort(400, message="%s" % e)
+
 
 if __name__ == '__main__':
-    test_func(None, None)
+    test_func2(None, None)
