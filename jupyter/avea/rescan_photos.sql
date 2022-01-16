@@ -1,6 +1,6 @@
 select * from `biblosphere-210106`.biblosphere.recognition_stats
-where photo_id = 'ufOboNfwJD87mOyCab3K'
-order by added
+where photo_id = '3W82C9BUmTxM7D0agG2q'
+order by added desc
 limit 100;
 
 
@@ -9,7 +9,7 @@ limit 100;
 -------------
 WITH rescan_photos AS (
     SELECT DISTINCT photo_id FROM `biblosphere-210106`.biblosphere.recognition_stats
-    WHERE algorithm = 'Detectron build 1.0 (2021-08-26)'
+    WHERE algorithm LIKE 'Detectron%'
 ),
 second_algo AS (
     SELECT DISTINCT
@@ -20,7 +20,7 @@ second_algo AS (
         MAX(detectron_finded_books) AS detectron_finded
     FROM `biblosphere-210106`.biblosphere.recognition_stats AS stats
              JOIN rescan_photos AS photos ON stats.photo_id = photos.photo_id
-    WHERE algorithm = 'Detectron build 1.0 (2021-08-26)'
+    WHERE algorithm LIKE 'Detectron%'
     GROUP BY stats.photo_id
 ),
 first_algo AS (

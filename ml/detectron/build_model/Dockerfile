@@ -22,6 +22,10 @@ ENV PORT 5000
 CMD [ "python", "DetectronFlask.py" ]
 
 
+# sometimes you have to copy saved model from storage
+# gsutil cp gs://detectron-model/model.joblib ./model/model.joblib
+# gsutil cp gs://detectron-model/model_final.pth ./model/model_final.pth
+
 # to build container (first go to directory 'repo_build_model'):
 # gcloud builds submit --tag gcr.io/biblosphere-210106/detectron-model . --timeout=3600
 

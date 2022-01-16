@@ -613,14 +613,14 @@ def photo_created(data, context, cursor):
     doc_path = path_parts[0]
     photo_id = path_parts[1]
 
-    recognize_photo(doc_path, photo_id, cursor)
+    recognize_photo_in_base(doc_path, photo_id, cursor)
 
     print('!!!DEBUG: def photo_created finished.')
 
 
 # HTTP API wrapper-function for re-recognition on photo.
 # Deploy with:
-# gcloud functions deploy rescan_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
+# gcloud functions deploy rescan_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=512MB --timeout=300s
 # gcloud functions logs read rescan_photo
 @connect_mysql
 def rescan_photo(request, cursor):
@@ -639,7 +639,7 @@ def rescan_photo(request, cursor):
         photo_id = params['photo_id']
         start_time = datetime.datetime.now()
 
-        recognized = recognize_photo(doc_path='photos', photo_id=photo_id, cursor=cursor, rescan_always=True)
+        recognized = recognize_photo_in_base(doc_path='photos', photo_id=photo_id, cursor=cursor, rescan_always=True)
 
         duration = str(datetime.datetime.now() - start_time)
         result = {"photo_id": photo_id,
@@ -656,13 +656,13 @@ def rescan_photo(request, cursor):
 
 
 # Function to recognize the book on photo
-def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
+def recognize_photo_in_base(doc_path, photo_id, cursor, rescan_always=False):
     def current_algorithm_description():
-        algorithm = 'Detectron build 1.0 (2021-08-26)'
+        algorithm = 'Detectron build 1.0.1 (2021-09-30)'
         known_books = 3059977
         return algorithm, known_books
 
-    print('!!!DEBUG: def recognize_photo started...')
+    print('!!!DEBUG: def recognize_photo_in_base started...')
     output_result = []
 
     rec = db.collection(doc_path).document(photo_id).get().to_dict()
@@ -826,7 +826,7 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
                             'known_books': know_books,
                             'detectron_find_books': len(book_boxes),
                             'record_in_stats': False,
-                            'duration': int(duration)
+                            'duration': int(duration.total_seconds() * 1000000)
                             }
 
         # Update status to completed and keep number of recognized books
@@ -861,7 +861,7 @@ def recognize_photo(doc_path, photo_id, cursor, rescan_always=False):
         traceback.print_exc()
         db.collection('photos').document(photo_id).update({'status': 'failed'})
 
-    print('!!!DEBUG: def recognize_photo finished.')
+    print('!!!DEBUG: def recognize_photo_in_base finished.')
     return output_result
 
 
@@ -1600,7 +1600,8 @@ def words2blocks(words, max_height, trace=False):
         line = [w.center + h, w.center - h]
 
         overlap = blocks_on_line(line, words)
-        blocks.append(Block(overlap))
+        if len(overlap) > 0:
+            blocks.append(Block(overlap))
 
         words = words - set(overlap)
 
@@ -2854,16 +2855,23 @@ def rotate_image_if_need(img, img_angle):
     return img
 
 #Function gets predicts book's segments on photo by Detectron-model (standalone micro-service)
-def ml_rocognize_book_boxes(img_bytes):
+def ml_rocognize_book_boxes(img_bytes, gpu=False):
+    URL_gpu = 'http://35.212.242.48:5000/predict-rectangles'
     URL = 'https://detectron-model-ihj6i2l2aq-uc.a.run.app/predict-rectangles'
+
     TEMP_FILES_DIR = 'temp'
     PREDICTIONS_COMPRESSED_FILE = 'preds.download'
     temp_file_path = os.path.join(TEMP_FILES_DIR, PREDICTIONS_COMPRESSED_FILE)
 
-    rs = requests.post(URL, files={'photo': img_bytes})
+    if gpu:
+        rs = requests.post(URL_gpu, files={'photo': img_bytes})
+    else:
+        rs = requests.post(URL, files={'photo': img_bytes})
+
     assert rs.status_code == 200, f'Detectron-model return status_code {rs.status_code}, reason: {rs.reason}'
 
-    return rs.json()['boxes']
+    boxes = [box for box in rs.json()['boxes'] if len(box) > 0]
+    return boxes
 
 
 #Function to merge blocks from OCR, using book boxes from Detectron model
@@ -2899,4 +2907,228 @@ def merge_blocks_and_book_boxes(blocks: list, book_boxes: list, width, height, w
         result.append(united_block)
 
     return result
+
+
+
+# ***************************************************
+# HACKATON
+# ***************************************************
+
+# HTTP API
+# Deploy with:
+# gcloud functions deploy recognize_photo --runtime python37 --trigger-http --allow-unauthenticated --memory=1GB --timeout=300s
+def recognize_photo(request=None, cursor=None):
+    print('!!!DEBUG: def recognize_photo started...')
+    try:
+        if 'photo' not in request.files:
+            return 'File for predict is not founded', 400
+        file = request.files['photo']
+        print(f'Received incoming file - {file.filename}')
+
+        request_args = request.args
+        if request_args and "gpu" in request_args and request_args["gpu"] == '1':
+            gpu = True
+        else:
+            gpu = False
+        print(f'gpu mode: {gpu}')
+
+
+        img_bytes = file.read()
+        npimg = np.fromstring(img_bytes, np.uint8)
+        img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+        print('img shape:', img.shape)
+
+        img_angle = img_rotate_angle(img_bytes)
+        height, width = img.shape[0:2]
+
+        response = ocr_image(img)
+
+        # Extract blocks from Google Cloud Vision responce
+        blocks, w_other, max_height = extract_blocks(response, img, trace=False)
+
+        if max_height is None:
+            max_height = img.shape[0] / 3
+
+        print('DEBUG: detectron start...')
+        # get book segments using ml model (segments dims: segment_index x height x width)
+        book_boxes = ml_rocognize_book_boxes(img_bytes, gpu=gpu)
+        print('DEBUG: detectron finish...')
+
+        blocks = merge_blocks_and_book_boxes(blocks, book_boxes, height, width, with_return=True)
+        confident_blocks = []
+
+        # Search for books (as new words matched to the blocks search might be different)
+        lookup_books(cursor, blocks, confident_blocks, trace=False)
+
+        img = rotate_image_if_need(img, img_angle)
+
+        # Assume corrupted blocks are scanned up-side-down. Recognize again.
+        rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=False)
+
+        # Identify unknown books (look for false positives)
+        unknown_blocks = list_unknown(cursor, blocks, trace=False)
+
+        # Clean noise
+        remove_noise(blocks, confident_blocks, unknown_blocks, threshold=0.50, trace=False)
+
+        recognized_blocks = list(set([b for b in blocks if b.book is not None]))
+
+        books = []
+        for block in recognized_blocks:
+            book = {'title': block.book.title, 'author': block.book.authors, 'isbn': block.book.isbn}
+            books.append(book)
+
+        print('!!!DEBUG: def recognize_photo finished.')
+        return json.dumps(books, cls=JsonEncoder)
+    except Exception as e:
+        print('Exception: ', e)
+        traceback.print_exc()
+        return json_abort(400, message="%s" % e)
+
+
+# HTTP API
+# Deploy with:
+# gcloud functions deploy recognize_photo_test --runtime python37 --trigger-http --allow-unauthenticated --memory=1GB --timeout=300s
+@connect_mysql
+def recognize_photo_test(request=None, cursor=None):
+    print('!!!DEBUG: def recognize_photo started...')
+    try:
+        if 'photo' not in request.files:
+            return 'File for predict is not founded', 400
+        file = request.files['photo']
+        print(f'Received incoming file - {file.filename}')
+
+        request_args = request.args
+        if request_args and "gpu" in request_args and request_args["gpu"] == '1':
+            gpu = True
+        else:
+            gpu = False
+        print(f'gpu mode: {gpu}')
+
+
+        img_bytes = file.read()
+        npimg = np.fromstring(img_bytes, np.uint8)
+        img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+        print('img shape:', img.shape)
+
+        img_angle = img_rotate_angle(img_bytes)
+        height, width = img.shape[0:2]
+
+        response = ocr_image(img)
+
+        # Extract blocks from Google Cloud Vision responce
+        blocks, w_other, max_height = extract_blocks(response, img, trace=False)
+
+        if max_height is None:
+            max_height = img.shape[0] / 3
+
+        print('DEBUG: detectron start...')
+        # get book segments using ml model (segments dims: segment_index x height x width)
+        book_boxes = ml_rocognize_book_boxes(img_bytes, gpu=gpu)
+        print('DEBUG: detectron finish...')
+
+        blocks = merge_blocks_and_book_boxes(blocks, book_boxes, height, width, with_return=True)
+        confident_blocks = []
+
+        # Search for books (as new words matched to the blocks search might be different)
+        lookup_books(cursor, blocks, confident_blocks, trace=False)
+
+        img = rotate_image_if_need(img, img_angle)
+
+        # Assume corrupted blocks are scanned up-side-down. Recognize again.
+        rotate_corrupted(cursor, blocks, confident_blocks, w_other, img, trace=False)
+
+        # Identify unknown books (look for false positives)
+        unknown_blocks = list_unknown(cursor, blocks, trace=False)
+
+        # Clean noise
+        remove_noise(blocks, confident_blocks, unknown_blocks, threshold=0.50, trace=False)
+
+        recognized_blocks = list(set([b for b in blocks if b.book is not None]))
+
+        books = []
+        for block in recognized_blocks:
+            book = {'title': block.book.title, 'author': block.book.authors, 'isbn': block.book.isbn}
+            books.append(book)
+
+        print('!!!DEBUG: def recognize_photo finished.')
+        return json.dumps(books, cls=JsonEncoder)
+    except Exception as e:
+        print('Exception: ', e)
+        traceback.print_exc()
+        return json_abort(400, message="%s" % e)
+
+
+
+# HTTP API
+# Deploy with:
+# gcloud functions deploy search_top_books --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
+@connect_mysql
+def search_top_books(request, cursor):
+    search_string = ''
+    print('!!!DEBUG: def search_top_books started...')
+    try:
+        params = request.get_json(silent=True)
+        if params is None or 'search_string' not in params:
+            json_abort(400, message="Missing input parameters: search_string")
+
+        search_string = params['search_string']
+        count = params['count'] if 'search_string' in params else 5
+
+        books = [{'title': 'Мастер и Маргарита', 'author': 'Булгаков М. А.'},
+                 {'title': 'Война и мир', 'author': 'Толстой Л.Н.'},
+                 {'title': 'Буратино и золотой ключик', 'author': 'Толстой А.Н.'},
+                 {'title': 'Белая гвардия', 'author': 'Булгаков М. А.'},
+                 {'title': 'Морфий', 'author': 'Булгаков М. А.'},
+                 {'title': 'Жизнь господина де Мольера. Театральный роман', 'author': 'Булгаков М. А.'},
+                 {'title': 'Собачье сердце', 'author': 'Толстой Л.Н.'}
+                ]
+        result = {"books": books[:count]}
+
+        print('!!!DEBUG: def search_top_books finished.')
+        return json.dumps(result, cls=JsonEncoder)
+    except Exception as e:
+        print('Exception for search_string [%s]' % search_string, e)
+        traceback.print_exc()
+        return json_abort(400, message="%s" % e)
+
+
+# HTTP API
+# Deploy with:
+# gcloud functions deploy get_recomandations --runtime python37 --trigger-http --allow-unauthenticated --memory=256MB --timeout=300s
+@connect_mysql
+def get_recomandations(request, cursor):
+    like_books = []
+    unlike_books = []
+    print('!!!DEBUG: def get_recomandations started...')
+    try:
+        params = request.get_json(silent=True)
+        if params is None or 'like_books' not in params or 'unlike_books' not in params:
+            json_abort(400, message="Missing input parameters: like_books/unlike_books")
+
+        like_books = params['like_books']
+        unlike_books = params['unlike_books']
+
+        books = [{'title': 'Мастер и Маргарита',
+                  'author': 'Булгаков М. А.',
+                  'image': 'https://cdn1.ozone.ru/multimedia/c250/1011707407.jpg',
+                  'description': 'Роман Михаила Афанасьевича Булгакова, работа над которым началась в декабре 1928 года и продолжалась вплоть до смерти писателя. Роман относится к незавершённым произведениям; редактирование и сведение воедино черновых записей осуществляла после смерти мужа вдова писателя - Елена Сергеевна. Первая версия романа, имевшая названия «Копыто инженера», «Чёрный маг» и другие, была уничтожена Булгаковым в 1930 году. В последующих редакциях среди героев произведения появились автор романа о Понтии Пилате и его возлюбленная. Окончательное название - «Мастер и Маргарита» - оформилось в 1937 году.',
+                  'pages': 333
+                  },
+
+                 {'title': 'Золотой ключик, или Приключения Буратино',
+                  'author': 'Толстой Алексей Николаевич',
+                  'image': 'https://cdn1.ozone.ru/s3/multimedia-9/c250/6007327593.jpg',
+                  'description': 'Повесть-сказка советского писателя Алексея Толстого, представляющая собой литературную обработку сказки Карло Коллоди «Приключения Пиноккио. История деревянной куклы». А. Н. Толстой посвятил книгу своей будущей жене Людмиле Ильиничне Крестинской.',
+                  'pages': 123
+                  },
+                 ]
+        result = {"books": books}
+
+        print('!!!DEBUG: def get_recomandations finished.')
+        return json.dumps(result, cls=JsonEncoder)
+    except Exception as e:
+        print('Exception for like_books [%s]' % like_books, e)
+        traceback.print_exc()
+        return json_abort(400, message="%s" % e)
 
