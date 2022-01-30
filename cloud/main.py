@@ -544,9 +544,9 @@ class Photo:
         self.width = width
         self.height = height
         # If geohash is missing generate it
-        if location['geohash'] is None or location['geohash'] == '':
-            self.location['geohash'] = geohash2.encode(location['geopoint'].latitude, location['geopoint'].longitude)[:9]
-            db.collection('photos').document(id).update({'location': self.location})
+        # if location['geohash'] is None or location['geohash'] == '':
+        #     self.location['geohash'] = geohash2.encode(location['geopoint'].latitude, location['geopoint'].longitude)[:9]
+        #     db.collection('photos').document(id).update({'location': self.location})
 
     @classmethod
     def from_json(cls, obj):
@@ -671,7 +671,7 @@ def recognize_photo_in_base(doc_path, photo_id, cursor, rescan_always=False):
     if not rec.keys() >= {'photo', 'reporter', 'bookplace', 'id', 'location', 'url'}:
         # TODO: Make proper error handling
         print('ERROR: photo/reporter/bookplace/id/location/url parameters missing.', photo_id)
-        return
+        raise Exception('ERROR: photo/reporter/bookplace/id/location/url parameters missing')
 
     photo = Photo.from_json(rec)
     print('!!!DEBUG: Photo id: ', photo.id)
@@ -692,22 +692,26 @@ def recognize_photo_in_base(doc_path, photo_id, cursor, rescan_always=False):
         return
 
     rec_data = rec.to_dict()
-    if not rec_data.keys() >= {'id', 'name', 'contact'}:
-        # TODO: Make proper error handling
-        print('ERROR: id/name/contact missing in bookplace record.', photo.bookplace)
-        return
+    # if not rec_data.keys() >= {'id', 'name', 'contact'}:
+    #     print('ERROR: id/name/contact missing in bookplace record.', photo.bookplace)
+    #     return
+    if rec_data is None:
+        rec_data = {'id': photo.id}
+    if 'name' not in rec_data:
+        rec_data['name'] = 'underfinded name'
+    if 'contact' not in rec_data:
+        rec_data['contact'] = 'underfinded contact'
 
     place = Place.from_json(rec_data)
-
     if place.id is None or place.id == '':
         place.id = rec.id
 
     if place.location is None or place.location['geohash'] is None or place.location['geohash'] == '':
         place.location = photo.location
 
-    print('!!!DEBUG: Place id: ', place.id)
-    print('!!!DEBUG: Place Name: ', place.name)
-    print('!!!DEBUG: Place Location: ', place.location)
+    # print('!!!DEBUG: Place id: ', place.id)
+    # print('!!!DEBUG: Place Name: ', place.name)
+    # print('!!!DEBUG: Place Location: ', place.location)
 
     try:
         start_time = datetime.datetime.now()
@@ -803,6 +807,7 @@ def recognize_photo_in_base(doc_path, photo_id, cursor, rescan_always=False):
 
         # Add confident books to the Biblosphere user (Firestore)
         batch = db.batch()
+
 
 
         print('!!!DEBUG Place ', place)
